@@ -38,13 +38,9 @@ expr:
 ;
 
 lambda_args:
-  | empty                              { [] }
-  | lambda_args_2                      { $1 }
-  | error                              { raise (Exceptions.parse_error "Invalid lambda expression" 1) }
-
-lambda_args_2:
-  | ID COLON type_c                      { [($1, $3)] }
-  | ID COLON type_c COMMA lambda_args_2  { ($1, $3) :: $5 }
+  | ID COLON type_c                    { [($1, $3)] }
+  | ID COLON type_c COMMA lambda_args  { ($1, $3) :: $5 }
+  | error                              { raise (Exceptions.parse_error "Invalid lambda expression arguments" 1) }
 ;
 
 type_c:

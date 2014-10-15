@@ -9,7 +9,7 @@ let indent_level = 2
 let indent n = "\n" ^ String.make n ' '
 
 let print_pos pos =
-  Printf.sprintf "%d:%d" pos.pos_lnum (pos.pos_cnum - pos.pos_bol)
+  Printf.sprintf "%d:%d" pos.pos_lnum (pos.pos_cnum - pos.pos_bol + 1)
 
 let rec print_type = function
   | NumType                -> "num"
@@ -36,7 +36,7 @@ let print_id id = "id " ^ id
 
 let print_op op = "op " ^ op
 
-let print_lambda_arg (id, type_c) =
+let print_def (id, type_c) =
   (print_id id) ^ " : " ^ (print_type type_c)
 
 let rec print_expr i (expr_guts, expr_info) = 
@@ -49,7 +49,7 @@ let rec print_expr i (expr_guts, expr_info) =
   | Lambda (args, expr)    -> "lambda" ^
                               (indent (i + 2)) ^
                               "(" ^
-                              (map_and_concat print_lambda_arg
+                              (map_and_concat print_def
                                               (indent (i + 3))
                                               args) ^
                               ")" ^

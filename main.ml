@@ -5,18 +5,14 @@ let main () =
     let typed_porg = Infer_types.infer_types lexed_prog in
 
     (* Print the AST *)
-    print_string (Printing.pretty_print_expr typed_porg);
-    print_newline ()
+    print_endline (Printing.pretty_print_expr typed_porg);
 
   with
     | Exceptions.LexErr msg ->
-        print_string ("Syntax error: " ^ msg);
-        print_newline ()
+        print_endline ("Syntax error: " ^ msg)
     | Exceptions.ParseErr msg ->
-        print_string ("Syntax error: " ^ msg);
-        print_newline ()
+        print_endline ("Syntax error: " ^ msg)
     | Exceptions.TypingErr msg ->
-        print_string ("Typing error: " ^ msg);
-        print_newline ()
+        print_endline ("Typing error: " ^ msg)
 
 let _ = main ()
