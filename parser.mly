@@ -1,6 +1,8 @@
 %{
 open AST
 open Parsing
+
+let p nterm = rhs_start_pos nterm
 %}
 
 %token <float> NUM
@@ -23,16 +25,15 @@ main:
 ;
 
 expr:
-  | BOOL                               { Bool $1 }
-  | NUM                                { Num $1 }
-  | ID                                 { Id $1 }
+  | BOOL                               { (Bool $1, (p 1, NoType)) }
+  | NUM                                { (Num $1, (p 1, NoType)) }
+  | ID                                 { (Id $1, (p 1, NoType)) }
   | LPAREN LAMBDA LPAREN lambda_args RPAREN expr RPAREN
-                                       { Lambda ($4, $6) }
-  | LPAREN LET LPAREN ID expr RPAREN expr RPAREN
-                                       { Let ($4, $5, $7) }
-  | LPAREN IF expr expr expr RPAREN    { If ($3, $4, $5) }
-  | LPAREN OP exprs RPAREN             { Op ($2, $3) }
-  | LPAREN expr exprs RPAREN           { App ($2, $3) }
+                                       { (Lambda ($4, $6), (p 1, NoType)) }
+  | LPAREN LET ID expr expr RPAREN     { (Let ($3, $4, $5), (p 1, NoType)) }
+  | LPAREN IF expr expr expr RPAREN    { (If ($3, $4, $5), (p 1, NoType)) }
+  | LPAREN OP exprs RPAREN             { (Op ($2, $3), (p 1, NoType)) }
+  | LPAREN expr exprs RPAREN           { (App ($2, $3), (p 1, NoType)) }
   | error                              { raise (Exceptions.parse_error "Invalid expression" 1) }
 ;
 
