@@ -1,0 +1,5 @@
+((lambda (f : (num -> num), x : num)
+         (f x))
+           (lambda (y : num)
+                   (* y 2))
+                     21)

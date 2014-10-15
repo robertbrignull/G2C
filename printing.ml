@@ -65,12 +65,17 @@ let rec print_expr i = function
                               ")"
 
   | App (expr, args)       -> let expr_text = print_expr (i + 1) expr in
-                              let l = String.length expr_text in
+                              let was_lambda = String.contains expr_text '\n' in
+                              let j =
+                                if was_lambda then
+                                  i + 11
+                                else
+                                  i + String.length expr_text + 2 in
                               "(" ^
                               expr_text ^
-                              " " ^
-                              (map_and_concat (print_expr (i + l + 2))
-                                              (indent (i + l + 2))
+                              (if was_lambda then indent j else " ") ^
+                              (map_and_concat (print_expr j)
+                                              (indent j)
                                               args) ^
                               ")"
 
