@@ -1,15 +1,12 @@
 open Lexing
 open Parsing
 
-open AST
+open AST_1_F
 
 let map_and_concat f sep xs = String.concat sep (List.map f xs)
 
 let indent_level = 2
 let indent n = "\n" ^ String.make n ' '
-
-let print_pos pos =
-  Printf.sprintf "%d:%d" pos.pos_lnum (pos.pos_cnum - pos.pos_bol + 1)
 
 let rec print_type = function
   | NumType                   -> "num"
@@ -17,15 +14,11 @@ let rec print_type = function
   | FunctionType (args, res)  -> (print_type_list args) ^
                                  " -> " ^
                                  (print_type res)
-  | VoidType                   -> "void"
-  | Untyped                    -> "untyped"
 
 and print_type_list ts = "(" ^ (map_and_concat print_type ", " ts) ^ ")"
 
-let print_info (pos, type_c) =
+let print_info type_c =
   "<" ^
-  (print_pos pos) ^
-  ", " ^
   (print_type type_c) ^
   ", "
 

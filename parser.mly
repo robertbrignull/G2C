@@ -1,5 +1,5 @@
 %{
-open AST
+open AST_0_U
 open Parsing
 
 let p nterm = rhs_start_pos nterm
@@ -14,7 +14,7 @@ let p nterm = rhs_start_pos nterm
 %token NUM_TYPE BOOL_TYPE
 %token EOF ERR
 
-%type <AST.expr> main
+%type <AST_0_U.expr> main
 %start main
 
 %%
@@ -25,15 +25,15 @@ main:
 ;
 
 expr:
-  | BOOL                               { (Bool $1, (p 1, Untyped)) }
-  | NUM                                { (Num $1, (p 1, Untyped)) }
-  | ID                                 { (Id $1, (p 1, Untyped)) }
+  | BOOL                               { (Bool $1, p 1) }
+  | NUM                                { (Num $1, p 1) }
+  | ID                                 { (Id $1, p 1) }
   | LPAREN LAMBDA LPAREN lambda_args RPAREN expr RPAREN
-                                       { (Lambda ($4, $6), (p 1, Untyped)) }
-  | LPAREN LET ID expr expr RPAREN     { (Let ($3, $4, $5), (p 1, Untyped)) }
-  | LPAREN IF expr expr expr RPAREN    { (If ($3, $4, $5), (p 1, Untyped)) }
-  | LPAREN OP exprs RPAREN             { (Op ($2, $3), (p 1, Untyped)) }
-  | LPAREN expr exprs RPAREN           { (App ($2, $3), (p 1, Untyped)) }
+                                       { (Lambda ($4, $6), p 1) }
+  | LPAREN LET ID expr expr RPAREN     { (Let ($3, $4, $5), p 1) }
+  | LPAREN IF expr expr expr RPAREN    { (If ($3, $4, $5), p 1) }
+  | LPAREN OP exprs RPAREN             { (Op ($2, $3), p 1) }
+  | LPAREN expr exprs RPAREN           { (App ($2, $3), p 1) }
   | error                              { raise (Exceptions.parse_error "Invalid expression" 1) }
 ;
 

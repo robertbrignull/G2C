@@ -1,6 +1,6 @@
 all: g2c
 
-G2C = exceptions.cmo AST.ml printing.cmo lexer.cmo parser.cmo infer_types.cmo main.cmo
+G2C = exceptions.cmo AST_0_U.ml AST_1_F.ml printing_1_F.cmo lexer.cmo parser.cmo trans_0_infer_types.cmo main.cmo
 g2c: $(G2C)
 	ocamlc -o g2c $(G2C)
 
@@ -24,21 +24,22 @@ clean:
 
 ###
 
-AST.cmi:
+AST_0_U.cmi:
+AST_1_F.cmi:
 exceptions.cmi:
 exceptions.cmo: exceptions.cmi
 exceptions.cmx: exceptions.cmi
-infer_types.cmi: AST.cmi exceptions.cmi
-infer_types.cmo: AST.cmi exceptions.cmi infer_types.cmi
-infer_types.cmx: AST.cmi exceptions.cmi infer_types.cmi
+trans_0_infer_types.cmi: AST_0_U.cmi AST_1_F.cmi exceptions.cmi
+trans_0_infer_types.cmo: AST_0_U.cmi AST_1_F.cmi exceptions.cmi trans_0_infer_types.cmi
+trans_0_infer_types.cmx: AST_0_U.cmi AST_1_F.cmi exceptions.cmi trans_0_infer_types.cmi
 lexer.cmi: exceptions.cmi parser.cmi
 lexer.cmo: exceptions.cmi parser.cmi lexer.cmi
 lexer.cmx: exceptions.cmi parser.cmx lexer.cmi
-main.cmo: exceptions.cmi parser.cmi lexer.cmi infer_types.cmi printing.cmi
-main.cmx: exceptions.cmi parser.cmx lexer.cmx infer_types.cmi printing.cmi
-parser.cmi: exceptions.cmi AST.cmi
-parser.cmo: exceptions.cmi AST.cmi parser.cmi
-parser.cmx: exceptions.cmi AST.cmi parser.cmi
-printing.cmi: AST.cmi
-printing.cmo: AST.cmi printing.cmi
-printing.cmx: AST.cmi printing.cmi
+main.cmo: exceptions.cmi parser.cmi lexer.cmi trans_0_infer_types.cmi printing_1_F.cmi
+main.cmx: exceptions.cmi parser.cmx lexer.cmx trans_0_infer_types.cmi printing_1_F.cmi
+parser.cmi: exceptions.cmi AST_0_U.cmi
+parser.cmo: exceptions.cmi AST_0_U.cmi parser.cmi
+parser.cmx: exceptions.cmi AST_0_U.cmi parser.cmi
+printing_1_F.cmi: AST_1_F.cmi
+printing_1_F.cmo: AST_1_F.cmi printing_1_F.cmi
+printing_1_F.cmx: AST_1_F.cmi printing_1_F.cmi

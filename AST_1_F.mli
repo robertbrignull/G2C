@@ -4,8 +4,6 @@ and type_c =
   | NumType
   | BoolType
   | FunctionType of type_c list * type_c
-  | VoidType
-  | Untyped
 
 and expr_guts =
   | Bool of bool
@@ -17,6 +15,4 @@ and expr_guts =
   | Op of id * expr list
   | App of expr * expr list
 
-and expr_info = Lexing.position * type_c
-
-and expr = expr_guts * expr_info
+and expr = expr_guts * type_c
