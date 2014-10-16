@@ -12,14 +12,15 @@ let print_pos pos =
   Printf.sprintf "%d:%d" pos.pos_lnum (pos.pos_cnum - pos.pos_bol + 1)
 
 let rec print_type = function
-  | NumType                -> "num"
-  | BoolType               -> "bool"
-  | CompoundType (l, r)    -> "(" ^
-                              (print_type l) ^
-                              " -> " ^
-                              (print_type r) ^
-                              ")"
-  | NoType                 -> "notype"
+  | NumType                   -> "num"
+  | BoolType                  -> "bool"
+  | FunctionType (args, res)  -> (print_type_list args) ^
+                                 " -> " ^
+                                 (print_type res)
+  | VoidType                   -> "void"
+  | Untyped                    -> "untyped"
+
+and print_type_list ts = "(" ^ (map_and_concat print_type ", " ts) ^ ")"
 
 let print_info (pos, type_c) =
   "<" ^

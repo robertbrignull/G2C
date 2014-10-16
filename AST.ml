@@ -3,8 +3,9 @@ type id = string
 and type_c =
   | NumType
   | BoolType
-  | CompoundType of type_c * type_c
-  | NoType
+  | FunctionType of type_c list * type_c
+  | VoidType
+  | Untyped
 
 and expr_guts =
   | Bool of bool

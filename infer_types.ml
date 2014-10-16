@@ -7,28 +7,30 @@ let rec equal_types t1 t2 =
   match t1, t2 with
   | BoolType, BoolType -> true
   | NumType, NumType -> true
-  | CompoundType (l1, r1), CompoundType (l2, r2) ->
-      (equal_types l1 l2) && (equal_types r1 r2)
+  | FunctionType (args1, res1), FunctionType (args2, res2) ->
+      List.length args1 == List.length args2 &&
+      (List.fold_right2 (fun t1 t2 c -> equal_types t1 t2 && c) args1 args2 true) &&
+      (equal_types res1 res2)
   | _ -> false
 
-let rec check_app_types expr_type args_types =
-  match expr_type, args_types with
-  | CompoundType (l, r), [t] -> equal_types l t
-  | CompoundType (l, r), t :: ts -> equal_types l t && check_app_types r ts
+let is_function_type = function
+  | FunctionType (l, r) -> true
   | _ -> false
 
-let rec get_result_type = function
-  | CompoundType (l, r) -> get_result_type r
-  | t -> t
+let get_arg_types = function
+  | FunctionType (args, _) -> args
+  | _ -> []
 
-let rec extract_types pos = function
-  | [(_, t)] -> t
-  | (_, t) :: ts -> CompoundType (t, extract_types pos ts)
-  | [] -> raise (Exceptions.typing_error "Invalid lambda expression arguments" pos)
+let get_result_type = function
+  | FunctionType (_, res) -> res
+  | _ -> Untyped
 
-let rec add_result_type res = function
-  | CompoundType (l, r) -> CompoundType (l, add_result_type res r)
-  | t -> CompoundType (t, res)
+let rec check_app_types expected ts =
+  match expected with
+  | FunctionType (args, _) ->
+      List.length args == List.length ts &&
+      List.fold_right2 (fun t1 t2 c -> equal_types t1 t2 && c) args ts true
+  | _ -> false
 
 let empty_env () = []
 
@@ -37,10 +39,10 @@ let rec env_add env vs = List.append vs env
 let rec env_find env id =
   snd (List.find (fun (k, v) -> k = id) env)
 
-let get_op_type = function
-  | "eq" -> CompoundType (NumType, CompoundType (NumType, BoolType))
-  | "times" -> CompoundType (NumType, CompoundType (NumType, NumType))
-  | _ -> NoType
+let get_op_type pos = function
+  | "eq" -> FunctionType ([NumType; NumType], BoolType)
+  | "times" -> FunctionType ([NumType; NumType], NumType)
+  | op -> raise (Exceptions.ParseErr Exceptions.(error (Printf.sprintf "Invalid builtin operation '%s' used" op) pos))
 
 let infer_types expr =
   let rec infer_types_impl env (expr_guts, (pos, type_c)) =
@@ -55,8 +57,9 @@ let infer_types expr =
                                   raise (Exceptions.typing_error (Printf.sprintf "Unbound variable %s" id) pos))
 
     | Lambda (args, expr)    -> let env = env_add env args in
+                                let arg_types = List.map snd args in
                                 let expr = infer_types_impl env expr in
-                                (Lambda (args, expr), (pos, add_result_type (get_type expr) (extract_types pos args)))
+                                (Lambda (args, expr), (pos, FunctionType (arg_types, (get_type expr))))
 
     | Let (id, value, expr)  -> let value = infer_types_impl env value in
                                 let env = env_add env [(id, get_type value)] in
@@ -75,18 +78,24 @@ let infer_types expr =
                                 else
                                   raise (Exceptions.typing_error (Printf.sprintf "If expression: expected bool for test but received %s" (Printing.print_type (get_type test))) pos)
 
-    | Op (op, args)          -> let op_type = get_op_type op in
+    | Op (op, args)          -> let op_type = get_op_type pos op in
                                 let args = List.map (infer_types_impl env) args in
-                                if check_app_types op_type (List.map get_type args) then
+                                let arg_types = List.map get_type args in
+                                if check_app_types op_type arg_types then
                                   (Op (op, args), (pos, get_result_type op_type))
                                 else
-                                  raise (Exceptions.typing_error (Printf.sprintf "Application: expected %s but received %s" (Printing.print_type (get_type expr)) (Printing.map_and_concat (fun arg -> Printing.print_type (get_type arg)) ", " args)) pos)
+                                  raise (Exceptions.typing_error (Printf.sprintf "Application: expected %s but received %s" (Printing.print_type_list (get_arg_types op_type)) (Printing.print_type_list arg_types)) pos)
 
     | App (expr, args)       -> let expr = infer_types_impl env expr in
+                                let expr_type = get_type expr in
                                 let args = List.map (infer_types_impl env) args in
-                                if check_app_types (get_type expr) (List.map get_type args) then
-                                  (App (expr, args), (pos, get_result_type (get_type expr)))
+                                if is_function_type expr_type then
+                                  (let arg_types = List.map get_type args in
+                                  if check_app_types expr_type arg_types then
+                                    (App (expr, args), (pos, get_result_type expr_type))
+                                  else
+                                    raise (Exceptions.typing_error (Printf.sprintf "Application: expected %s but received %s" (Printing.print_type_list (get_arg_types expr_type)) (Printing.print_type_list arg_types)) pos))
                                 else
-                                  raise (Exceptions.typing_error (Printf.sprintf "Application: expected %s but received %s" (Printing.print_type (get_type expr)) (Printing.map_and_concat (fun arg -> Printing.print_type (get_type arg)) ", " args)) pos)
+                                  raise (Exceptions.typing_error (Printf.sprintf "Application: %s is not a function type" (Printing.print_type expr_type)) pos)
 
   in infer_types_impl (empty_env ()) expr
