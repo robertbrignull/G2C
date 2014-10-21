@@ -9,7 +9,7 @@ and expr_guts =
   | Bool of bool
   | Num of float
   | Id of id
-  | Lambda of ((id * type_c) list) * expr
+  | Lambda of (id * type_c) list * expr
   | Let of id * expr * expr
   | If of expr * expr * expr
   | Op of id * expr list

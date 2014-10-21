@@ -1,6 +1,3 @@
-open Lexing
-open Parsing
-
 open AST_1_F
 
 let map_and_concat f sep xs = String.concat sep (List.map f xs)

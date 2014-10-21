@@ -4,6 +4,7 @@ open Parsing
 exception LexErr of string
 exception ParseErr of string
 exception TypingErr of string
+exception TransformErr of string
 
 let error msg pos =
   Printf.sprintf "%s: line %d: char %d" msg pos.pos_lnum (pos.pos_cnum - pos.pos_bol + 1)
@@ -16,3 +17,6 @@ let parse_error msg nterm =
 
 let typing_error msg pos =
   TypingErr (error msg pos)
+
+let transform_error msg =
+  TransformErr msg
