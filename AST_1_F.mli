@@ -16,3 +16,7 @@ and expr_guts =
   | App of expr * expr list
 
 and expr = expr_guts * type_c
+
+
+
+val size : expr -> int

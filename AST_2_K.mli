@@ -23,3 +23,7 @@ and expr =
   | If of value * expr * expr
   | App of value * value list
   | Halt of value
+
+
+
+val size : expr -> int
