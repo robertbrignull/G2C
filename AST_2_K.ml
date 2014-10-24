@@ -4,7 +4,6 @@ and type_c =
   | NumType
   | BoolType
   | FunctionType of type_c list
-  | ContType of type_c
 
 and value_guts =
   | Bool of bool

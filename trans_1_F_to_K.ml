@@ -16,19 +16,19 @@ let rec transform_type = function
   | F.FunctionType (args, res) ->
       let args = List.map transform_type args in
       let res = transform_type res in
-      K.FunctionType (List.append args [K.ContType res])
+      K.FunctionType (List.append args [K.FunctionType [res]])
 
 let rec last = function
   | [] -> raise (Failure "Cannot get last element of empty list")
   | [x] -> x
   | x::xs -> last xs
 
-let remove_cont = function
-  | K.ContType type_c -> type_c
-  | _ -> raise (Exceptions.transform_error "Not a ContType")
+let get_arg_types = function
+  | K.FunctionType args -> args
+  | _ -> raise (Exceptions.transform_error "Not a FunctionType")
 
 let get_cont_type = function
-  | K.FunctionType args -> remove_cont (last args)
+  | K.FunctionType args -> List.hd (get_arg_types (last args))
   | _ -> raise (Exceptions.transform_error "Trying to get return type of non-function type")
 
 let transform_args args =
@@ -67,11 +67,11 @@ let rec calc_expr (expr_guts, type_c) cont_gen =
       let arg_id = new_id () in
       let cont_type = get_cont_type let_type in
       let cont = (K.Lambda ([(arg_id, cont_type)],
-                            K.App ((K.Id cont_id, K.ContType cont_type),
+                            K.App ((K.Id cont_id, K.FunctionType [cont_type]),
                                    [(K.Id arg_id, cont_type)])),
                   cont_type) in
       let args = List.append (transform_args args)
-                             [(cont_id, K.ContType cont_type)] in
+                             [(cont_id, K.FunctionType [cont_type])] in
       K.Let (let_id,
              K.Value (K.Lambda (args,
                                 gen_expr expr cont),
@@ -89,9 +89,9 @@ let rec calc_expr (expr_guts, type_c) cont_gen =
       let res_type = transform_type (get_expr_type then_expr) in
       let cont = (K.Lambda ([(let_id, res_type)],
                             cont_gen (let_id, res_type)),
-                  K.ContType res_type) in
+                  K.FunctionType [res_type]) in
       let cont_gen_2 = (fun (res_id, res_type) ->
-        K.App ((K.Id cont_id, K.ContType res_type),
+        K.App ((K.Id cont_id, K.FunctionType [res_type]),
                [(K.Id res_id, res_type)])) in
       K.Let (cont_id,
              K.Value cont,
@@ -113,7 +113,7 @@ let rec calc_expr (expr_guts, type_c) cont_gen =
           let app_args = List.map (fun (id, type_c) -> (K.Id id, type_c)) ids in
           let cont = (K.Lambda ([(let_id, let_type)],
                                 cont_gen (let_id, let_type)),
-                      K.ContType let_type) in
+                      K.FunctionType [let_type]) in
           K.App ((K.Id expr_id, expr_type),
                  cont :: app_args)))
 
@@ -185,7 +185,7 @@ let gen_prog (expr_guts, type_c) =
   let type_c_t = transform_type type_c in
   let cont = (K.Lambda ([(arg_id, type_c_t)],
                         K.Halt (K.Id arg_id, type_c_t)),
-              K.ContType type_c_t) in
+              K.FunctionType [type_c_t]) in
   gen_expr (expr_guts, type_c) cont
 
 

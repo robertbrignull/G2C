@@ -8,8 +8,7 @@ let indent n = "\n" ^ String.make n ' '
 let rec print_type = function
   | NumType            -> "num"
   | BoolType           -> "bool"
-  | FunctionType args  -> "(" ^ (map_and_concat print_type ", " args) ^ ")"
-  | ContType type_c    -> "cont " ^ (print_type type_c)
+  | FunctionType args  -> "lambda (" ^ (map_and_concat print_type ", " args) ^ ")"
 
 let print_bool b = "bool " ^ if b then "true" else "false"
 
