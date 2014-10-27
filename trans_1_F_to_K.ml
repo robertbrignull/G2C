@@ -126,7 +126,7 @@ and calc_exprs exprs cont_gen =
 
     | expr :: exprs ->
         calc_expr expr (fun res ->
-          calc_exprs_impl exprs cont_gen (res :: ress))
+          calc_exprs_impl exprs cont_gen (List.append ress [res]))
     )
 
   in calc_exprs_impl exprs cont_gen []
@@ -176,7 +176,7 @@ and gen_expr (expr_guts, type_c) cont =
         calc_exprs args (fun ids ->
           let app_args = List.map (fun (id, type_c) -> (K.Id id, type_c)) ids in
           K.App ((K.Id expr_id, expr_type),
-                 cont :: app_args)))
+                 List.append app_args [cont])))
 
 
 
