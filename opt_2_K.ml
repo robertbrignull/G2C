@@ -127,6 +127,12 @@ let rec optimise expr_in =
         Op (op, List.map value_optimise args)
 
   and value_optimise = function
+    (* Remove trivial continuations that are equivalent
+       to some other named function *)
+    | (Lambda ([(l_arg, _)], App (f, [(Id f_arg, _)])), type_c)
+      when l_arg = f_arg ->
+        f
+
     (* End of optimisations, just recurse *)
     | (Bool b, type_c) ->
         (Bool b, type_c)
