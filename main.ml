@@ -22,6 +22,12 @@ let main () =
     print_endline (Printing_2_K.pretty_print_expr prog_2_K_opt);
     print_newline ();
 
+    let prog_3_C = Trans_2_K_to_C.transform prog_2_K_opt in
+    print_endline "----- C AST -----";
+    print_endline (Printf.sprintf "size: %d" (AST_3_C.size prog_3_C));
+    print_endline (Printing_3_C.pretty_print_expr prog_3_C);
+    print_newline ();
+
   with
     | Exceptions.LexErr msg ->
         print_endline ("Syntax error: " ^ msg)
