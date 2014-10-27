@@ -10,7 +10,13 @@ let main () =
     print_endline (Printing_1_F.pretty_print_expr prog_1_F);
     print_newline ();
 
-    let prog_2_K = Trans_1_F_to_K.transform prog_1_F in
+    let prog_1_F_unique = Opt_1_unique_ids.make_ids_unique prog_1_F in
+    print_endline "----- F AST unique ids -----";
+    print_endline (Printf.sprintf "size: %d" (AST_1_F.size prog_1_F_unique));
+    print_endline (Printing_1_F.pretty_print_expr prog_1_F_unique);
+    print_newline ();
+
+    let prog_2_K = Trans_1_F_to_K.transform prog_1_F_unique in
     print_endline "----- K AST -----";
     print_endline (Printf.sprintf "size: %d" (AST_2_K.size prog_2_K));
     print_endline (Printing_2_K.pretty_print_expr prog_2_K);

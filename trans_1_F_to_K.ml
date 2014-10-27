@@ -1,11 +1,6 @@
 module F = AST_1_F;;
 module K = AST_2_K;;
 
-let last_id = ref 0
-let new_id () =
-  last_id := !last_id + 1;
-  "genid_" ^ (string_of_int !last_id)
-
 let get_expr_type = snd
 
 let rec transform_type = function
@@ -44,7 +39,7 @@ let could_be_value = function
 
 
 let rec calc_expr (expr_guts, type_c) cont_gen =
-  let let_id = new_id () in
+  let let_id = Common.new_id () in
   let let_type = transform_type type_c in
   match expr_guts with
   | F.Bool b ->
@@ -63,8 +58,8 @@ let rec calc_expr (expr_guts, type_c) cont_gen =
              cont_gen (let_id, let_type))
 
   | F.Lambda (args, expr) ->
-      let cont_id = new_id () in
-      let arg_id = new_id () in
+      let cont_id = Common.new_id () in
+      let arg_id = Common.new_id () in
       let cont_type = get_cont_type let_type in
       let cont = (K.Lambda ([(arg_id, cont_type)],
                             K.App ((K.Id cont_id, K.FunctionType [cont_type]),
@@ -85,7 +80,7 @@ let rec calc_expr (expr_guts, type_c) cont_gen =
               calc_expr expr cont_gen))
 
   | F.If (test, then_expr, else_expr) ->
-      let cont_id = new_id () in
+      let cont_id = Common.new_id () in
       let res_type = transform_type (get_expr_type then_expr) in
       let cont = (K.Lambda ([(let_id, res_type)],
                             cont_gen (let_id, res_type)),
@@ -166,7 +161,7 @@ and gen_expr (expr_guts, type_c) cont =
   | F.Op (op, args) ->
       calc_exprs args (fun ids ->
         let op_args = List.map (fun (id, type_c) -> (K.Id id, type_c)) ids in
-        let res_id = new_id () in
+        let res_id = Common.new_id () in
         K.Let (res_id,
                K.Op (op, op_args),
                K.App (cont, [(K.Id res_id, type_c)])))
@@ -181,7 +176,7 @@ and gen_expr (expr_guts, type_c) cont =
 
 
 let gen_prog (expr_guts, type_c) =
-  let arg_id = new_id () in
+  let arg_id = Common.new_id () in
   let type_c_t = transform_type type_c in
   let cont = (K.Lambda ([(arg_id, type_c_t)],
                         K.Halt (K.Id arg_id, type_c_t)),
