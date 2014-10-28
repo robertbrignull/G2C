@@ -1,10 +1,6 @@
-module K = AST_2_K;;
-module C = AST_3_C;;
-
-let rec remove_dups = function
-  | [] -> []
-  | x :: xs ->
-      x :: (remove_dups (List.filter (fun y -> x <> y) xs))
+module K = AST_2_K
+module C = AST_3_C
+open Common
 
 let rec transform_type = function
   | K.NumType -> C.NumType

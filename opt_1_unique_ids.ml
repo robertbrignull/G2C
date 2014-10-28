@@ -1,4 +1,5 @@
-open AST_1_F;;
+open AST_1_F
+open Common
 
 let make_ids_unique expr =
   let rec make_ids_unique_impl env (expr_guts, type_c) =
@@ -16,13 +17,13 @@ let make_ids_unique expr =
     | Lambda (args, expr) ->
         let ids = List.map fst args in
         let types = List.map snd args in
-        let new_ids = List.map (fun _ -> Common.new_id ()) ids in
+        let new_ids = List.map (fun _ -> new_id ()) ids in
         let env_2 = List.append (List.combine ids new_ids) env in
         Lambda (List.combine new_ids types,
                 make_ids_unique_impl env_2 expr)
 
     | Let (id, value, expr) ->
-        let id_2 = Common.new_id () in
+        let id_2 = new_id () in
         let env_2 = (id, id_2) :: env in
         Let (id_2,
              make_ids_unique_impl env_2 value,

@@ -34,6 +34,12 @@ let main () =
     print_endline (Printing_3_C.pretty_print_expr prog_3_C);
     print_newline ();
 
+    let prog_4_H = Trans_3_C_to_H.transform prog_3_C in
+    print_endline "----- H AST -----";
+    print_endline (Printf.sprintf "size: %d" (AST_4_H.size prog_4_H));
+    print_endline (Printing_4_H.pretty_print_prog prog_4_H);
+    print_newline ();
+
   with
     | Exceptions.LexErr msg ->
         print_endline ("Syntax error: " ^ msg)

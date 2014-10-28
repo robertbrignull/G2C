@@ -1,9 +1,5 @@
 open AST_1_F
-
-let map_and_concat f sep xs = String.concat sep (List.map f xs)
-
-let indent_level = 2
-let indent n = "\n" ^ String.make n ' '
+open Common
 
 let rec print_type = function
   | NumType                   -> "num"

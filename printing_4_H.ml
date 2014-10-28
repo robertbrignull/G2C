@@ -1,4 +1,4 @@
-open AST_3_C
+open AST_4_H
 open Common
 
 let rec print_type = function
@@ -32,23 +32,6 @@ and print_value i (value_guts, type_c) =
   | Num x -> print_num x
 
   | Id id -> print_id id
-
-  | Lambda (closure, args, expr) ->
-      "lambda" ^
-      (indent (i + 2)) ^
-      "(" ^
-      (map_and_concat print_arg
-                      (indent (i + 3))
-                      closure) ^
-      ")" ^
-      (indent (i + 2)) ^
-      "(" ^
-      (map_and_concat print_arg
-                      (indent (i + 3))
-                      args) ^
-      ")" ^
-      (indent (i + 2)) ^
-      (print_expr (i + 2) expr)
   ) ^
   ">"
 
@@ -96,4 +79,30 @@ and print_expr i expr =
   ) ^
   ">"
 
-let pretty_print_expr expr = print_expr 0 expr
+and print_proc i (id, closure, args, expr) =
+  "<proc, " ^
+  (print_id id) ^
+  (indent (i + 2)) ^
+  "(" ^
+  (map_and_concat print_arg
+                  (indent (i + 3))
+                  closure) ^
+  ")" ^
+  (indent (i + 2)) ^
+  "(" ^
+  (map_and_concat print_arg
+                  (indent (i + 3))
+                  args) ^
+  ")" ^
+  (indent (i + 2)) ^
+  (print_expr (i + 2) expr) ^
+  ">"
+
+and print_prog i (procs, expr) =
+  (map_and_concat (print_proc i)
+                  (indent i)
+                  procs) ^
+  (indent i) ^
+  (print_expr i expr)
+
+let pretty_print_prog prog = print_prog 0 prog

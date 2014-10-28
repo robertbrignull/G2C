@@ -1,6 +1,6 @@
-module U = AST_0_U;;
-module F = AST_1_F;;
-module PF = Printing_1_F;;
+module U = AST_0_U
+module F = AST_1_F
+module PF = Printing_1_F
 
 let get_type = snd
 
