@@ -40,6 +40,12 @@ let main () =
     print_endline (Printing_4_H.pretty_print_prog prog_4_H);
     print_newline ();
 
+    let prog_4_H_opt = Opt_4_H.optimise prog_4_H in
+    print_endline "----- H AST optimised -----";
+    print_endline (Printf.sprintf "size: %d" (AST_4_H.size prog_4_H_opt));
+    print_endline (Printing_4_H.pretty_print_prog prog_4_H_opt);
+    print_newline ();
+
   with
     | Exceptions.LexErr msg ->
         print_endline ("Syntax error: " ^ msg)
