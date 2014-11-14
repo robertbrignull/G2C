@@ -5,13 +5,14 @@ type type_c =
 
 and id = (string * type_c)
 
+and bundle = id list
 and args = id list
 
 and value =
   | Bool of bool
   | Num of float
   | Id of id
-  | Lambda of id list * expr
+  | ProcInstance of id * bundle
   | Op of string * args
 
 and expr =
@@ -20,6 +21,10 @@ and expr =
   | App of id * args
   | Halt of id
 
+and proc = id * bundle * args * expr
+
+and prog = proc list * expr
 
 
-val size : expr -> int
+
+val size : prog -> int

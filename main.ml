@@ -28,22 +28,10 @@ let main () =
     print_endline (Printing_2_K.pretty_print_expr prog_2_K_opt);
     print_newline ();
 
-    let prog_3_C = Trans_2_K_to_C.transform prog_2_K_opt in
+   let prog_3_H = Trans_2_K_to_H.transform prog_2_K_opt in
     print_endline "----- C AST -----";
-    print_endline (Printf.sprintf "size: %d" (AST_3_C.size prog_3_C));
-    print_endline (Printing_3_C.pretty_print_expr prog_3_C);
-    print_newline ();
-
-    let prog_4_H = Trans_3_C_to_H.transform prog_3_C in
-    print_endline "----- H AST -----";
-    print_endline (Printf.sprintf "size: %d" (AST_4_H.size prog_4_H));
-    print_endline (Printing_4_H.pretty_print_prog prog_4_H);
-    print_newline ();
-
-    let prog_4_H_opt = Opt_4_H.optimise prog_4_H in
-    print_endline "----- H AST optimised -----";
-    print_endline (Printf.sprintf "size: %d" (AST_4_H.size prog_4_H_opt));
-    print_endline (Printing_4_H.pretty_print_prog prog_4_H_opt);
+    print_endline (Printf.sprintf "size: %d" (AST_3_H.size prog_3_H));
+    print_endline (Printing_3_H.pretty_print_prog prog_3_H);
     print_newline ();
 
   with
@@ -53,5 +41,7 @@ let main () =
         print_endline ("Syntax error: " ^ msg)
     | Exceptions.TypingErr msg ->
         print_endline ("Typing error: " ^ msg)
+    | Exceptions.TransformErr msg ->
+        print_endline ("Transform error: " ^ msg)
 
 let _ = main ()

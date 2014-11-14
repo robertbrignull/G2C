@@ -1,10 +1,13 @@
-open AST_2_K
+open AST_3_H
 open Common
 
 let rec print_type = function
   | NumType            -> "num"
   | BoolType           -> "bool"
-  | FunctionType args  -> "lambda (" ^ (map_and_concat print_type ", " args) ^ ")"
+  | FunctionType args ->
+      "lambda (" ^
+      (map_and_concat print_type ", " args) ^
+      ")"
 
 let print_bool b = "bool " ^ if b then "true" else "false"
 
@@ -25,16 +28,15 @@ let rec print_value i = function
 
   | Id id -> print_id id
 
-  | Lambda (args, expr) ->
-      "lambda" ^
+  | ProcInstance (id, bundle) ->
+      "proc instance " ^
+      (print_id id) ^
       (indent (i + 2)) ^
       "(" ^
       (map_and_concat print_id
                       (indent (i + 3))
-                      args) ^
-      ")" ^
-      (indent (i + 2)) ^
-      (print_expr (i + 2) expr)
+                      bundle) ^
+      ")"
 
   | Op (op, args) ->
       print_op op ^
@@ -73,4 +75,29 @@ and print_expr i = function
       (indent (i + 2)) ^
       (print_id value)
 
-let pretty_print_expr expr = print_expr 0 expr
+and print_proc i (id, closure, args, expr) =
+  "proc " ^
+  (print_id id) ^
+  (indent (i + 2)) ^
+  "(" ^
+  (map_and_concat print_id
+                  (indent (i + 3))
+                  closure) ^
+  ")" ^
+  (indent (i + 2)) ^
+  "(" ^
+  (map_and_concat print_id
+                  (indent (i + 3))
+                  args) ^
+  ")" ^
+  (indent (i + 2)) ^
+  (print_expr (i + 2) expr)
+
+
+
+let pretty_print_prog (procs, expr) =
+  (map_and_concat (print_proc 0)
+                  ((indent 0) ^ (indent 0))
+                  procs) ^
+  (indent 0) ^ (indent 0) ^
+  print_expr 0 expr
