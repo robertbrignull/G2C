@@ -1,0 +1,11 @@
+The compiler currently reads from stdin, to enable rapid testing.
+So to use just run g2c and start typing.
+
+To use an example do:
+$> 'cat test1.g | ./g2c'
+
+The various compilation stages will be printed to stdout and
+then the outputted C code will also be written to the file 'out.c'.
+
+After that you can compile as normal with 
+$> gcc out.c -o out'
