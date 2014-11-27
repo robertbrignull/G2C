@@ -39,7 +39,7 @@ let size (procs, expr) =
     | App (expr, args) -> 1
     | Halt value -> 1
 
-  and value_size value = 1
+  and value_size value = 1 
 
   in List.fold_right (+) (List.map proc_size procs) 0 +
      expr_size expr

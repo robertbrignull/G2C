@@ -29,10 +29,17 @@ let main () =
     print_newline ();
 
    let prog_3_H = Trans_2_K_to_H.transform prog_2_K_opt in
-    print_endline "----- C AST -----";
+    print_endline "----- H AST -----";
     print_endline (Printf.sprintf "size: %d" (AST_3_H.size prog_3_H));
     print_endline (Printing_3_H.pretty_print_prog prog_3_H);
     print_newline ();
+
+   let prog_4_C = Trans_3_H_to_C.transform prog_3_H in
+    print_endline "----- C -----";
+    print_endline prog_4_C;
+    print_newline ();
+
+    output_string (open_out "out.c") prog_4_C;
 
   with
     | Exceptions.LexErr msg ->
