@@ -4,6 +4,7 @@
 /parser.ml
 /parser.mli
 /out.c
+/out
 
 *.cma
 *.cmx

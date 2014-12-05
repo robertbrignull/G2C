@@ -28,18 +28,19 @@ let main () =
     print_endline (Printing_2_K.pretty_print_expr prog_2_K_opt);
     print_newline ();
 
-   let prog_3_H = Trans_2_K_to_H.transform prog_2_K_opt in
+    let prog_3_H = Trans_2_K_to_H.transform prog_2_K_opt in
     print_endline "----- H AST -----";
     print_endline (Printf.sprintf "size: %d" (AST_3_H.size prog_3_H));
     print_endline (Printing_3_H.pretty_print_prog prog_3_H);
     print_newline ();
 
-   let prog_4_C = Trans_3_H_to_C.transform prog_3_H in
+    let prog_4_C = Trans_3_H_to_C.transform prog_3_H in
+    let c_output = Printing_4_C.pretty_print_prog prog_4_C in
     print_endline "----- C -----";
-    print_endline prog_4_C;
+    print_endline c_output;
     print_newline ();
 
-    output_string (open_out "out.c") prog_4_C;
+    output_string (open_out "out.c") c_output;
 
   with
     | Exceptions.LexErr msg ->
