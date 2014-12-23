@@ -73,4 +73,28 @@ let rec print_expr i (expr_guts, expr_info) =
   ) ^
   ">"
 
-let pretty_print_expr expr = print_expr 0 expr
+and print_stmt i (stmt_guts, stmt_info) =
+  print_info stmt_info ^
+  (match stmt_guts with
+  | Assume (id, expr)      -> "assume " ^
+                              (print_id id) ^
+                              (indent (i + 2)) ^
+                              (print_expr (i + 2) expr)
+
+  | Observe (expr, value)  -> "observe " ^
+                              (indent (i + 2)) ^
+                              (print_expr (i + 2) expr) ^
+                              (indent (i + 2)) ^
+                              (print_expr (i + 2) value)
+
+  | Predict id             -> "predict " ^
+                              (print_id id)
+  ) ^
+  ">" 
+
+and print_stmts i stmts =
+  map_and_concat (print_stmt i)
+                 (indent 0)
+                 stmts
+
+let pretty_print_prog prog = print_stmts 0 prog

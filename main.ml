@@ -6,14 +6,12 @@ let main () =
 
     let prog_1_F = Trans_0_infer_types.infer_types prog_0_U in
     print_endline "----- F AST -----";
-    print_endline (Printf.sprintf "size: %d" (AST_1_F.size prog_1_F));
-    print_endline (Printing_1_F.pretty_print_expr prog_1_F);
+    print_endline (Printing_1_F.pretty_print_prog prog_1_F);
     print_newline ();
 
     let prog_1_F_unique = Opt_1_unique_ids.make_ids_unique prog_1_F in
     print_endline "----- F AST unique ids -----";
-    print_endline (Printf.sprintf "size: %d" (AST_1_F.size prog_1_F_unique));
-    print_endline (Printing_1_F.pretty_print_expr prog_1_F_unique);
+    print_endline (Printing_1_F.pretty_print_prog prog_1_F_unique);
     print_newline ();
 
     let prog_2_K = Trans_1_F_to_K.transform prog_1_F_unique in

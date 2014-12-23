@@ -4,7 +4,7 @@ open Common
 
 
 
-let rec transform_type = function
+(* let rec transform_type = function
   | F.NumType -> K.NumType
 
   | F.BoolType -> K.BoolType
@@ -95,9 +95,9 @@ and gen_args args cont_gen =
         gen_expr arg (fun out_id ->
           gen_args_impl cont_gen (out_id :: ress) args)
 
-  in gen_args_impl cont_gen [] args
+  in gen_args_impl cont_gen [] args *)
 
 
 
-let transform expr =
-  gen_expr expr (fun out_id -> K.Halt out_id)
+let transform expr = raise (Failure "trans_1_F_to_K not implemented")
+  (* gen_expr expr (fun out_id -> K.Halt out_id) *)

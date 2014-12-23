@@ -1,7 +1,9 @@
 open AST_1_F
 open Common
 
-let make_ids_unique expr =
+let make_ids_unique prog = raise (Failure "opt_1_unique_ids not implemented")
+
+(* let make_ids_unique expr =
   let rec make_ids_unique_impl env (expr_guts, type_c) =
     let expr_guts_2 = (match expr_guts with
     | Bool b -> Bool b
@@ -44,4 +46,4 @@ let make_ids_unique expr =
     )
     in (expr_guts_2, type_c)
 
-  in make_ids_unique_impl [] expr
+  in make_ids_unique_impl [] expr *)

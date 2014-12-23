@@ -10,7 +10,10 @@ let make_hash n ps =
 (* A little table to recognize keywords *)
 let kwtable = 
   make_hash 64
-    [ ("true", BOOL true); ("false", BOOL false); ("lambda", LAMBDA); ("let", LET); ("if", IF); ("num", NUM_TYPE); ("bool", BOOL_TYPE) ]
+    [ ("true", BOOL true); ("false", BOOL false);
+      ("num", NUM_TYPE); ("bool", BOOL_TYPE);
+      ("lambda", LAMBDA); ("let", LET); ("if", IF);
+      ("assume", ASSUME); ("observe", OBSERVE); ("predict", PREDICT) ]
 
 let lookup s = try Hashtbl.find kwtable s with Not_found -> ID s
 }
@@ -19,13 +22,10 @@ rule token = parse
     [' ''\t']                 { token lexbuf }                    (* skip blanks *)
   | '\n'                      { new_line lexbuf; token lexbuf; }  (* count line numbers *)
 
-  | ['+''-']?['0'-'9']+('.'['0'-'9']+)? as s
-                              { NUM (float_of_string s) }
-
-  | ['a'-'z''A'-'Z']+ as s    { lookup (String.lowercase s) }
-
   | "("                       { LPAREN }
   | ")"                       { RPAREN }
+  | "["                       { LSQUARE }
+  | "]"                       { RSQUARE }
   | ","                       { COMMA }
   | ":"                       { COLON }
   | "->"                      { ARROW }
@@ -39,6 +39,14 @@ rule token = parse
   | ">"                       { OP "gt" }
   | "<="                      { OP "leq" }
   | ">="                      { OP "geq" }
+  | "and"                     { OP "and" }
+  | "or"                      { OP "or" }
+  | "not"                     { OP "not" }
+
+  | ['+''-']?['0'-'9']+('.'['0'-'9']+)? as s
+                              { NUM (float_of_string s) }
+
+  | ['a'-'z''A'-'Z']+ as s    { lookup (String.lowercase s) }
 
   | _                         { raise (Exceptions.lex_error lexbuf) }
   | eof                       { EOF }

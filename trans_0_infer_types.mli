@@ -1,1 +1,1 @@
-val infer_types : AST_0_U.expr -> AST_1_F.expr
+val infer_types : AST_0_U.prog -> AST_1_F.prog

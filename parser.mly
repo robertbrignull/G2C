@@ -9,18 +9,20 @@ let p nterm = rhs_start_pos nterm
 %token <bool> BOOL
 %token <string> ID
 %token <string> OP
-%token LPAREN RPAREN ARROW COLON COMMA DOT
+%token LPAREN RPAREN LSQUARE RSQUARE
+%token ARROW COLON COMMA DOT
 %token LAMBDA LET IF
+%token ASSUME OBSERVE PREDICT
 %token NUM_TYPE BOOL_TYPE
 %token EOF ERR
 
-%type <AST_0_U.expr> main
+%type <AST_0_U.prog> main
 %start main
 
 %%
 
 main:
-  | expr EOF                           { $1 }
+  | stmts EOF                          { $1 }
   | error                              { raise (Exceptions.parse_error "Invalid program" 1) }
 ;
 
@@ -60,6 +62,17 @@ type_cs:
 exprs:
   | empty                              { [] }
   | expr exprs                         { $1 :: $2 }
+;
+
+stmt:
+  | LSQUARE ASSUME ID expr RSQUARE     { (Assume ($3, $4), p 1) }
+  | LSQUARE OBSERVE expr expr RSQUARE  { (Observe ($3, $4), p 1) }
+  | LSQUARE PREDICT ID RSQUARE         { (Predict $3, p 1) }
+;
+
+stmts:
+  | empty                              { [] }
+  | stmt stmts                         { $1 :: $2 }
 ;
 
 empty: { } ;

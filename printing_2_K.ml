@@ -1,7 +1,7 @@
 open AST_2_K
 open Common
 
-let rec print_type = function
+(* let rec print_type = function
   | NumType            -> "num"
   | BoolType           -> "bool"
   | FunctionType args  -> "lambda (" ^ (map_and_concat print_type ", " args) ^ ")"
@@ -71,6 +71,7 @@ and print_expr i = function
   | Halt value ->
       "halt" ^
       (indent (i + 2)) ^
-      (print_id value)
+      (print_id value) *)
 
-let pretty_print_expr expr = print_expr 0 expr
+let pretty_print_expr expr = raise (Failure "printing_2_K not implemented")
+  (* print_expr 0 expr *)

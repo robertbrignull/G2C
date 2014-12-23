@@ -50,7 +50,6 @@ and gen_structs env = function
       let (bs1, ds1) = gen_structs env procs in
       let bs2 = gen_bundle_struct_for_proc env proc in
       let ds2 = gen_data_struct env proc in
-      print_endline (fst (fst bs2));
       ((try
          let _ = List.find (fun b -> fst b = fst bs2) bs1 in bs1
        with Not_found ->

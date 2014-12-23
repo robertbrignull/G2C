@@ -17,6 +17,11 @@ and expr_guts =
 
 and expr = expr_guts * type_c
 
+and stmt_guts =
+  | Assume of id * expr
+  | Observe of expr * expr
+  | Predict of id
 
+and stmt = stmt_guts * type_c
 
-val size : expr -> int
+and prog = stmt list
