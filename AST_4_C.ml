@@ -15,6 +15,7 @@ and value =
   | Num of float
   | Id of id
   | Op of string * args
+  | Prim of string * args
 
 and stmt =
   | Seq of stmt list
@@ -23,7 +24,9 @@ and stmt =
   | BundleApp of id * args
   | PackBundle of id * id * id * bundle
   | UnpackBundle of id * bundle
-  | Halt of id
+  | Observe of string * args * id
+  | Predict of id
+  | Halt
 
 and bundle_struct = id * args
 and data_struct = id * bundle

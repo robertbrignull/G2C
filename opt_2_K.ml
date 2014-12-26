@@ -16,8 +16,10 @@ let replace_id source target expr =
         App (id_replace_id expr,
              List.map id_replace_id args)
 
-    | Observe (id, next) ->
-        Observe (id_replace_id id,
+    | Observe (prim, args, value, next) ->
+        Observe (prim,
+                 List.map id_replace_id args,
+                 id_replace_id value,
                  expr_replace_id next)
 
     | Predict (id, next) ->
@@ -64,8 +66,8 @@ let count_id target expr =
     | App (expr, args) ->
         List.fold_left (+) 0 (List.map id_count_id (expr :: args))
 
-    | Observe (id, next) ->
-        id_count_id id +
+    | Observe (prim, args, value, next) ->
+        List.fold_left (+) 0 (List.map id_count_id (value :: args)) +
         expr_count_id next
 
     | Predict (id, next) ->
@@ -123,8 +125,8 @@ let rec optimise expr_in =
     | App (expr, args) ->
         App (expr, args)
 
-    | Observe (id, next) ->
-        Observe (id, expr_optimise next)
+    | Observe (prim, args, value, next) ->
+        Observe (prim, args, value, expr_optimise next)
 
     | Predict (id, next) ->
         Predict (id, expr_optimise next)

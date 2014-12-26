@@ -158,7 +158,10 @@ and infer_types_stmt env (stmt_guts, pos) =
       let (value, _) = infer_types_expr env value in
       let value_type = get_type value in
       if equal_types expr_type value_type then
-        ((F.Observe (expr, value), value_type), env)
+        (match expr with
+        | (F.Prim (prim, args), _) ->
+            ((F.Observe (prim, args, value), value_type), env)
+        | _ -> raise (Exceptions.typing_error "Observe: outer expresion must be a probabilistic primitive" pos))
       else
         raise (Exceptions.typing_error (Printf.sprintf "Observe: types %s and %s do not match" (PF.print_type expr_type) (PF.print_type value_type)) pos)
 

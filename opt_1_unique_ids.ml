@@ -59,8 +59,9 @@ and make_ids_unique_stmt env (stmt_guts, type_c) =
       ((Assume (id_2, fst (make_ids_unique_expr env expr)),
        type_c), env)
 
-  | Observe (expr, value) ->
-      ((Observe (fst (make_ids_unique_expr env expr),
+  | Observe (prim, args, value) ->
+      ((Observe (prim,
+                 List.map fst (List.map (make_ids_unique_expr env) args),
                  fst (make_ids_unique_expr env value)),
        type_c), env)
 

@@ -31,73 +31,85 @@ let print_def (id, type_c) =
 let rec print_expr i (expr_guts, expr_info) = 
   print_info expr_info ^
   (match expr_guts with
-  | Bool b                 -> print_bool b
-  | Num x                  -> print_num x
-  | Id id                  -> print_id id
+  | Bool b -> print_bool b
+  | Num x -> print_num x
+  | Id id -> print_id id
 
-  | Lambda (args, expr)    -> "lambda" ^
-                              (indent (i + 2)) ^
-                              "(" ^
-                              (map_and_concat print_def
-                                              (indent (i + 3))
-                                              args) ^
-                              ")" ^
-                              (indent (i + 2)) ^
-                              (print_expr (i + 2) expr)
+  | Lambda (args, expr) -> 
+      "lambda" ^
+      (indent (i + 2)) ^
+      "(" ^
+      (map_and_concat print_def
+                      (indent (i + 3))
+                      args) ^
+      ")" ^
+      (indent (i + 2)) ^
+      (print_expr (i + 2) expr)
 
-  | Let (id, value, expr)  -> "let " ^
-                              (print_id id) ^
-                              (indent (i + 2)) ^
-                              (print_expr (i + 2) value) ^
-                              (indent (i + 2)) ^
-                              (print_expr (i + 2) expr)
+  | Let (id, value, expr) ->
+      "let " ^
+      (print_id id) ^
+      (indent (i + 2)) ^
+      (print_expr (i + 2) value) ^
+      (indent (i + 2)) ^
+      (print_expr (i + 2) expr)
 
   | If (test, then_expr, else_expr) ->
-                              "if" ^
-                              (indent (i + 2)) ^
-                              (print_expr (i + 2) test) ^
-                              (indent (i + 2)) ^
-                              (print_expr (i + 2) then_expr) ^
-                              (indent (i + 2)) ^
-                              (print_expr (i + 2) else_expr)
+      "if" ^
+      (indent (i + 2)) ^
+      (print_expr (i + 2) test) ^
+      (indent (i + 2)) ^
+      (print_expr (i + 2) then_expr) ^
+      (indent (i + 2)) ^
+      (print_expr (i + 2) else_expr)
 
-  | Op (op, args)          -> print_op op ^
-                              (indent (i + 2)) ^
-                              (map_and_concat (print_expr (i + 2))
-                                              (indent (i + 2))
-                                              args)
+  | Op (op, args) ->
+      print_op op ^
+      (indent (i + 2)) ^
+      (map_and_concat (print_expr (i + 2))
+                      (indent (i + 2))
+                      args)
 
-  | Prim (prim, args)      -> print_prim prim ^
-                              (indent (i + 2)) ^
-                              (map_and_concat (print_expr (i + 2))
-                                              (indent (i + 2))
-                                              args)
+  | Prim (prim, args) ->
+      print_prim prim ^
+      (indent (i + 2)) ^
+      (map_and_concat (print_expr (i + 2))
+                      (indent (i + 2))
+                      args)
 
-  | App (expr, args)       -> "app" ^
-                              (indent (i + 2)) ^
-                              (map_and_concat (print_expr (i + 2))
-                                              (indent (i + 2))
-                                              (expr :: args))
+  | App (expr, args) ->
+      "app" ^
+      (indent (i + 2)) ^
+      (map_and_concat (print_expr (i + 2))
+                      (indent (i + 2))
+                      (expr :: args))
   ) ^
   ">"
 
 and print_stmt i (stmt_guts, stmt_info) =
   print_info stmt_info ^
   (match stmt_guts with
-  | Assume (id, expr)      -> "assume " ^
-                              (print_id id) ^
-                              (indent (i + 2)) ^
-                              (print_expr (i + 2) expr)
+  | Assume (id, expr) ->
+      "assume " ^
+      (print_id id) ^
+      (indent (i + 2)) ^
+      (print_expr (i + 2) expr)
 
-  | Observe (expr, value)  -> "observe " ^
-                              (indent (i + 2)) ^
-                              (print_expr (i + 2) expr) ^
-                              (indent (i + 2)) ^
-                              (print_expr (i + 2) value)
+  | Observe (prim, args, value) ->
+      "observe " ^
+      (indent (i + 2)) ^
+      prim ^
+      (indent (i + 4)) ^
+      (map_and_concat (print_expr (i + 4))
+                      (indent (i + 4))
+                      args) ^
+      (indent (i + 2)) ^
+      (print_expr (i + 2) value)
 
-  | Predict expr           -> "predict " ^
-                              (indent (i + 2)) ^
-                              (print_expr (i + 2) expr)
+  | Predict expr ->
+      "predict " ^
+      (indent (i + 2)) ^
+      (print_expr (i + 2) expr)
   ) ^
   ">" 
 

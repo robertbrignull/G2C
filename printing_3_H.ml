@@ -1,7 +1,7 @@
 open AST_3_H
 open Common
 
-(* let rec print_type = function
+let rec print_type = function
   | NumType            -> "num"
   | BoolType           -> "bool"
   | FunctionType args ->
@@ -20,6 +20,8 @@ let print_id (id, type_c) =
   (print_type type_c)
 
 let print_op op = "op " ^ op
+
+let print_prim prim = "prim " ^ prim
 
 let rec print_value i = function
   | Bool b -> print_bool b
@@ -40,6 +42,13 @@ let rec print_value i = function
 
   | Op (op, args) ->
       print_op op ^
+      (indent (i + 2)) ^
+      (map_and_concat print_id
+                      (indent (i + 2))
+                      args)
+
+  | Prim (prim, args) ->
+      print_prim prim ^
       (indent (i + 2)) ^
       (map_and_concat print_id
                       (indent (i + 2))
@@ -70,10 +79,25 @@ and print_expr i = function
                       (indent (i + 2))
                       (expr :: args))
 
-  | Halt value ->
-      "halt" ^
+  | Observe (prim, args, value, next) ->
+      "observe " ^
       (indent (i + 2)) ^
-      (print_id value)
+      prim ^
+      "(" ^
+      (map_and_concat print_id ", " args) ^
+      ")" ^
+      (indent (i + 2)) ^
+      (print_id value) ^
+      (indent i) ^
+      (print_expr i next)
+
+  | Predict (id, next) ->
+      "predict " ^
+      (print_id id) ^
+      (indent i) ^
+      (print_expr i next)
+
+  | Halt -> "halt"
 
 and print_proc i (id, closure, args, expr) =
   "proc " ^
@@ -100,8 +124,4 @@ let pretty_print_prog (procs, expr) =
                   ((indent 0) ^ (indent 0))
                   procs) ^
   (indent 0) ^ (indent 0) ^
-  print_expr 0 expr *)
-
-let print_type type_c = raise (Failure "printing_3_H not implemented")
-
-let pretty_print_prog (procs, expr) = raise (Failure "printing_3_H not implemented")
+  print_expr 0 expr

@@ -27,9 +27,11 @@ clean:
 
 # For running a test file
 
+PROBC = /home/robert/Documents/oxford/year\ 4/project/languages/prob-c/
+
 %: all %.g
 	cat $@.g | ./g2c
-	gcc out.c -o out
+	gcc -o out out.c $(PROBC)bin/libprob.a -lpthread -lm -lrt -I$(PROBC)src/ -I$(PROBC)ext/mtrand -I$(PROBC)ext/uthash/src/
 	./out
 
 ###

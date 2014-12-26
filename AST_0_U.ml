@@ -12,8 +12,8 @@ and expr_guts =
   | Lambda of (id * type_c) list * expr
   | Let of id * expr * expr
   | If of expr * expr * expr
-  | Op of id * expr list
-  | Prim of id * expr list
+  | Op of string * expr list
+  | Prim of string * expr list
   | App of expr * expr list
 
 and expr = expr_guts * Lexing.position

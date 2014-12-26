@@ -35,30 +35,48 @@ and print_data_struct ((id, _), bundle) =
   (String.concat "" (List.map (fun b -> (indent il) ^ (print_id b) ^ ";\n") bundle)) ^
   "} " ^ id ^ ";\n"
 
-and print_op = function
-  | "plus" -> "+"
-  | "minus" -> "-"
-  | "times" -> "*"
-  | "divide" -> "/"
-  | "eq" -> "=="
-  | "neq" -> "!="
-  | "lt" -> "<"
-  | "gt" -> ">"
-  | "leq" -> "<="
-  | "geq" -> ">="
+and print_op op args =
+  match op with
+  | "plus" -> print_binary_op "+" args
+  | "minus" -> print_binary_op "-" args
+  | "times" -> print_binary_op "*" args
+  | "divide" -> print_binary_op "/" args
+  | "eq" -> print_binary_op "==" args
+  | "neq" -> print_binary_op "!=" args
+  | "lt" -> print_binary_op "<" args
+  | "gt" -> print_binary_op ">" args
+  | "leq" -> print_binary_op "<=" args
+  | "geq" -> print_binary_op ">=" args
+  | "and" -> print_binary_op "&&" args
+  | "or" -> print_binary_op "||" args
+  | "not" -> print_unary_op "!" args
   | op -> raise (Exceptions.transform_error ("Unrecognised op: " ^ op))
+
+and print_unary_op op = function
+  | [x] ->
+      op ^ (fst x)
+
+  | args -> raise (Exceptions.transform_error (Printf.sprintf "Wrong number of arguments to '%s', %d expected, %d received" op 1 (List.length args)))
 
 and print_binary_op op = function
   | [x; y] ->
-      (fst x) ^ " " ^ (print_op op) ^ " " ^ (fst y)
+      (fst x) ^ " " ^ op ^ " " ^ (fst y)
 
   | args -> raise (Exceptions.transform_error (Printf.sprintf "Wrong number of arguments to '%s', %d expected, %d received" op 2 (List.length args)))
+
+and print_prim prim =
+  prim ^ "_rng"
 
 and print_value = function
   | Bool b -> if b then "1" else "0"
   | Num x -> string_of_float x
   | Id (id, type_c) -> id
-  | Op (op, args) -> print_binary_op op args
+  | Op (op, args) -> print_op op args
+  | Prim (prim, args) ->
+      (print_prim prim) ^
+      "(" ^
+      (map_and_concat fst ", " args) ^
+      ")"
 
 and print_stmt i = function
   | Seq stmts ->
@@ -77,8 +95,12 @@ and print_stmt i = function
       test_id ^
       ") {\n" ^
       (print_stmt (i + il) then_stmt) ^
-      "}\nelse {\n" ^
+      (indent i) ^
+      "}\n" ^
+      (indent i) ^
+      "else {\n" ^
       (print_stmt (i + il) else_stmt) ^
+      (indent i) ^
       "}\n"
 
   | BundleApp ((bundle_id, _), args) ->
@@ -114,12 +136,24 @@ and print_stmt i = function
       (indent i) ^
       "//free(data);\n"
 
-  | Halt (id, type_c) ->
+  | Observe (prim, args, value) ->
+      (indent i) ^
+      "observe(" ^
+      prim ^
+      "_lnp(" ^
+      (fst value) ^
+      ", " ^
+      (map_and_concat fst ", " args) ^
+      "));\n"
+
+  | Predict (id, type_c) ->
       (indent i) ^
       (match type_c with
-      | NumType -> "printf(\"%f\\n\", " ^ id ^ ");\n"
-      | BoolType -> "printf(\"%s\\n\", (" ^ id ^ ")?\"true\":\"false\");\n"
-      | _ -> raise (Exceptions.transform_error "Can only halt on a number or boolean type"))
+      | NumType -> "predict(\"%f\\n\", " ^ id ^ ");\n"
+      | BoolType -> "predict(\"%s\\n\", (" ^ id ^ ")?\"true\":\"false\");\n"
+      | _ -> raise (Exceptions.transform_error "Can only predict a number or boolean type"))
+
+  | Halt -> ""
 
 and print_proc_decl ((id, type_c), args, stmt) =
   "void " ^ id ^ "(void *data" ^
@@ -143,6 +177,7 @@ and print_main stmt =
 let pretty_print_prog (bundle_structs, data_structs, procs, main) =
   "#include <stdlib.h>\n" ^
   "#include <stdio.h>\n\n" ^
+  "#include \"probabilistic.h\"\n\n" ^
   String.concat "\n" (List.concat [
     List.map print_bundle_decl bundle_structs;
     List.map print_data_decl data_structs;

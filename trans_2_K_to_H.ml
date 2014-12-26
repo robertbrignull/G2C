@@ -2,7 +2,7 @@ module K = AST_2_K
 module H = AST_3_H
 open Common
 
-(* let rec transform_type = function
+let rec transform_type = function
   | K.NumType -> H.NumType
 
   | K.BoolType -> H.BoolType
@@ -28,6 +28,9 @@ and find_free_vars env expr =
     | K.Op (op, args) ->
         List.concat (List.map (find_free_vars_id env) args)
 
+    | K.Prim (prim, args) ->
+        List.concat (List.map (find_free_vars_id env) args)
+
   and find_free_vars_expr env = function
     | K.Let (id, value, expr) ->
         let env = id :: env in
@@ -49,8 +52,20 @@ and find_free_vars env expr =
           List.concat (List.map (find_free_vars_id env) args)
         ]
 
-    | K.Halt value ->
-        find_free_vars_id env value
+    | K.Observe (prim, args, value, next) ->
+        List.concat [
+          List.concat (List.map (find_free_vars_id env) args);
+          find_free_vars_id env value;
+          find_free_vars_expr env next
+        ]
+
+    | K.Predict (id, next) ->
+        List.concat [
+          find_free_vars_id env id;
+          find_free_vars_expr env next
+        ]
+
+    | K.Halt -> []
 
   in remove_dups (find_free_vars_expr env expr)
 
@@ -77,6 +92,9 @@ and transform_value = function
   | K.Op (op, args) ->
       ([], H.Op (op, List.map transform_id args))
 
+  | K.Prim (prim, args) ->
+      ([], H.Prim (prim, List.map transform_id args))
+
 and transform_expr = function
   | K.Let (id, value, expr) ->
       let id = transform_id id in
@@ -97,10 +115,17 @@ and transform_expr = function
       let args = List.map transform_id args in
       ([], H.App (expr, args))
 
-  | K.Halt value ->
+  | K.Observe (prim, args, value, next) ->
+      let args = List.map transform_id args in
       let value = transform_id value in
-      ([], H.Halt value)
+      let (procs, next) = transform_expr next in
+      (procs, H.Observe (prim, args, value, next))
 
-let transform expr = transform_expr expr *)
+  | K.Predict (id, next) ->
+      let id = transform_id id in
+      let (procs, next) = transform_expr next in
+      (procs, H.Predict (id, next))
 
-let transform expr = raise (Failure "trans_2_K_to_H not implemented")
+  | K.Halt -> ([], H.Halt)
+
+let transform expr = transform_expr expr

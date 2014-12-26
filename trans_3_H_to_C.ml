@@ -104,6 +104,10 @@ and transform_let env let_id = function
       C.Assign (transform_id env let_id,
                 C.Op (op, List.map (transform_id env) args))
 
+  | H.Prim (prim, args) ->
+      C.Assign (transform_id env let_id,
+                C.Prim (prim, List.map (transform_id env) args))
+
 and transform_expr env = function
   | H.Let (id, value, expr) ->
       C.Seq [transform_let env id value;
@@ -118,8 +122,21 @@ and transform_expr env = function
       C.BundleApp (transform_id env id,
                    List.map (transform_id env) args)
 
-  | H.Halt id ->
-      C.Halt (transform_id env id)
+  | H.Observe (prim, args, value, next) ->
+      let args = List.map (transform_id env) args in
+      let value = transform_id env value in
+      C.Seq [
+        C.Observe (prim, args, value);
+        transform_expr env next
+      ]
+
+  | H.Predict (id, next) ->
+      C.Seq [
+        C.Predict (transform_id env id);
+        transform_expr env next
+      ]
+
+  | H.Halt -> C.Halt
 
 and transform_proc env (id, bundle, args, expr) =
   let id = transform_id env id in

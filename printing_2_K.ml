@@ -77,9 +77,15 @@ and print_expr i = function
                       (indent (i + 2))
                       (expr :: args))
 
-  | Observe (id, next) ->
+  | Observe (prim, args, value, next) ->
       "observe " ^
-      (print_id id) ^
+      (indent (i + 2)) ^
+      prim ^
+      "(" ^
+      (map_and_concat print_id ", " args) ^
+      ")" ^
+      (indent (i + 2)) ^
+      (print_id value) ^
       (indent i) ^
       (print_expr i next)
 

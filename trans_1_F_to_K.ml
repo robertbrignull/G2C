@@ -100,13 +100,10 @@ and gen_stmt (stmt_guts, type_c) cont =
                K.Id value_id,
                cont))
 
-  | F.Observe (expr, value) ->
-      gen_expr expr (fun expr_id ->
+  | F.Observe (prim, args, value) ->
+      gen_args args (fun arg_ids ->
         gen_expr value (fun value_id ->
-          let let_id = (new_id (), K.BoolType) in
-          K.Let (let_id,
-                 K.Op ("eq", [expr_id; value_id]),
-                 K.Observe (let_id, cont))))
+          K.Observe (prim, arg_ids, value_id, cont)))
 
   | F.Predict expr ->
       gen_expr expr (fun expr_id ->

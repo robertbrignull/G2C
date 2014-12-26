@@ -1,1 +1,1 @@
-val transform : AST_2_K.expr -> AST_3_H.prog
+val transform : AST_2_K.prog -> AST_3_H.prog

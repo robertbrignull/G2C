@@ -19,7 +19,7 @@ and expr =
   | Let of id * value * expr
   | If of id * expr * expr
   | App of id * args
-  | Observe of id * expr
+  | Observe of string * args * id * expr
   | Predict of id * expr
   | Halt
 

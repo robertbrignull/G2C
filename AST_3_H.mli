@@ -14,17 +14,16 @@ and value =
   | Id of id
   | ProcInstance of id * bundle
   | Op of string * args
+  | Prim of string * args
 
 and expr =
   | Let of id * value * expr
   | If of id * expr * expr
   | App of id * args
-  | Halt of id
+  | Observe of string * args * id * expr
+  | Predict of id * expr
+  | Halt
 
 and proc = id * bundle * args * expr
 
 and prog = proc list * expr
-
-
-
-val size : prog -> int
