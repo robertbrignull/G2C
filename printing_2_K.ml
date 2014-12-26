@@ -1,7 +1,7 @@
 open AST_2_K
 open Common
 
-(* let rec print_type = function
+let rec print_type = function
   | NumType            -> "num"
   | BoolType           -> "bool"
   | FunctionType args  -> "lambda (" ^ (map_and_concat print_type ", " args) ^ ")"
@@ -17,6 +17,8 @@ let print_id (id, type_c) =
   (print_type type_c)
 
 let print_op op = "op " ^ op
+
+let print_prim prim = "prim " ^ prim
 
 let rec print_value i = function
   | Bool b -> print_bool b
@@ -38,6 +40,13 @@ let rec print_value i = function
 
   | Op (op, args) ->
       print_op op ^
+      (indent (i + 2)) ^
+      (map_and_concat print_id
+                      (indent (i + 2))
+                      args)
+
+  | Prim (prim, args) ->
+      print_prim prim ^
       (indent (i + 2)) ^
       (map_and_concat print_id
                       (indent (i + 2))
@@ -68,10 +77,20 @@ and print_expr i = function
                       (indent (i + 2))
                       (expr :: args))
 
-  | Halt value ->
-      "halt" ^
-      (indent (i + 2)) ^
-      (print_id value) *)
+  | Observe (id, next) ->
+      "observe " ^
+      (print_id id) ^
+      (indent i) ^
+      (print_expr i next)
 
-let pretty_print_expr expr = raise (Failure "printing_2_K not implemented")
-  (* print_expr 0 expr *)
+  | Predict (id, next) ->
+      "predict " ^
+      (print_id id) ^
+      (indent i) ^
+      (print_expr i next)
+
+  | Halt ->
+      "halt"
+
+let pretty_print_expr expr =
+  print_expr 0 expr

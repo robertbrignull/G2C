@@ -23,6 +23,8 @@ let print_id id = "id " ^ id
 
 let print_op op = "op " ^ op
 
+let print_prim prim = "prim " ^ prim
+
 let print_def (id, type_c) =
   (print_id id) ^ " : " ^ (print_type type_c)
 
@@ -65,6 +67,12 @@ let rec print_expr i (expr_guts, expr_info) =
                                               (indent (i + 2))
                                               args)
 
+  | Prim (prim, args)      -> print_prim prim ^
+                              (indent (i + 2)) ^
+                              (map_and_concat (print_expr (i + 2))
+                                              (indent (i + 2))
+                                              args)
+
   | App (expr, args)       -> "app" ^
                               (indent (i + 2)) ^
                               (map_and_concat (print_expr (i + 2))
@@ -87,8 +95,9 @@ and print_stmt i (stmt_guts, stmt_info) =
                               (indent (i + 2)) ^
                               (print_expr (i + 2) value)
 
-  | Predict id             -> "predict " ^
-                              (print_id id)
+  | Predict expr           -> "predict " ^
+                              (indent (i + 2)) ^
+                              (print_expr (i + 2) expr)
   ) ^
   ">" 
 

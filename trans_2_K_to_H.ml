@@ -2,7 +2,7 @@ module K = AST_2_K
 module H = AST_3_H
 open Common
 
-let rec transform_type = function
+(* let rec transform_type = function
   | K.NumType -> H.NumType
 
   | K.BoolType -> H.BoolType
@@ -101,4 +101,6 @@ and transform_expr = function
       let value = transform_id value in
       ([], H.Halt value)
 
-let transform expr = transform_expr expr
+let transform expr = transform_expr expr *)
+
+let transform expr = raise (Failure "trans_2_K_to_H not implemented")

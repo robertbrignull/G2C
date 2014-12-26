@@ -6,24 +6,41 @@ let replace_id source target expr =
         Let (id,
              value_replace_id value,
              expr_replace_id expr)
+
     | If (test, then_expr, else_expr) ->
         If (id_replace_id test,
             expr_replace_id then_expr,
             expr_replace_id else_expr)
+
     | App (expr, args) ->
         App (id_replace_id expr,
              List.map id_replace_id args)
-    | Halt value ->
-        Halt (id_replace_id value)
+
+    | Observe (id, next) ->
+        Observe (id_replace_id id,
+                 expr_replace_id next)
+
+    | Predict (id, next) ->
+        Predict (id_replace_id id,
+                 expr_replace_id next)
+
+    | Halt -> Halt
 
   and value_replace_id = function
     | Bool b -> Bool b
+
     | Num x -> Num x
+
     | Id id -> Id (id_replace_id id)
+
     | Lambda (args, expr) ->
         Lambda (args, expr_replace_id expr)
+
     | Op (op, args) ->
         Op (op, List.map id_replace_id args)
+
+    | Prim (prim, args) ->
+        Prim (prim, List.map id_replace_id args)
 
   and id_replace_id id =
     if id = source then target
@@ -38,22 +55,39 @@ let count_id target expr =
         else
           value_count_id value +
           expr_count_id expr
+
     | If (test, then_expr, else_expr) ->
         id_count_id test +
         expr_count_id then_expr +
         expr_count_id else_expr
+
     | App (expr, args) ->
         List.fold_left (+) 0 (List.map id_count_id (expr :: args))
-    | Halt value ->
-        id_count_id value
+
+    | Observe (id, next) ->
+        id_count_id id +
+        expr_count_id next
+
+    | Predict (id, next) ->
+        id_count_id id +
+        expr_count_id next
+
+    | Halt -> 0
 
   and value_count_id = function
     | Bool b -> 0
+
     | Num x -> 0
+
     | Id id -> id_count_id id
+
     | Lambda (args, expr) ->
         expr_count_id expr
+
     | Op (op, args) ->
+        List.fold_left (+) 0 (List.map id_count_id args)
+
+    | Prim (prim, args) ->
         List.fold_left (+) 0 (List.map id_count_id args)
 
   and id_count_id id =
@@ -82,12 +116,20 @@ let rec optimise expr_in =
     (* End of optimisations, just recurse *)
     | Let (id, value, expr) ->
         Let (id, value_optimise value, expr_optimise expr)
+
     | If (test, then_expr, else_expr) ->
         If (test, expr_optimise then_expr, expr_optimise else_expr)
+
     | App (expr, args) ->
         App (expr, args)
-    | Halt value ->
-        Halt value
+
+    | Observe (id, next) ->
+        Observe (id, expr_optimise next)
+
+    | Predict (id, next) ->
+        Predict (id, expr_optimise next)
+
+    | Halt -> Halt
 
   and value_optimise = function
     (* Remove trivial continuations that are equivalent
@@ -99,14 +141,21 @@ let rec optimise expr_in =
     (* End of optimisations, just recurse *)
     | Bool b ->
         Bool b
+
     | Num x ->
         Num x
+
     | Id (id, type_c) ->
         Id (id, type_c)
+
     | Lambda (args, expr) ->
         Lambda (args, expr_optimise expr)
+
     | Op (op, args) ->
         Op (op, args)
+        
+    | Prim (prim, args) ->
+        Prim (prim, args)
 
   (* Keep applying optimisations until we can do no more *)
   in begin

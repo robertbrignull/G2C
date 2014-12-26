@@ -2,9 +2,7 @@ module F = AST_1_F
 module K = AST_2_K
 open Common
 
-
-
-(* let rec transform_type = function
+let rec transform_type = function
   | F.NumType -> K.NumType
 
   | F.BoolType -> K.BoolType
@@ -14,22 +12,14 @@ open Common
       let res = transform_type res in
       K.FunctionType (List.append args [K.FunctionType [res]])
 
-
-
 and get_cont_type = function
   | K.FunctionType args -> (List.hd (List.rev args))
   | _ -> raise (Exceptions.transform_error "Trying to get return type of non-function type")
 
-
-
 and get_id_type (id, type_c) = type_c
-
-
 
 and transform_args args =
   List.map (fun (id, type_c) -> (id, transform_type type_c)) args
-
-
 
 and gen_expr (expr_guts, type_c) cont_gen =
   let type_c = transform_type type_c in
@@ -73,6 +63,13 @@ and gen_expr (expr_guts, type_c) cont_gen =
                K.Op (op, arg_ids),
                cont_gen out_id))
 
+  | F.Prim (prim, args) ->
+      gen_args args (fun arg_ids ->
+        let out_id = (new_id (), type_c) in
+        K.Let (out_id,
+               K.Prim (prim, arg_ids),
+               cont_gen out_id))
+
   | F.App (expr, args) ->
       gen_expr expr (fun expr_id ->
         gen_args args (fun arg_ids ->
@@ -85,8 +82,6 @@ and gen_expr (expr_guts, type_c) cont_gen =
                  K.App (expr_id,
                         List.append arg_ids [cont_id]))))
 
-
-
 and gen_args args cont_gen =
   let rec gen_args_impl cont_gen ress = function
     | [] -> cont_gen (List.rev ress)
@@ -95,9 +90,33 @@ and gen_args args cont_gen =
         gen_expr arg (fun out_id ->
           gen_args_impl cont_gen (out_id :: ress) args)
 
-  in gen_args_impl cont_gen [] args *)
+  in gen_args_impl cont_gen [] args
 
+and gen_stmt (stmt_guts, type_c) cont =
+  match stmt_guts with
+  | F.Assume (assume_id, value) ->
+      gen_expr value (fun value_id ->
+        K.Let ((assume_id, get_id_type value_id),
+               K.Id value_id,
+               cont))
 
+  | F.Observe (expr, value) ->
+      gen_expr expr (fun expr_id ->
+        gen_expr value (fun value_id ->
+          let let_id = (new_id (), K.BoolType) in
+          K.Let (let_id,
+                 K.Op ("eq", [expr_id; value_id]),
+                 K.Observe (let_id, cont))))
 
-let transform expr = raise (Failure "trans_1_F_to_K not implemented")
-  (* gen_expr expr (fun out_id -> K.Halt out_id) *)
+  | F.Predict expr ->
+      gen_expr expr (fun expr_id ->
+        K.Predict (expr_id, cont))
+
+and gen_stmts stmts cont =
+  match stmts with
+  | [] -> cont
+  | stmt :: stmts ->
+      gen_stmt stmt (gen_stmts stmts cont)
+
+let transform prog =
+  gen_stmts prog K.Halt

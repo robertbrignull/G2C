@@ -9,6 +9,7 @@ let p nterm = rhs_start_pos nterm
 %token <bool> BOOL
 %token <string> ID
 %token <string> OP
+%token <string> PRIM
 %token LPAREN RPAREN LSQUARE RSQUARE
 %token ARROW COLON COMMA DOT
 %token LAMBDA LET IF
@@ -35,6 +36,7 @@ expr:
   | LPAREN LET ID expr expr RPAREN     { (Let ($3, $4, $5), p 1) }
   | LPAREN IF expr expr expr RPAREN    { (If ($3, $4, $5), p 1) }
   | LPAREN OP exprs RPAREN             { (Op ($2, $3), p 1) }
+  | LPAREN PRIM exprs RPAREN           { (Prim ($2, $3), p 1) }
   | LPAREN expr exprs RPAREN           { (App ($2, $3), p 1) }
   | error                              { raise (Exceptions.parse_error "Invalid expression" 1) }
 ;
@@ -67,7 +69,7 @@ exprs:
 stmt:
   | LSQUARE ASSUME ID expr RSQUARE     { (Assume ($3, $4), p 1) }
   | LSQUARE OBSERVE expr expr RSQUARE  { (Observe ($3, $4), p 1) }
-  | LSQUARE PREDICT ID RSQUARE         { (Predict $3, p 1) }
+  | LSQUARE PREDICT expr RSQUARE       { (Predict $3, p 1) }
 ;
 
 stmts:

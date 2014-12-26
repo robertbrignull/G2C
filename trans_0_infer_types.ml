@@ -80,10 +80,7 @@ let rec infer_types_expr env (expr_guts, pos) =
       (try
         ((F.Id id, env_find env id), env)
       with Not_found ->
-        (try
-          ((F.Id id, get_prim_type id), env)
-        with Not_found ->
-          raise (Exceptions.typing_error (Printf.sprintf "Unbound variable %s" id) pos)))
+        raise (Exceptions.typing_error (Printf.sprintf "Unbound variable %s" id) pos))
 
   | U.Lambda (args, expr) -> 
       let args = convert_args args in
@@ -120,7 +117,19 @@ let rec infer_types_expr env (expr_guts, pos) =
         else
           raise (Exceptions.typing_error (Printf.sprintf "Application: expected %s but received %s" (PF.print_type_list (get_arg_types pos op_type)) (PF.print_type_list arg_types)) pos)
       with Not_found ->
-        raise (Exceptions.ParseErr Exceptions.(error (Printf.sprintf "Invalid builtin operation '%s' used" op) pos)))
+        raise (Exceptions.typing_error (Printf.sprintf "Invalid builtin operation '%s' used" op) pos))
+
+  | U.Prim (prim, args) -> 
+      (try
+        let prim_type = get_prim_type prim in
+        let args = List.map fst (List.map (infer_types_expr env) args) in
+        let arg_types = List.map get_type args in
+        if check_app_types prim_type arg_types then
+          ((F.Prim (prim, args), get_result_type pos prim_type), env)
+        else
+          raise (Exceptions.typing_error (Printf.sprintf "Application: expected %s but received %s" (PF.print_type_list (get_arg_types pos prim_type)) (PF.print_type_list arg_types)) pos)
+      with Not_found ->
+        raise (Exceptions.typing_error (Printf.sprintf "Invalid builtin primitive '%s' used" prim) pos))
 
   | U.App (expr, args) ->
       let (expr, _) = infer_types_expr env expr in
@@ -153,11 +162,13 @@ and infer_types_stmt env (stmt_guts, pos) =
       else
         raise (Exceptions.typing_error (Printf.sprintf "Observe: types %s and %s do not match" (PF.print_type expr_type) (PF.print_type value_type)) pos)
 
-  | U.Predict id ->
-      (try
-        ((F.Predict id, env_find env id), env)
-      with Not_found ->
-        raise (Exceptions.typing_error (Printf.sprintf "Unbound variable %s" id) pos))
+  | U.Predict expr ->
+      let (expr, _) = infer_types_expr env expr in
+      let expr_type = get_type expr in
+      if not (is_function_type expr_type) then
+        ((F.Predict expr, expr_type), env)
+      else
+        raise (Exceptions.typing_error "Predict: cannot predict a function type" pos)
 
 and infer_types_stmts env = function
   | [] -> ([], env)

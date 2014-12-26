@@ -1,7 +1,7 @@
 open AST_3_H
 open Common
 
-let rec print_type = function
+(* let rec print_type = function
   | NumType            -> "num"
   | BoolType           -> "bool"
   | FunctionType args ->
@@ -100,4 +100,8 @@ let pretty_print_prog (procs, expr) =
                   ((indent 0) ^ (indent 0))
                   procs) ^
   (indent 0) ^ (indent 0) ^
-  print_expr 0 expr
+  print_expr 0 expr *)
+
+let print_type type_c = raise (Failure "printing_3_H not implemented")
+
+let pretty_print_prog (procs, expr) = raise (Failure "printing_3_H not implemented")

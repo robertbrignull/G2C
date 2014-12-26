@@ -13,13 +13,14 @@ and value =
   | Id of id
   | Lambda of id list * expr
   | Op of string * args
+  | Prim of string * args
 
 and expr =
   | Let of id * value * expr
   | If of id * expr * expr
   | App of id * args
-  | Halt of id
+  | Observe of id * expr
+  | Predict of id * expr
+  | Halt
 
-
-
-val size : expr -> int
+and prog = expr

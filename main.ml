@@ -16,19 +16,16 @@ let main () =
 
     let prog_2_K = Trans_1_F_to_K.transform prog_1_F_unique in
     print_endline "----- K AST -----";
-    print_endline (Printf.sprintf "size: %d" (AST_2_K.size prog_2_K));
     print_endline (Printing_2_K.pretty_print_expr prog_2_K);
     print_newline ();
 
     let prog_2_K_opt = Opt_2_K.optimise prog_2_K in
     print_endline "----- K AST optimised -----";
-    print_endline (Printf.sprintf "size: %d" (AST_2_K.size prog_2_K_opt));
     print_endline (Printing_2_K.pretty_print_expr prog_2_K_opt);
     print_newline ();
 
     let prog_3_H = Trans_2_K_to_H.transform prog_2_K_opt in
     print_endline "----- H AST -----";
-    print_endline (Printf.sprintf "size: %d" (AST_3_H.size prog_3_H));
     print_endline (Printing_3_H.pretty_print_prog prog_3_H);
     print_newline ();
 
