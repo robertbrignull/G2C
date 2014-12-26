@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# arguments
+# - 1: input filename
+# - 2: output filename
+
+# Change this to point to your installation of prob c
+PROBC=/home/robert/Documents/oxford/year\ 4/project/languages/prob-c/
+
+gcc -o $2 $1 "${PROBC}bin/libprob.a" -lpthread -lm -lrt -I"${PROBC}src/" -I"${PROBC}ext/mtrand" -I"${PROBC}ext/uthash/src/"

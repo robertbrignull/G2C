@@ -15,7 +15,6 @@ clean:
 	rm -f *cmx *cma *.cmo *.cmi
 	rm -f lexer.ml
 	rm -f parser.ml parser.mli
-	rm -f out.c out
 
 %.cmi : %.mli
 	ocamlc -c $(INCLUDE) $<
@@ -30,9 +29,9 @@ clean:
 PROBC = /home/robert/Documents/oxford/year\ 4/project/languages/prob-c/
 
 %: all %.g
-	cat $@.g | ./g2c
-	gcc -o out out.c $(PROBC)bin/libprob.a -lpthread -lm -lrt -I$(PROBC)src/ -I$(PROBC)ext/mtrand -I$(PROBC)ext/uthash/src/
-	./out
+	./g2c -i $@.g -o $@.c
+	./compile_probc $@.c $@
+	./$@
 
 ###
 

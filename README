@@ -1,11 +1,7 @@
-The compiler currently reads from stdin, to enable rapid testing.
-So to use just run g2c and start typing.
+g2c is a compiler from a subset of the probabilistic language anglican to the language probabilistic C. For instructions about how to use the compiler consult
+$> g2c --help
 
-To use an example do:
-$> 'cat test1.g | ./g2c'
+To compile the probabilistic C outputted you will need to point the script 'compile_probc' to an installation of probabilistic c by changing the PROBC variable.
 
-The various compilation stages will be printed to stdout and
-then the outputted C code will also be written to the file 'out.c'.
-
-After that you can compile as normal with 
-$> gcc out.c -o out'
+Then, to build the compiler, build an example and run the example, do
+$> make test1
