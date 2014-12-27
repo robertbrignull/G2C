@@ -65,8 +65,8 @@ and make_ids_unique_stmt env (stmt_guts, type_c) =
                  fst (make_ids_unique_expr env value)),
        type_c), env)
 
-  | Predict expr ->
-      ((Predict (fst (make_ids_unique_expr env expr)),
+  | Predict (label, expr) ->
+      ((Predict (label, fst (make_ids_unique_expr env expr)),
        type_c), env)
 
 

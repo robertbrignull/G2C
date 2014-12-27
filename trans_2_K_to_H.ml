@@ -59,7 +59,7 @@ and find_free_vars env expr =
           find_free_vars_expr env next
         ]
 
-    | K.Predict (id, next) ->
+    | K.Predict (label, id, next) ->
         List.concat [
           find_free_vars_id env id;
           find_free_vars_expr env next
@@ -121,10 +121,10 @@ and transform_expr = function
       let (procs, next) = transform_expr next in
       (procs, H.Observe (prim, args, value, next))
 
-  | K.Predict (id, next) ->
+  | K.Predict (label, id, next) ->
       let id = transform_id id in
       let (procs, next) = transform_expr next in
-      (procs, H.Predict (id, next))
+      (procs, H.Predict (label, id, next))
 
   | K.Halt -> ([], H.Halt)
 

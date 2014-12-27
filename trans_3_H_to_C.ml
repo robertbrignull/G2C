@@ -130,9 +130,9 @@ and transform_expr env = function
         transform_expr env next
       ]
 
-  | H.Predict (id, next) ->
+  | H.Predict (label, id, next) ->
       C.Seq [
-        C.Predict (transform_id env id);
+        C.Predict (label, transform_id env id);
         transform_expr env next
       ]
 

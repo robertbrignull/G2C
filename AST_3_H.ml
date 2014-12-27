@@ -21,7 +21,7 @@ and expr =
   | If of id * expr * expr
   | App of id * args
   | Observe of string * args * id * expr
-  | Predict of id * expr
+  | Predict of string * id * expr
   | Halt
 
 and proc = id * bundle * args * expr

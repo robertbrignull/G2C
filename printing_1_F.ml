@@ -106,8 +106,10 @@ and print_stmt i (stmt_guts, stmt_info) =
       (indent (i + 2)) ^
       (print_expr (i + 2) value)
 
-  | Predict expr ->
+  | Predict (label, expr) ->
       "predict " ^
+      (indent (i + 2)) ^
+      label ^
       (indent (i + 2)) ^
       (print_expr (i + 2) expr)
   ) ^

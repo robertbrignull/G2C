@@ -1,6 +1,13 @@
-all: g2c
+# This should point to an installation of prob c
+PROBC = /home/robert/Documents/oxford/year\ 4/project/languages/prob-c/
 
-G2C = exceptions.cmo AST_0_U.ml AST_1_F.ml AST_2_K.ml AST_3_H.ml AST_4_C.ml common.cmo printing_1_F.cmo printing_2_K.cmo printing_3_H.cmo printing_4_C.cmo lexer.cmo parser.cmo trans_0_infer_types.cmo trans_1_F_to_K.cmo trans_2_K_to_H.cmo trans_3_H_to_C.cmo opt_1_unique_ids.cmo opt_2_K.cmo main.cmo
+EXAMPLES = examples/bayesian examples/coin-flip examples/gaussian-unknown-mean examples/tricky-coin
+
+
+
+all: g2c $(EXAMPLES)
+
+G2C = exceptions.cmo AST_0_U.ml AST_1_F.ml AST_2_K.ml AST_3_H.ml AST_4_C.ml common.cmo printing_0_U.cmo printing_1_F.cmo printing_2_K.cmo printing_3_H.cmo printing_4_C.cmo lexer.cmo parser.cmo trans_0_infer_types.cmo trans_1_F_to_K.cmo trans_2_K_to_H.cmo trans_3_H_to_C.cmo opt_1_unique_ids.cmo opt_2_K.cmo main.cmo
 g2c: $(G2C)
 	ocamlc -o g2c $(G2C)
 
@@ -15,6 +22,7 @@ clean:
 	rm -f *cmx *cma *.cmo *.cmi
 	rm -f lexer.ml
 	rm -f parser.ml parser.mli
+	rm -f $(EXAMPLES) $(addsuffix .c,$(EXAMPLES))
 
 %.cmi : %.mli
 	ocamlc -c $(INCLUDE) $<
@@ -24,14 +32,10 @@ clean:
 
 ###
 
-# For running a test file
-
-PROBC = /home/robert/Documents/oxford/year\ 4/project/languages/prob-c/
-
-%: all %.g
+# For building a test file
+%: g2c %.g
 	./g2c -i $@.g -o $@.c
 	./compile_probc $@.c $@
-	./$@
 
 ###
 
@@ -45,9 +49,9 @@ common.cmx: common.cmi
 exceptions.cmi:
 exceptions.cmo: exceptions.cmi
 exceptions.cmx: exceptions.cmi
-trans_0_infer_types.cmi: AST_0_U.cmi AST_1_F.cmi exceptions.cmi
-trans_0_infer_types.cmo: AST_0_U.cmi AST_1_F.cmi exceptions.cmi trans_0_infer_types.cmi
-trans_0_infer_types.cmx: AST_0_U.cmi AST_1_F.cmi exceptions.cmi trans_0_infer_types.cmi
+trans_0_infer_types.cmi: AST_0_U.cmi AST_1_F.cmi printing_0_U.cmi exceptions.cmi
+trans_0_infer_types.cmo: AST_0_U.cmi AST_1_F.cmi printing_0_U.cmi exceptions.cmi trans_0_infer_types.cmi
+trans_0_infer_types.cmx: AST_0_U.cmi AST_1_F.cmi printing_0_U.cmi exceptions.cmi trans_0_infer_types.cmi
 trans_1_F_to_K.cmi: AST_1_F.cmi AST_2_K.cmi common.cmi exceptions.cmi
 trans_1_F_to_K.cmo: AST_1_F.cmi AST_2_K.cmi common.cmi exceptions.cmi trans_1_F_to_K.cmi
 trans_1_F_to_K.cmx: AST_1_F.cmi AST_2_K.cmi common.cmi exceptions.cmi trans_1_F_to_K.cmi
@@ -71,6 +75,9 @@ opt_2_K.cmx: AST_2_K.cmi opt_2_K.cmi
 parser.cmi: exceptions.cmi AST_0_U.cmi
 parser.cmo: exceptions.cmi AST_0_U.cmi parser.cmi
 parser.cmx: exceptions.cmi AST_0_U.cmi parser.cmi
+printing_0_U.cmi: AST_0_U.cmi common.cmi
+printing_0_U.cmo: AST_0_U.cmi common.cmi printing_0_U.cmi
+printing_0_U.cmx: AST_0_U.cmi common.cmi printing_0_U.cmi
 printing_1_F.cmi: AST_1_F.cmi common.cmi
 printing_1_F.cmo: AST_1_F.cmi common.cmi printing_1_F.cmi
 printing_1_F.cmx: AST_1_F.cmi common.cmi printing_1_F.cmi

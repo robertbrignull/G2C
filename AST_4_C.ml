@@ -25,7 +25,7 @@ and stmt =
   | PackBundle of id * id * id * bundle
   | UnpackBundle of id * bundle
   | Observe of string * args * id
-  | Predict of id
+  | Predict of string * id
   | Halt
 
 and bundle_struct = id * args

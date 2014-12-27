@@ -22,8 +22,9 @@ let replace_id source target expr =
                  id_replace_id value,
                  expr_replace_id next)
 
-    | Predict (id, next) ->
-        Predict (id_replace_id id,
+    | Predict (label, id, next) ->
+        Predict (label,
+                 id_replace_id id,
                  expr_replace_id next)
 
     | Halt -> Halt
@@ -70,7 +71,7 @@ let count_id target expr =
         List.fold_left (+) 0 (List.map id_count_id (value :: args)) +
         expr_count_id next
 
-    | Predict (id, next) ->
+    | Predict (label, id, next) ->
         id_count_id id +
         expr_count_id next
 
@@ -128,8 +129,8 @@ let rec optimise expr_in =
     | Observe (prim, args, value, next) ->
         Observe (prim, args, value, expr_optimise next)
 
-    | Predict (id, next) ->
-        Predict (id, expr_optimise next)
+    | Predict (label, id, next) ->
+        Predict (label, id, expr_optimise next)
 
     | Halt -> Halt
 

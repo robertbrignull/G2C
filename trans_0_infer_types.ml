@@ -48,13 +48,14 @@ let rec env_add env vs = List.append vs env
 let rec env_find env id =
   snd (List.find (fun (k, v) -> k = id) env)
 
-let get_op_type = function
+let get_op_type op arg_types =
+  match op with
   | "plus" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
   | "minus" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
   | "times" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
   | "divide" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
-  | "eq" -> F.FunctionType ([F.NumType; F.NumType], F.BoolType)
-  | "neq" -> F.FunctionType ([F.NumType; F.NumType], F.BoolType)
+  | "eq" -> F.FunctionType ([List.hd arg_types; List.hd arg_types], F.BoolType)
+  | "neq" -> F.FunctionType ([List.hd arg_types; List.hd arg_types], F.BoolType)
   | "lt" -> F.FunctionType ([F.NumType; F.NumType], F.BoolType)
   | "gt" -> F.FunctionType ([F.NumType; F.NumType], F.BoolType)
   | "leq" -> F.FunctionType ([F.NumType; F.NumType], F.BoolType)
@@ -65,7 +66,13 @@ let get_op_type = function
   | op -> raise Not_found
 
 let get_prim_type = function
+  | "beta" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
   | "flip" -> F.FunctionType ([F.NumType], F.BoolType)
+  | "gamma" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
+  | "normal" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
+  | "poisson" -> F.FunctionType ([F.NumType], F.NumType)
+  | "uniform-continuous" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
+  | "uniform-discrete" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
   | prim -> raise Not_found
 
 let rec infer_types_expr env (expr_guts, pos) =
@@ -109,9 +116,9 @@ let rec infer_types_expr env (expr_guts, pos) =
 
   | U.Op (op, args) -> 
       (try
-        let op_type = get_op_type op in
         let args = List.map fst (List.map (infer_types_expr env) args) in
         let arg_types = List.map get_type args in
+        let op_type = get_op_type op arg_types in
         if check_app_types op_type arg_types then
           ((F.Op (op, args), get_result_type pos op_type), env)
         else
@@ -166,10 +173,11 @@ and infer_types_stmt env (stmt_guts, pos) =
         raise (Exceptions.typing_error (Printf.sprintf "Observe: types %s and %s do not match" (PF.print_type expr_type) (PF.print_type value_type)) pos)
 
   | U.Predict expr ->
+      let label = Printing_0_U.print_inline_expr expr in
       let (expr, _) = infer_types_expr env expr in
       let expr_type = get_type expr in
       if not (is_function_type expr_type) then
-        ((F.Predict expr, expr_type), env)
+        ((F.Predict (label, expr), expr_type), env)
       else
         raise (Exceptions.typing_error "Predict: cannot predict a function type" pos)
 

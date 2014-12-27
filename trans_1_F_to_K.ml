@@ -105,9 +105,9 @@ and gen_stmt (stmt_guts, type_c) cont =
         gen_expr value (fun value_id ->
           K.Observe (prim, arg_ids, value_id, cont)))
 
-  | F.Predict expr ->
+  | F.Predict (label, expr) ->
       gen_expr expr (fun expr_id ->
-        K.Predict (expr_id, cont))
+        K.Predict (label, expr_id, cont))
 
 and gen_stmts stmts cont =
   match stmts with

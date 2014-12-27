@@ -21,7 +21,7 @@ and expr = expr_guts * type_c
 and stmt_guts =
   | Assume of id * expr
   | Observe of string * expr list * expr
-  | Predict of expr
+  | Predict of string * expr
 
 and stmt = stmt_guts * type_c
 

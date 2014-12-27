@@ -64,8 +64,15 @@ and print_binary_op op = function
 
   | args -> raise (Exceptions.transform_error (Printf.sprintf "Wrong number of arguments to '%s', %d expected, %d received" op 2 (List.length args)))
 
-and print_prim prim =
-  prim ^ "_rng"
+and print_prim = function
+  | "beta" -> "beta"
+  | "flip" -> "flip"
+  | "gamma" -> "gamma"
+  | "normal" -> "normal"
+  | "poisson" -> "poisson"
+  | "uniform-continuous" -> "uniform"
+  | "uniform-discrete" -> "uniform_discrete"
+  | prim -> raise (Exceptions.transform_error ("Unrecognised prim: " ^ prim))
 
 and print_value = function
   | Bool b -> if b then "1" else "0"
@@ -74,7 +81,7 @@ and print_value = function
   | Op (op, args) -> print_op op args
   | Prim (prim, args) ->
       (print_prim prim) ^
-      "(" ^
+      "_rng(" ^
       (map_and_concat fst ", " args) ^
       ")"
 
@@ -139,18 +146,18 @@ and print_stmt i = function
   | Observe (prim, args, value) ->
       (indent i) ^
       "observe(" ^
-      prim ^
+      (print_prim prim) ^
       "_lnp(" ^
       (fst value) ^
       ", " ^
       (map_and_concat fst ", " args) ^
       "));\n"
 
-  | Predict (id, type_c) ->
+  | Predict (label, (id, type_c)) ->
       (indent i) ^
       (match type_c with
-      | NumType -> "predict(\"%f\\n\", " ^ id ^ ");\n"
-      | BoolType -> "predict(\"%s\\n\", (" ^ id ^ ")?\"true\":\"false\");\n"
+      | NumType -> "predict(\"%s,%f\\n\", \"" ^ label ^ "\", " ^ id ^ ");\n"
+      | BoolType -> "predict(\"%s,%s\\n\", \"" ^ label ^ "\", (" ^ id ^ ")?\"true\":\"false\");\n"
       | _ -> raise (Exceptions.transform_error "Can only predict a number or boolean type"))
 
   | Halt -> ""

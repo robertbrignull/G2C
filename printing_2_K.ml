@@ -89,8 +89,11 @@ and print_expr i = function
       (indent i) ^
       (print_expr i next)
 
-  | Predict (id, next) ->
+  | Predict (label, id, next) ->
       "predict " ^
+      (indent (i + 2)) ^
+      label ^
+      (indent (i + 2)) ^
       (print_id id) ^
       (indent i) ^
       (print_expr i next)

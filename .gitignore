@@ -3,8 +3,9 @@
 /lexer.ml
 /parser.ml
 /parser.mli
-/out.c
-/out
+
+/examples/*
+!/examples/*.g
 
 *.cma
 *.cmx
