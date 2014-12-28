@@ -32,6 +32,7 @@ and print_bundle_struct ((id, _), args) =
 
 and print_data_struct ((id, _), bundle) =
   "typedef struct " ^ id ^ " {\n" ^
+  (indent il) ^ "int references;\n" ^
   (String.concat "" (List.map (fun b -> (indent il) ^ (print_id b) ^ ";\n") bundle)) ^
   "} " ^ id ^ ";\n"
 
@@ -86,8 +87,7 @@ and print_value = function
       ")"
 
 and print_stmt i = function
-  | Seq stmts ->
-      (String.concat "" (List.map (print_stmt i) stmts))
+  | Seq stmts -> map_and_concat (print_stmt i) "" stmts
 
   | Assign (id, value) ->
       (indent i) ^
@@ -119,29 +119,37 @@ and print_stmt i = function
       (String.concat ", " ("" :: (List.map fst args))) ^
       ");\n"
 
-  | PackBundle ((bundle_id, bundle_type), (proc_id, _), (data_id, _), bundle) ->
-      let pack_one (arg_id, _) =
-        (indent i) ^
-        "((" ^ data_id ^ "*) " ^ bundle_id ^ ".data)->" ^
-        arg_id ^ " = " ^ arg_id ^ ";\n"
-      in
+  | PackBundleItem ((bundle_id, _), (data_id, _), (arg_id, _)) ->
+      (indent i) ^
+      "((" ^ data_id ^ "*) " ^ bundle_id ^ ".data)->" ^
+      arg_id ^ " = " ^ arg_id ^ ";\n"
+
+  | AllocateBundle ((bundle_id, bundle_type), (proc_id, _), (data_id, _)) ->
       (indent i) ^
       (print_type bundle_type) ^ " " ^ bundle_id ^ ";\n" ^
       (indent i) ^ bundle_id ^
       ".func = " ^ proc_id ^ ";\n" ^
-      (indent i) ^ bundle_id ^
-      ".data = (void*) malloc(sizeof(" ^ data_id ^ "));\n" ^
-      (String.concat "" (List.map pack_one bundle))
-
-  | UnpackBundle ((data_id, _), bundle) ->
-      let unpack_one (id, type_c) =
-        (indent i) ^
-        (print_id (id, type_c)) ^ " = " ^
-        "((" ^ data_id ^ "*) data)->" ^ id ^ ";\n"
-      in
-      (String.concat "" (List.map unpack_one bundle)) ^
       (indent i) ^
-      "//free(data);\n"
+      bundle_id ^ ".data = (void*) malloc(sizeof(" ^ data_id ^ "));\n" ^
+      (indent i) ^
+      "((int*) " ^ bundle_id ^ ".data)[0] = 1;\n"
+
+  | UnpackBundleItem ((data_id, _), (arg_id, arg_type)) ->
+      (indent i) ^
+      (print_id (arg_id, arg_type)) ^ " = " ^
+      "((" ^ data_id ^ "*) data)->" ^ arg_id ^ ";\n"
+
+  | DeallocateBundle ->
+      (indent i) ^
+      "if (--((int*) data)[0] == 0) { free(data); }\n"
+
+  | IncrementRefCount (id, _) ->
+      (indent i) ^
+      "((int*) " ^ id ^ ".data)[0]++;\n"
+
+  | DecrementRefCount (id, _) ->
+      (indent i) ^
+      "if (--((int*) " ^ id ^ ".data)[0] == 0) { free(" ^ id ^ ".data); }\n"
 
   | Observe (prim, args, value) ->
       (indent i) ^

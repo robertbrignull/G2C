@@ -22,8 +22,12 @@ and stmt =
   | Assign of id * value
   | If of id * stmt * stmt
   | BundleApp of id * args
-  | PackBundle of id * id * id * bundle
-  | UnpackBundle of id * bundle
+  | AllocateBundle of id * id * id
+  | PackBundleItem of id * id * id
+  | UnpackBundleItem of id * id
+  | DeallocateBundle
+  | IncrementRefCount of id
+  | DecrementRefCount of id
   | Observe of string * args * id
   | Predict of string * id
   | Halt

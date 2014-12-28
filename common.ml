@@ -19,3 +19,7 @@ let rec remove_dups = function
   | [] -> []
   | x :: xs ->
       x :: (remove_dups (List.filter (fun y -> x <> y) xs))
+
+let contains pred xs =
+	try let _ = List.find pred xs in true
+  with Not_found -> false

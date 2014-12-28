@@ -17,11 +17,11 @@ and value =
   | Prim of string * args
 
 and expr =
-  | Let of id * value * expr
-  | If of id * expr * expr
-  | App of id * args
-  | Observe of string * args * id * expr
-  | Predict of string * id * expr
+  | Let of id * value * expr              (* id, value, expr *)
+  | If of id * expr * expr                (* test, then_expr, else_expr *)
+  | App of id * args                      (* function_id, args *)
+  | Observe of string * args * id * expr  (* label, args, value, next_expr *)
+  | Predict of string * id * expr         (* label, value, next_expr *)
   | Halt
 
 and proc = id * bundle * args * expr
