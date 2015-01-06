@@ -12,7 +12,6 @@ and value =
   | Num of float
   | Id of id
   | Lambda of id list * expr
-  | Op of string * args
   | Prim of string * args
 
 and expr =

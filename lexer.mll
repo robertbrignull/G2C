@@ -11,17 +11,28 @@ let make_hash n ps =
 let kwtable = 
   make_hash 64
     [ ("->", ARROW);
-      ("+", OP "plus"); ("-", OP "minus");
-      ("*", OP "times"); ("/", OP "divide");
-      ("=", OP "eq"); ("!=", OP "neq");
-      ("<", OP "lt"); (">", OP "gt");
-      ("<=", OP "leq"); (">=", OP "geq"); 
-      ("and", OP "and"); ("or", OP "or"); ("not", OP "not");
       ("true", BOOL true); ("false", BOOL false);
       ("num", NUM_TYPE); ("bool", BOOL_TYPE);
       ("lambda", LAMBDA); ("let", LET); ("if", IF);
 
       ("assume", ASSUME); ("observe", OBSERVE); ("predict", PREDICT);
+
+      ("+", PRIM "plus"); ("-", PRIM "minus");
+      ("*", PRIM "times"); ("/", PRIM "divide");
+      ("=", PRIM "eq"); ("!=", PRIM "neq");
+      ("<", PRIM "lt"); (">", PRIM "gt");
+      ("<=", PRIM "leq"); (">=", PRIM "geq"); 
+      ("and", PRIM "and"); ("or", PRIM "or"); ("not", PRIM "not");
+      
+      ("log", PRIM "log"); ("log10", PRIM "log10"); ("exp", PRIM "exp");
+      ("pow", PRIM "pow"); ("sqrt", PRIM "sqrt"); ("cbrt", PRIM "cbrt");
+      ("floor", PRIM "floor"); ("ceil", PRIM "ceil");
+      ("round", PRIM "round"); ("rint", PRIM "rint");
+      ("abs", PRIM "abs"); ("signum", PRIM "signum");
+      ("sin", PRIM "sin"); ("cos", PRIM "cos"); ("tan", PRIM "tan");
+      ("asin", PRIM "asin"); ("acos", PRIM "acos"); ("atan", PRIM "atan");
+      ("sinh", PRIM "sinh"); ("cosh", PRIM "cosh"); ("tanh", PRIM "tanh");
+      ("inc", PRIM "inc"); ("dec", PRIM "dec"); ("mod", PRIM "mod");
 
       ("beta", PRIM "beta"); ("binomial", PRIM "binomial");
       ("exponential", PRIM "exponential"); ("flip", PRIM "flip");

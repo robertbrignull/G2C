@@ -23,15 +23,19 @@ and find_free_vars env expr =
     | K.Id id -> find_free_vars_id env id
 
     | K.Lambda (args, expr) ->
-        find_free_vars_expr (List.append env args) expr
-
-    | K.Op (op, args) ->
-        List.concat (List.map (find_free_vars_id env) args)
+        find_free_vars_expr (List.append args env) expr
 
     | K.Prim (prim, args) ->
         List.concat (List.map (find_free_vars_id env) args)
 
   and find_free_vars_expr env = function
+    | K.Let (id, K.Lambda (args, body), expr) ->
+        let env = id :: env in
+        List.concat [
+          find_free_vars_expr (List.append args env) body;
+          find_free_vars_expr env expr
+        ]
+
     | K.Let (id, value, expr) ->
         let env = id :: env in
         List.concat [
@@ -69,6 +73,43 @@ and find_free_vars env expr =
 
   in remove_dups (find_free_vars_expr env expr)
 
+and replace_id source target expr =
+  let rec replace_id_id id =
+    if fst id == fst source then target else id
+
+  and replace_id_value = function
+    | H.Id id -> H.Id (replace_id_id id)
+    | H.Prim (prim, args) -> H.Prim (prim, List.map replace_id_id args)
+    | x -> x
+
+  and replace_id_expr = function
+    | H.Let (id, value, expr) ->
+        H.Let (id, replace_id_value value, replace_id_expr expr)
+
+    | H.If (test, then_expr, else_expr) ->
+        H.If (replace_id_id test,
+              replace_id_expr then_expr,
+              replace_id_expr else_expr)
+
+    | H.App (proc, args) ->
+        H.App (replace_id_id proc,
+               List.map replace_id_id args)
+
+    | H.Observe (label, args, value, next) ->
+        H.Observe (label,
+                   List.map replace_id_id args,
+                   replace_id_id value,
+                   replace_id_expr next)
+
+    | H.Predict (label, value, next) ->
+        H.Predict (label,
+                   replace_id_id value,
+                   replace_id_expr next)
+
+    | H.Halt -> H.Halt
+
+  in replace_id_expr expr
+
 and transform_id (id, type_c) =
   (id, transform_type type_c)
 
@@ -79,23 +120,34 @@ and transform_value = function
 
   | K.Id id -> ([], H.Id (transform_id id))
 
-  | K.Lambda (args, expr) ->
-      let free_vars = find_free_vars args expr in
+  | K.Lambda (args, body) ->
+      let free_vars = find_free_vars args body in
       let args = List.map transform_id args in
-      let (procs_1, expr) = transform_expr expr in
+      let (procs_1, body) = transform_expr body in
       let proc_type = H.FunctionType (List.map snd args) in
       let proc_id = (new_id (), proc_type) in
-      let new_proc = (proc_id, free_vars, args, expr) in
+      let new_proc = (proc_id, free_vars, args, body) in
       let proc_instance = H.ProcInstance (proc_id, free_vars) in
       (new_proc :: procs_1, proc_instance)
-
-  | K.Op (op, args) ->
-      ([], H.Op (op, List.map transform_id args))
 
   | K.Prim (prim, args) ->
       ([], H.Prim (prim, List.map transform_id args))
 
 and transform_expr = function
+  | K.Let (let_id, K.Lambda (args, body), expr) ->
+      let free_vars = find_free_vars (let_id :: args) body in
+      let let_id = transform_id let_id in
+      let args = List.map transform_id args in
+      let (procs_1, body) = transform_expr body in
+      let proc_type = H.FunctionType (List.map snd args) in
+      let proc_id = (new_id (), proc_type) in
+      let body = replace_id let_id proc_id body in
+      let new_proc = (proc_id, free_vars, args, body) in
+      let proc_instance = H.ProcInstance (proc_id, free_vars) in
+      let (procs_2, expr) = transform_expr expr in
+      (new_proc :: (List.append procs_1 procs_2),
+       H.Let (let_id, proc_instance, expr))
+
   | K.Let (id, value, expr) ->
       let id = transform_id id in
       let (procs_1, value) = transform_value value in

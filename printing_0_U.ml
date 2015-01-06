@@ -29,10 +29,7 @@ let get_op_symbol = function
   | "gt" -> ">"
   | "leq" -> "<="
   | "geq" -> ">="
-  | "and" -> "and"
-  | "or" -> "or"
-  | "not" -> "not"
-  | op -> raise (Exceptions.transform_error "op not recognised")
+  | x -> x
   
 let print_prim prim = prim
 
@@ -45,10 +42,11 @@ let rec print_inline_expr (expr_guts, expr_info) =
   | Num x -> string_of_float x
   | Id id -> id
 
-  | Lambda (args, expr) -> 
+  | Lambda (args, ret_type, expr) -> 
       "(lambda (" ^
       (map_and_concat print_def ", " args) ^
-      ") " ^ (print_inline_expr expr) ^ ")"
+      ") -> " ^ (print_type ret_type) ^
+      " " ^ (print_inline_expr expr) ^ ")"
 
   | Let (id, value, expr) ->
       "(let " ^ (print_id id) ^ " " ^
@@ -60,10 +58,6 @@ let rec print_inline_expr (expr_guts, expr_info) =
       (print_inline_expr test) ^ " " ^
       (print_inline_expr then_expr) ^ " " ^
       (print_inline_expr else_expr) ^ ")"
-
-  | Op (op, args) ->
-      "(" ^ op ^ " " ^
-      (map_and_concat print_inline_expr " " args) ^ ")"
 
   | Prim (prim, args) ->
       "(" ^ print_prim prim ^ " " ^

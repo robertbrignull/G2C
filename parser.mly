@@ -31,11 +31,10 @@ expr:
   | BOOL                               { (Bool $1, p 1) }
   | NUM                                { (Num $1, p 1) }
   | ID                                 { (Id $1, p 1) }
-  | LPAREN LAMBDA LPAREN lambda_args RPAREN expr RPAREN
-                                       { (Lambda ($4, $6), p 1) }
+  | LPAREN LAMBDA LPAREN lambda_args RPAREN ARROW type_c expr RPAREN
+                                       { (Lambda ($4, $7, $8), p 1) }
   | LPAREN LET ID expr expr RPAREN     { (Let ($3, $4, $5), p 1) }
   | LPAREN IF expr expr expr RPAREN    { (If ($3, $4, $5), p 1) }
-  | LPAREN OP exprs RPAREN             { (Op ($2, $3), p 1) }
   | LPAREN PRIM exprs RPAREN           { (Prim ($2, $3), p 1) }
   | LPAREN expr exprs RPAREN           { (App ($2, $3), p 1) }
   | error                              { raise (Exceptions.parse_error "Invalid expression" 1) }

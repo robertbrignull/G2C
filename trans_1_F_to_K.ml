@@ -56,13 +56,6 @@ and gen_expr (expr_guts, type_c) cont_gen =
               gen_expr then_expr cont_gen,
               gen_expr else_expr cont_gen))
 
-  | F.Op (op, args) ->
-      gen_args args (fun arg_ids ->
-        let out_id = (new_id (), type_c) in
-        K.Let (out_id,
-               K.Op (op, arg_ids),
-               cont_gen out_id))
-
   | F.Prim (prim, args) ->
       gen_args args (fun arg_ids ->
         let out_id = (new_id (), type_c) in
@@ -94,6 +87,16 @@ and gen_args args cont_gen =
 
 and gen_stmt (stmt_guts, type_c) cont =
   match stmt_guts with
+  | F.Assume (assume_id, (F.Lambda (args, expr), lambda_type)) ->
+      let type_c = transform_type type_c in
+      let lambda_type = transform_type lambda_type in
+      let cont_id = (new_id (), get_cont_type lambda_type) in
+      let args = List.append (transform_args args) [cont_id] in
+      let expr = gen_expr expr (fun out_id -> K.App (cont_id, [out_id])) in
+      K.Let ((assume_id, type_c),
+             K.Lambda (args, expr),
+             cont)
+
   | F.Assume (assume_id, value) ->
       gen_expr value (fun value_id ->
         K.Let ((assume_id, get_id_type value_id),

@@ -12,7 +12,6 @@ and expr_guts =
   | Lambda of (id * type_c) list * expr     (* args, expr *)
   | Let of id * expr * expr                 (* id, value, expr *)
   | If of expr * expr * expr                (* test, then_expr, else_expr *)
-  | Op of string * expr list                (* op_name, args *)
   | Prim of string * expr list              (* prim_name, args *)
   | App of expr * expr list                 (* function, args *)
 

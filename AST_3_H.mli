@@ -13,7 +13,6 @@ and value =
   | Num of float
   | Id of id
   | ProcInstance of id * bundle
-  | Op of string * args
   | Prim of string * args
 
 and expr =

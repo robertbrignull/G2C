@@ -19,8 +19,6 @@ let print_id (id, type_c) =
   " : " ^
   (print_type type_c)
 
-let print_op op = "op " ^ op
-
 let print_prim prim = "prim " ^ prim
 
 let rec print_value i = function
@@ -39,13 +37,6 @@ let rec print_value i = function
                       (indent (i + 3))
                       bundle) ^
       ")"
-
-  | Op (op, args) ->
-      print_op op ^
-      (indent (i + 2)) ^
-      (map_and_concat print_id
-                      (indent (i + 2))
-                      args)
 
   | Prim (prim, args) ->
       print_prim prim ^

@@ -21,8 +21,6 @@ let print_num x = "num " ^ (string_of_float x)
 
 let print_id id = "id " ^ id
 
-let print_op op = "op " ^ op
-
 let print_prim prim = "prim " ^ prim
 
 let print_def (id, type_c) =
@@ -62,13 +60,6 @@ let rec print_expr i (expr_guts, expr_info) =
       (print_expr (i + 2) then_expr) ^
       (indent (i + 2)) ^
       (print_expr (i + 2) else_expr)
-
-  | Op (op, args) ->
-      print_op op ^
-      (indent (i + 2)) ^
-      (map_and_concat (print_expr (i + 2))
-                      (indent (i + 2))
-                      args)
 
   | Prim (prim, args) ->
       print_prim prim ^

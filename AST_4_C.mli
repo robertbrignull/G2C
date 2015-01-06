@@ -14,7 +14,6 @@ and value =
   | Bool of bool
   | Num of float
   | Id of id
-  | Op of string * args
   | Prim of string * args
 
 and stmt =
@@ -22,6 +21,7 @@ and stmt =
   | Assign of id * value
   | If of id * stmt * stmt
   | BundleApp of id * args
+  | RecursiveApp of id * args
   | AllocateBundle of id * id * id
   | PackBundleItem of id * id * id
   | UnpackBundleItem of id * id

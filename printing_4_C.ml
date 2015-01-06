@@ -36,8 +36,45 @@ and print_data_struct ((id, _), bundle) =
   (String.concat "" (List.map (fun b -> (indent il) ^ (print_id b) ^ ";\n") bundle)) ^
   "} " ^ id ^ ";\n"
 
-and print_op op args =
-  match op with
+and print_unary_op op = function
+  | [x] ->
+      op ^ (fst x)
+
+  | args -> raise (Exceptions.transform_error (Printf.sprintf "Wrong number of arguments to '%s', %d expected, %d received" op 1 (List.length args)))
+
+and print_binary_op op = function
+  | [x; y] ->
+      (fst x) ^ " " ^ op ^ " " ^ (fst y)
+
+  | args -> raise (Exceptions.transform_error (Printf.sprintf "Wrong number of arguments to '%s', %d expected, %d received" op 2 (List.length args)))
+
+and print_func_app prim args =
+  prim ^ "(" ^
+  (map_and_concat fst ", " args) ^
+  ")"
+
+and print_prim = function
+  | "plus" -> "+"
+  | "minus" -> "-"
+  | "times" -> "*"
+  | "divide" -> "/"
+  | "eq" -> "="
+  | "neq" -> "!="
+  | "lt" -> "<"
+  | "gt" -> ">"
+  | "leq" -> "<="
+  | "geq" -> ">="
+  | "and" -> "&&"
+  | "or" -> "||"
+  | "not" -> "!"
+
+  | "uniform-continuous" -> "uniform"
+  | "uniform-discrete" -> "uniform_discrete"
+
+  | x -> x
+
+and print_prim_app prim args =
+  match prim with
   | "plus" -> print_binary_op "+" args
   | "minus" -> print_binary_op "-" args
   | "times" -> print_binary_op "*" args
@@ -51,40 +88,22 @@ and print_op op args =
   | "and" -> print_binary_op "&&" args
   | "or" -> print_binary_op "||" args
   | "not" -> print_unary_op "!" args
-  | op -> raise (Exceptions.transform_error ("Unrecognised op: " ^ op))
 
-and print_unary_op op = function
-  | [x] ->
-      op ^ (fst x)
+  | "beta" -> print_func_app "beta_rng" args
+  | "flip" -> print_func_app "flip_rng" args
+  | "gamma" -> print_func_app "gamma_rng" args
+  | "normal" -> print_func_app "normal_rng" args
+  | "poisson" -> print_func_app "poisson_rng" args
+  | "uniform-continuous" -> print_func_app "uniform_rng" args
+  | "uniform-discrete" -> print_func_app "uniform_discrete_rng" args
 
-  | args -> raise (Exceptions.transform_error (Printf.sprintf "Wrong number of arguments to '%s', %d expected, %d received" op 1 (List.length args)))
-
-and print_binary_op op = function
-  | [x; y] ->
-      (fst x) ^ " " ^ op ^ " " ^ (fst y)
-
-  | args -> raise (Exceptions.transform_error (Printf.sprintf "Wrong number of arguments to '%s', %d expected, %d received" op 2 (List.length args)))
-
-and print_prim = function
-  | "beta" -> "beta"
-  | "flip" -> "flip"
-  | "gamma" -> "gamma"
-  | "normal" -> "normal"
-  | "poisson" -> "poisson"
-  | "uniform-continuous" -> "uniform"
-  | "uniform-discrete" -> "uniform_discrete"
-  | prim -> raise (Exceptions.transform_error ("Unrecognised prim: " ^ prim))
+  | x -> print_func_app (print_prim prim) args
 
 and print_value = function
   | Bool b -> if b then "1" else "0"
   | Num x -> string_of_float x
   | Id (id, type_c) -> id
-  | Op (op, args) -> print_op op args
-  | Prim (prim, args) ->
-      (print_prim prim) ^
-      "_rng(" ^
-      (map_and_concat fst ", " args) ^
-      ")"
+  | Prim (prim, args) -> print_prim_app prim args
 
 and print_stmt i = function
   | Seq stmts -> map_and_concat (print_stmt i) "" stmts
@@ -116,6 +135,13 @@ and print_stmt i = function
       ".func(" ^
       bundle_id ^
       ".data" ^
+      (String.concat ", " ("" :: (List.map fst args))) ^
+      ");\n"
+
+  | RecursiveApp ((function_id, _), args) ->
+      (indent i) ^
+      function_id ^
+      "(data" ^
       (String.concat ", " ("" :: (List.map fst args))) ^
       ");\n"
 

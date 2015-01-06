@@ -116,24 +116,20 @@ and transform_let env let_id = function
         C.Seq (List.map packItem bundle)
       ];
 
-  | H.Op (op, args) ->
-      C.Assign (transform_id env let_id,
-                C.Op (op, List.map (transform_id env) args))
-
   | H.Prim (prim, args) ->
       C.Assign (transform_id env let_id,
                 C.Prim (prim, List.map (transform_id env) args))
 
-and transform_expr env scope = function
+and transform_expr env scope current_proc_id = function
   | H.Let (id, value, expr) ->
       let scope = (transform_id env id) :: scope in
       C.Seq [transform_let env id value;
-             transform_expr env scope expr]
+             transform_expr env scope current_proc_id expr]
 
   | H.If (test, then_expr, else_expr) ->
       C.If (transform_id env test,
-            transform_expr env scope then_expr,
-            transform_expr env scope else_expr)
+            transform_expr env scope current_proc_id then_expr,
+            transform_expr env scope current_proc_id else_expr)
 
   | H.App (proc_id, args) ->
       let proc_id = transform_id env proc_id in
@@ -148,9 +144,23 @@ and transform_expr env scope = function
             else
               generate_decrements ids
       in
+      let bundle_deallocation =
+        match current_proc_id with
+        | Some id ->
+            if fst id = fst proc_id then []
+            else [C.DeallocateBundle]
+        | _ -> []
+      in
+      let app =
+        match current_proc_id with
+        | Some id when fst id = fst proc_id ->
+            C.RecursiveApp (proc_id, args)
+        | _ -> C.BundleApp (proc_id, args)
+      in
       C.Seq [
         C.Seq (generate_decrements scope);
-        C.BundleApp (proc_id, args)
+        C.Seq bundle_deallocation;
+        app
       ]
 
   | H.Observe (prim, args, value, next) ->
@@ -158,13 +168,13 @@ and transform_expr env scope = function
       let value = transform_id env value in
       C.Seq [
         C.Observe (prim, args, value);
-        transform_expr env scope next
+        transform_expr env scope current_proc_id next
       ]
 
   | H.Predict (label, id, next) ->
       C.Seq [
         C.Predict (label, transform_id env id);
-        transform_expr env scope next
+        transform_expr env scope current_proc_id next
       ]
 
   | H.Halt -> C.Halt
@@ -180,8 +190,7 @@ and transform_proc env (id, bundle, args, expr) =
    args,
    C.Seq [
      C.Seq (List.map unpackItem bundle);
-     C.DeallocateBundle;
-     transform_expr env scope expr
+     transform_expr env scope (Some id) expr
    ])
 
 let transform (procs, expr) =
@@ -190,4 +199,4 @@ let transform (procs, expr) =
   (bundle_structs,
    data_structs,
    List.map (transform_proc env) procs,
-   transform_expr env [] expr)
+   transform_expr env [] None expr)

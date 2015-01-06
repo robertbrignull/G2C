@@ -39,9 +39,6 @@ let replace_id source target expr =
     | Lambda (args, expr) ->
         Lambda (args, expr_replace_id expr)
 
-    | Op (op, args) ->
-        Op (op, List.map id_replace_id args)
-
     | Prim (prim, args) ->
         Prim (prim, List.map id_replace_id args)
 
@@ -86,9 +83,6 @@ let count_id target expr =
 
     | Lambda (args, expr) ->
         expr_count_id expr
-
-    | Op (op, args) ->
-        List.fold_left (+) 0 (List.map id_count_id args)
 
     | Prim (prim, args) ->
         List.fold_left (+) 0 (List.map id_count_id args)
@@ -153,9 +147,6 @@ let rec optimise expr_in =
 
     | Lambda (args, expr) ->
         Lambda (args, expr_optimise expr)
-
-    | Op (op, args) ->
-        Op (op, args)
         
     | Prim (prim, args) ->
         Prim (prim, args)

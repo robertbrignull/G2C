@@ -48,8 +48,8 @@ let rec env_add env vs = List.append vs env
 let rec env_find env id =
   snd (List.find (fun (k, v) -> k = id) env)
 
-let get_op_type op arg_types =
-  match op with
+let get_prim_type prim arg_types =
+  match prim with
   | "plus" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
   | "minus" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
   | "times" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
@@ -63,9 +63,32 @@ let get_op_type op arg_types =
   | "and" -> F.FunctionType ([F.BoolType; F.BoolType], F.BoolType)
   | "or" -> F.FunctionType ([F.BoolType; F.BoolType], F.BoolType)
   | "not" -> F.FunctionType ([F.BoolType], F.BoolType)
-  | op -> raise Not_found
 
-let get_prim_type = function
+  | "log" -> F.FunctionType ([F.NumType], F.NumType)
+  | "log10" -> F.FunctionType ([F.NumType], F.NumType)
+  | "exp" -> F.FunctionType ([F.NumType], F.NumType)
+  | "pow" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
+  | "sqrt" -> F.FunctionType ([F.NumType], F.NumType)
+  | "cbrt" -> F.FunctionType ([F.NumType], F.NumType)
+  | "floor" -> F.FunctionType ([F.NumType], F.NumType)
+  | "ceil" -> F.FunctionType ([F.NumType], F.NumType)
+  | "round" -> F.FunctionType ([F.NumType], F.NumType)
+  | "rint" -> F.FunctionType ([F.NumType], F.NumType)
+  | "abs" -> F.FunctionType ([F.NumType], F.NumType)
+  | "signum" -> F.FunctionType ([F.NumType], F.NumType)
+  | "sin" -> F.FunctionType ([F.NumType], F.NumType)
+  | "cos" -> F.FunctionType ([F.NumType], F.NumType)
+  | "tan" -> F.FunctionType ([F.NumType], F.NumType)
+  | "asin" -> F.FunctionType ([F.NumType], F.NumType)
+  | "acos" -> F.FunctionType ([F.NumType], F.NumType)
+  | "atan" -> F.FunctionType ([F.NumType], F.NumType)
+  | "sinh" -> F.FunctionType ([F.NumType], F.NumType)
+  | "cosh" -> F.FunctionType ([F.NumType], F.NumType)
+  | "tanh" -> F.FunctionType ([F.NumType], F.NumType)
+  | "inc" -> F.FunctionType ([F.NumType], F.NumType)
+  | "dec" -> F.FunctionType ([F.NumType], F.NumType)
+  | "mod" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
+
   | "beta" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
   | "flip" -> F.FunctionType ([F.NumType], F.BoolType)
   | "gamma" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
@@ -74,6 +97,16 @@ let get_prim_type = function
   | "uniform-continuous" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
   | "uniform-discrete" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
   | prim -> raise Not_found
+
+and is_probabilistic_prim = function
+  | "beta" -> true
+  | "flip" -> true
+  | "gamma" -> true
+  | "normal" -> true
+  | "poisson" -> true
+  | "uniform-continuous" -> true
+  | "uniform-discrete" -> true
+  | _ -> false
 
 let rec infer_types_expr env (expr_guts, pos) =
   match expr_guts with
@@ -89,12 +122,31 @@ let rec infer_types_expr env (expr_guts, pos) =
       with Not_found ->
         raise (Exceptions.typing_error (Printf.sprintf "Unbound variable %s" id) pos))
 
-  | U.Lambda (args, expr) -> 
+  | U.Let (id, (U.Lambda (args, ret_type, body), pos), expr) ->
       let args = convert_args args in
-      let env = env_add env args in
-      let arg_types = List.map snd args in
-      let (expr, _) = infer_types_expr env expr in
-      ((F.Lambda (args, expr), F.FunctionType (arg_types, (get_type expr))), env)
+      let ret_type = convert_type ret_type in
+      let lambda_type = F.FunctionType (List.map snd args, ret_type) in
+      let env = env_add env [(id, lambda_type)] in
+      let env2 = env_add env args in
+      let (body, _) = infer_types_expr env2 body in
+      if equal_types (get_type body) ret_type then
+        let (expr, _) = infer_types_expr env expr in
+        ((F.Let (id,
+                 (F.Lambda (args, body), lambda_type),
+                 expr),
+          lambda_type),
+         env)
+      else
+        raise (Exceptions.typing_error (Printf.sprintf "Lambda expression: inferred type '%s' does not match specified type '%s'" (PF.print_type (get_type body)) (PF.print_type ret_type)) pos)
+      
+
+  | U.Lambda (args, ret_type, body) -> 
+      let args = convert_args args in
+      let env2 = env_add env args in
+      let (body, _) = infer_types_expr env2 body in
+      ((F.Lambda (args, body),
+        F.FunctionType (List.map snd args, get_type body)),
+       env)
 
   | U.Let (id, value, expr) ->
       let (value, _) = infer_types_expr env value in
@@ -114,23 +166,11 @@ let rec infer_types_expr env (expr_guts, pos) =
       else
         raise (Exceptions.typing_error (Printf.sprintf "If expression: expected bool for test but received %s" (PF.print_type (get_type test))) pos)
 
-  | U.Op (op, args) -> 
-      (try
-        let args = List.map fst (List.map (infer_types_expr env) args) in
-        let arg_types = List.map get_type args in
-        let op_type = get_op_type op arg_types in
-        if check_app_types op_type arg_types then
-          ((F.Op (op, args), get_result_type pos op_type), env)
-        else
-          raise (Exceptions.typing_error (Printf.sprintf "Application: expected %s but received %s" (PF.print_type_list (get_arg_types pos op_type)) (PF.print_type_list arg_types)) pos)
-      with Not_found ->
-        raise (Exceptions.typing_error (Printf.sprintf "Invalid builtin operation '%s' used" op) pos))
-
   | U.Prim (prim, args) -> 
       (try
-        let prim_type = get_prim_type prim in
         let args = List.map fst (List.map (infer_types_expr env) args) in
         let arg_types = List.map get_type args in
+        let prim_type = get_prim_type prim arg_types in
         if check_app_types prim_type arg_types then
           ((F.Prim (prim, args), get_result_type pos prim_type), env)
         else
@@ -153,6 +193,21 @@ let rec infer_types_expr env (expr_guts, pos) =
 
 and infer_types_stmt env (stmt_guts, pos) =
   match stmt_guts with
+  | U.Assume (id, (U.Lambda (args, ret_type, body), pos)) ->
+      let args = convert_args args in
+      let ret_type = convert_type ret_type in
+      let lambda_type = F.FunctionType (List.map snd args, ret_type) in
+      let env = env_add env [(id, lambda_type)] in
+      let env2 = env_add env args in
+      let (body, _) = infer_types_expr env2 body in
+      if equal_types (get_type body) ret_type then
+        ((F.Assume (id,
+                   (F.Lambda (args, body), lambda_type)),
+          lambda_type),
+         env)
+      else
+        raise (Exceptions.typing_error (Printf.sprintf "Lambda expression: inferred type '%s' does not match specified type '%s'" (PF.print_type (get_type body)) (PF.print_type ret_type)) pos)
+
   | U.Assume (id, value) ->
       let (value, _) = infer_types_expr env value in
       let value_type = get_type value in
@@ -167,7 +222,10 @@ and infer_types_stmt env (stmt_guts, pos) =
       if equal_types expr_type value_type then
         (match expr with
         | (F.Prim (prim, args), _) ->
-            ((F.Observe (prim, args, value), value_type), env)
+            if is_probabilistic_prim prim then
+              ((F.Observe (prim, args, value), value_type), env)
+            else
+              raise (Exceptions.typing_error "Observe: outer expresion must be a probabilistic primitive" pos)
         | _ -> raise (Exceptions.typing_error "Observe: outer expresion must be a probabilistic primitive" pos))
       else
         raise (Exceptions.typing_error (Printf.sprintf "Observe: types %s and %s do not match" (PF.print_type expr_type) (PF.print_type value_type)) pos)

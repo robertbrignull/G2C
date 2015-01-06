@@ -12,7 +12,6 @@ and expr_guts =
   | Lambda of (id * type_c) list * expr
   | Let of id * expr * expr
   | If of expr * expr * expr
-  | Op of string * expr list
   | Prim of string * expr list
   | App of expr * expr list
 
