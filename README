@@ -3,5 +3,8 @@ $> g2c --help
 
 To compile the probabilistic C outputted you will need to point the script 'compile_probc' to an installation of probabilistic c by changing the PROBC variable.
 
-Then, to build the compiler, build an example and run the example, do
-$> make test1
+Then, to build the compiler and build all examples, just run 'make'.
+
+To compile some example.g file yourself, run
+$> g2c -i example.g -o example.c
+$> compile_probc example.c example
