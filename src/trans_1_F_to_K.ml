@@ -51,10 +51,17 @@ and gen_expr (expr_guts, type_c) cont_gen =
                gen_expr expr cont_gen))
 
   | F.If (test_expr, then_expr, else_expr) ->
-      gen_expr test_expr (fun test_id ->
-        K.If (test_id,
-              gen_expr then_expr cont_gen,
-              gen_expr else_expr cont_gen))
+      let expr_type = transform_type (snd then_expr) in
+      let cont_id = (new_id (), K.FunctionType [expr_type]) in
+      let cont_arg_id = (new_id (), expr_type) in
+      let new_cont_gen out_id = K.App (cont_id, [out_id]) in
+      K.Let (cont_id,
+             K.Lambda ([cont_arg_id],
+                       cont_gen cont_arg_id),
+             gen_expr test_expr (fun test_id ->
+               K.If (test_id,
+                     gen_expr then_expr new_cont_gen,
+                     gen_expr else_expr new_cont_gen)))
 
   | F.Prim (prim, args) ->
       gen_args args (fun arg_ids ->
