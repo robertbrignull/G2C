@@ -1,6 +1,7 @@
 module U = AST_0_U
 module F = AST_1_F
 module PF = Printing_1_F
+open Common
 
 let get_type = snd
 
@@ -49,54 +50,59 @@ let rec env_find env id =
   snd (List.find (fun (k, v) -> k = id) env)
 
 let get_prim_type prim arg_types =
-  match prim with
-  | "plus" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
-  | "minus" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
-  | "times" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
-  | "divide" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
-  | "eq" -> F.FunctionType ([List.hd arg_types; List.hd arg_types], F.BoolType)
-  | "neq" -> F.FunctionType ([List.hd arg_types; List.hd arg_types], F.BoolType)
-  | "lt" -> F.FunctionType ([F.NumType; F.NumType], F.BoolType)
-  | "gt" -> F.FunctionType ([F.NumType; F.NumType], F.BoolType)
-  | "leq" -> F.FunctionType ([F.NumType; F.NumType], F.BoolType)
-  | "geq" -> F.FunctionType ([F.NumType; F.NumType], F.BoolType)
-  | "and" -> F.FunctionType ([F.BoolType; F.BoolType], F.BoolType)
-  | "or" -> F.FunctionType ([F.BoolType; F.BoolType], F.BoolType)
-  | "not" -> F.FunctionType ([F.BoolType], F.BoolType)
+  let num_args = List.length arg_types in
+  if num_args == 0 then
+    raise Not_found
+  else
+    let first_arg_type = List.hd arg_types in
+    match prim with
+    | "plus" -> F.FunctionType (duplicate num_args F.NumType, F.NumType)
+    | "minus" -> F.FunctionType (duplicate num_args F.NumType, F.NumType)
+    | "times" -> F.FunctionType (duplicate num_args F.NumType, F.NumType)
+    | "divide" -> F.FunctionType (duplicate num_args F.NumType, F.NumType)
+    | "eq" -> F.FunctionType (duplicate num_args first_arg_type, F.BoolType)
+    | "neq" -> F.FunctionType (duplicate num_args first_arg_type, F.BoolType)
+    | "lt" -> F.FunctionType (duplicate num_args F.NumType, F.BoolType)
+    | "gt" -> F.FunctionType (duplicate num_args F.NumType, F.BoolType)
+    | "leq" -> F.FunctionType (duplicate num_args F.NumType, F.BoolType)
+    | "geq" -> F.FunctionType (duplicate num_args F.NumType, F.BoolType)
+    | "and" -> F.FunctionType (duplicate num_args F.BoolType, F.BoolType)
+    | "or" -> F.FunctionType (duplicate num_args F.BoolType, F.BoolType)
+    | "not" -> F.FunctionType ([F.BoolType], F.BoolType)
 
-  | "log" -> F.FunctionType ([F.NumType], F.NumType)
-  | "log10" -> F.FunctionType ([F.NumType], F.NumType)
-  | "exp" -> F.FunctionType ([F.NumType], F.NumType)
-  | "pow" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
-  | "sqrt" -> F.FunctionType ([F.NumType], F.NumType)
-  | "cbrt" -> F.FunctionType ([F.NumType], F.NumType)
-  | "floor" -> F.FunctionType ([F.NumType], F.NumType)
-  | "ceil" -> F.FunctionType ([F.NumType], F.NumType)
-  | "round" -> F.FunctionType ([F.NumType], F.NumType)
-  | "rint" -> F.FunctionType ([F.NumType], F.NumType)
-  | "abs" -> F.FunctionType ([F.NumType], F.NumType)
-  | "signum" -> F.FunctionType ([F.NumType], F.NumType)
-  | "sin" -> F.FunctionType ([F.NumType], F.NumType)
-  | "cos" -> F.FunctionType ([F.NumType], F.NumType)
-  | "tan" -> F.FunctionType ([F.NumType], F.NumType)
-  | "asin" -> F.FunctionType ([F.NumType], F.NumType)
-  | "acos" -> F.FunctionType ([F.NumType], F.NumType)
-  | "atan" -> F.FunctionType ([F.NumType], F.NumType)
-  | "sinh" -> F.FunctionType ([F.NumType], F.NumType)
-  | "cosh" -> F.FunctionType ([F.NumType], F.NumType)
-  | "tanh" -> F.FunctionType ([F.NumType], F.NumType)
-  | "inc" -> F.FunctionType ([F.NumType], F.NumType)
-  | "dec" -> F.FunctionType ([F.NumType], F.NumType)
-  | "mod" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
+    | "log" -> F.FunctionType ([F.NumType], F.NumType)
+    | "log10" -> F.FunctionType ([F.NumType], F.NumType)
+    | "exp" -> F.FunctionType ([F.NumType], F.NumType)
+    | "pow" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
+    | "sqrt" -> F.FunctionType ([F.NumType], F.NumType)
+    | "cbrt" -> F.FunctionType ([F.NumType], F.NumType)
+    | "floor" -> F.FunctionType ([F.NumType], F.NumType)
+    | "ceil" -> F.FunctionType ([F.NumType], F.NumType)
+    | "round" -> F.FunctionType ([F.NumType], F.NumType)
+    | "rint" -> F.FunctionType ([F.NumType], F.NumType)
+    | "abs" -> F.FunctionType ([F.NumType], F.NumType)
+    | "signum" -> F.FunctionType ([F.NumType], F.NumType)
+    | "sin" -> F.FunctionType ([F.NumType], F.NumType)
+    | "cos" -> F.FunctionType ([F.NumType], F.NumType)
+    | "tan" -> F.FunctionType ([F.NumType], F.NumType)
+    | "asin" -> F.FunctionType ([F.NumType], F.NumType)
+    | "acos" -> F.FunctionType ([F.NumType], F.NumType)
+    | "atan" -> F.FunctionType ([F.NumType], F.NumType)
+    | "sinh" -> F.FunctionType ([F.NumType], F.NumType)
+    | "cosh" -> F.FunctionType ([F.NumType], F.NumType)
+    | "tanh" -> F.FunctionType ([F.NumType], F.NumType)
+    | "inc" -> F.FunctionType ([F.NumType], F.NumType)
+    | "dec" -> F.FunctionType ([F.NumType], F.NumType)
+    | "mod" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
 
-  | "beta" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
-  | "flip" -> F.FunctionType ([F.NumType], F.BoolType)
-  | "gamma" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
-  | "normal" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
-  | "poisson" -> F.FunctionType ([F.NumType], F.NumType)
-  | "uniform-continuous" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
-  | "uniform-discrete" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
-  | prim -> raise Not_found
+    | "beta" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
+    | "flip" -> F.FunctionType ([F.NumType], F.BoolType)
+    | "gamma" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
+    | "normal" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
+    | "poisson" -> F.FunctionType ([F.NumType], F.NumType)
+    | "uniform-continuous" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
+    | "uniform-discrete" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
+    | prim -> raise Not_found
 
 and is_probabilistic_prim = function
   | "beta" -> true

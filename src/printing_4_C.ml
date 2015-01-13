@@ -48,6 +48,17 @@ and print_binary_op op = function
 
   | args -> raise (Exceptions.transform_error (Printf.sprintf "Wrong number of arguments to '%s', %d expected, %d received" op 2 (List.length args)))
 
+and print_vararg_op op args =
+  map_and_concat fst (" " ^ op ^ " ") args
+
+and print_anded_binary_op op = function
+  | [x] -> "1"
+
+  | x :: y :: args ->
+      (print_binary_op op [x; y]) ^
+      " && " ^
+      (print_anded_binary_op op (y :: args))
+
 and print_func_app prim args =
   prim ^ "(" ^
   (map_and_concat fst ", " args) ^
@@ -74,19 +85,20 @@ and print_prim = function
   | x -> x
 
 and print_prim_app prim args =
+  let num_args = List.length args in
   match prim with
-  | "plus" -> print_binary_op "+" args
-  | "minus" -> print_binary_op "-" args
-  | "times" -> print_binary_op "*" args
-  | "divide" -> print_binary_op "/" args
-  | "eq" -> print_binary_op "==" args
-  | "neq" -> print_binary_op "!=" args
-  | "lt" -> print_binary_op "<" args
-  | "gt" -> print_binary_op ">" args
-  | "leq" -> print_binary_op "<=" args
-  | "geq" -> print_binary_op ">=" args
-  | "and" -> print_binary_op "&&" args
-  | "or" -> print_binary_op "||" args
+  | "plus" -> print_vararg_op "+" args
+  | "minus" -> if num_args == 1 then print_unary_op "-" args else print_vararg_op "-" args
+  | "times" -> print_vararg_op "*" args
+  | "divide" -> print_vararg_op "/" args
+  | "eq" -> print_anded_binary_op "==" args
+  | "neq" -> print_anded_binary_op "!=" args
+  | "lt" -> print_anded_binary_op "<" args
+  | "gt" -> print_anded_binary_op ">" args
+  | "leq" -> print_anded_binary_op "<=" args
+  | "geq" -> print_anded_binary_op ">=" args
+  | "and" -> print_vararg_op "&&" args
+  | "or" -> print_vararg_op "||" args
   | "not" -> print_unary_op "!" args
 
   | "beta" -> print_func_app "beta_rng" args

@@ -1,6 +1,6 @@
 [assume battery-age 6]
 
-[assume p-battery-dead (- 1 (exp (- 0 (/ battery-age 5))))]
+[assume p-battery-dead (- 1 (exp (- (/ battery-age 5))))]
 [assume battery-dead (flip p-battery-dead)]
 
 [assume p-battery-meter (if battery-dead 0.05 0.95)]
@@ -42,7 +42,7 @@
 [assume p-gas-light (if battery-flat 0 (if no-gas 0.9 0.2))]
 [assume gas-light (flip p-gas-light)]
 
-[assume p-car-wont-start (if (or battery-flat (or no-oil (or no-gas (or fuel-line-blocked starter-broken)))) 1 0.1)]
+[assume p-car-wont-start (if (or battery-flat no-oil no-gas fuel-line-blocked starter-broken) 1 0.1)]
 
 [observe (flip p-battery-meter) false]
 [observe (flip p-oil-light) true]

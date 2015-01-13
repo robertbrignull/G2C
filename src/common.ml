@@ -15,6 +15,9 @@ let indent n = "\n" ^ String.make n ' '
 
 let map_and_concat f sep xs = String.concat sep (List.map f xs)
 
+let rec duplicate n a =
+  if n = 0 then [] else a :: duplicate (n - 1) a
+
 let rec remove_dups = function
   | [] -> []
   | x :: xs ->

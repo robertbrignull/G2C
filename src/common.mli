@@ -6,6 +6,8 @@ val indent : int -> string
 
 val map_and_concat : ('a -> string) -> string -> 'a list -> string
 
+val duplicate : int -> 'a -> 'a list
+
 val remove_dups : 'a list -> 'a list
 
 val contains : ('a -> bool) -> 'a list -> bool
