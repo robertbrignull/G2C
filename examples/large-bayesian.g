@@ -15,7 +15,7 @@
 [assume p-no-charging (if (or alternator-broken fanbelt-broken) 1 0.2)]
 [assume no-charging (flip p-no-charging)]
 
-[assume p-battery-flat (if battery-dead 1 (if no-charging 0.9 0.05))]
+[assume p-battery-flat (cond (battery-dead 1) (no-charging 0.9) (else 0.05))]
 [assume battery-flat (flip p-battery-flat)]
 
 [assume p-no-oil 0.05]
@@ -33,13 +33,13 @@
 [assume p-lights (if battery-flat 0 0.7)]
 [assume lights (flip p-lights)]
 
-[assume p-oil-light (if battery-flat 0 (if no-oil 0.9 0.6))]
+[assume p-oil-light (cond (battery-flat 0) (no-oil 0.9) (else 0.6))]
 [assume oil-light (flip p-oil-light)]
 
 [assume p-dipstick (if no-oil 0 0.9)]
 [assume dipstick (flip p-dipstick)]
 
-[assume p-gas-light (if battery-flat 0 (if no-gas 0.9 0.2))]
+[assume p-gas-light (cond (battery-flat 0) (no-gas 0.9) (else 0.2))]
 [assume gas-light (flip p-gas-light)]
 
 [assume p-car-wont-start (if (or battery-flat no-oil no-gas fuel-line-blocked starter-broken) 1 0.1)]

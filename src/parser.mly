@@ -12,7 +12,7 @@ let p nterm = rhs_start_pos nterm
 %token <string> PRIM
 %token LPAREN RPAREN LSQUARE RSQUARE
 %token ARROW COLON COMMA DOT
-%token LAMBDA LET IF
+%token LAMBDA LET IF COND ELSE
 %token ASSUME OBSERVE PREDICT
 %token NUM_TYPE BOOL_TYPE
 %token EOF ERR
@@ -35,9 +35,16 @@ expr:
                                        { (Lambda ($4, $7, $8), p 1) }
   | LPAREN LET ID expr expr RPAREN     { (Let ($3, $4, $5), p 1) }
   | LPAREN IF expr expr expr RPAREN    { (If ($3, $4, $5), p 1) }
+  | LPAREN COND cond_expr RPAREN       { $3 }
   | LPAREN PRIM exprs RPAREN           { (Prim ($2, $3), p 1) }
   | LPAREN expr exprs RPAREN           { (App ($2, $3), p 1) }
   | error                              { raise (Exceptions.parse_error "Invalid expression" 1) }
+;
+
+cond_expr:
+  | LPAREN ELSE expr RPAREN            { $3 }
+  | LPAREN expr expr RPAREN cond_expr  { (If ($2, $3, $5), p 1) }
+  | error                              { raise (Exceptions.parse_error "Invalid cond expression" 1) }
 ;
 
 lambda_args:

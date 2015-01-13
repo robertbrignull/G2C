@@ -14,6 +14,7 @@ let kwtable =
       ("true", BOOL true); ("false", BOOL false);
       ("num", NUM_TYPE); ("bool", BOOL_TYPE);
       ("lambda", LAMBDA); ("let", LET); ("if", IF);
+      ("cond", COND); ("else", ELSE);
 
       ("assume", ASSUME); ("observe", OBSERVE); ("predict", PREDICT);
 
