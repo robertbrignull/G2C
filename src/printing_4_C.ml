@@ -227,10 +227,16 @@ and print_main stmt =
   "return 0;\n" ^
   "}\n"
 
+let read_file f =
+  let ic = open_in f in
+  let n = in_channel_length ic in
+  let s = String.create n in
+  really_input ic s 0 n;
+  close_in ic;
+  (s)
+
 let pretty_print_prog (bundle_structs, data_structs, procs, main) =
-  "#include <stdlib.h>\n" ^
-  "#include <stdio.h>\n\n" ^
-  "#include \"probabilistic.h\"\n\n" ^
+  (read_file "src/default_header.c") ^
   String.concat "\n" (List.concat [
     List.map print_bundle_decl bundle_structs;
     List.map print_data_decl data_structs;
