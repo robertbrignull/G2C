@@ -41,6 +41,12 @@ let rec make_ids_unique_expr env (expr_guts, type_c) =
               List.map fst (List.map (make_ids_unique_expr env) args)),
        type_c), env)
 
+  | TypedPrim (prim, prim_type, args) ->
+      ((TypedPrim (prim,
+                   prim_type,
+                   List.map fst (List.map (make_ids_unique_expr env) args)),
+       type_c), env)
+
   | App (expr, args) ->
       ((App (fst (make_ids_unique_expr env expr),
              List.map fst (List.map (make_ids_unique_expr env) args)),

@@ -16,6 +16,7 @@ and value =
   | Num of float
   | Id of id
   | Prim of string * args
+  | TypedPrim of string * type_c * args
 
 and stmt =
   | Seq of stmt list

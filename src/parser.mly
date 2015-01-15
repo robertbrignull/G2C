@@ -10,6 +10,7 @@ let p nterm = rhs_start_pos nterm
 %token <string> ID
 %token <string> OP
 %token <string> PRIM
+%token <string> TYPED_PRIM
 %token LPAREN RPAREN LSQUARE RSQUARE
 %token ARROW COLON COMMA DOT
 %token LAMBDA LET IF COND ELSE
@@ -38,6 +39,8 @@ expr:
   | LPAREN IF expr expr expr RPAREN    { (If ($3, $4, $5), p 1) }
   | LPAREN COND cond_expr RPAREN       { $3 }
   | LPAREN PRIM exprs RPAREN           { (Prim ($2, $3), p 1) }
+  | LPAREN TYPED_PRIM type_c exprs RPAREN
+                                       { (TypedPrim ($2, $3, $4), p 1) }
   | LPAREN expr exprs RPAREN           { (App ($2, $3), p 1) }
   | EMPTY_LIST                         { (Prim ("empty", []), p 1) }
   | LPAREN LIST exprs RPAREN           { (List.fold_right (fun f r -> (Prim ("cons", [f; r]), p 1)) $3 (Prim ("empty", []), p 1)) }

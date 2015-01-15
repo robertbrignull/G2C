@@ -42,6 +42,9 @@ let replace_id source target expr =
     | Prim (prim, args) ->
         Prim (prim, List.map id_replace_id args)
 
+    | TypedPrim (prim, type_c, args) ->
+        TypedPrim (prim, type_c, List.map id_replace_id args)
+
   and id_replace_id id =
     if id = source then target
     else id
@@ -85,6 +88,9 @@ let count_id target expr =
         expr_count_id expr
 
     | Prim (prim, args) ->
+        List.fold_left (+) 0 (List.map id_count_id args)
+
+    | TypedPrim (prim, type_c, args) ->
         List.fold_left (+) 0 (List.map id_count_id args)
 
   and id_count_id id =
@@ -150,6 +156,9 @@ let rec optimise expr_in =
         
     | Prim (prim, args) ->
         Prim (prim, args)
+        
+    | TypedPrim (prim, type_c, args) ->
+        TypedPrim (prim, type_c, args)
 
   (* Keep applying optimisations until we can do no more *)
   in begin

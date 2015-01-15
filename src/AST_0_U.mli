@@ -14,6 +14,7 @@ and expr_guts =
   | Let of id * expr * expr
   | If of expr * expr * expr
   | Prim of id * expr list
+  | TypedPrim of string * type_c * expr list
   | App of expr * expr list
 
 and expr = expr_guts * Lexing.position

@@ -15,6 +15,7 @@ and value =
   | Id of id
   | ProcInstance of id * bundle
   | Prim of string * args
+  | TypedPrim of string * type_c * args
 
 and expr =
   | Let of id * value * expr

@@ -64,5 +64,10 @@ let rec print_inline_expr (expr_guts, expr_info) =
       "(" ^ print_prim prim ^ " " ^
       (map_and_concat print_inline_expr " " args) ^ ")"
 
+  | TypedPrim (prim, type_c, args) ->
+      "(" ^ print_prim prim ^ " " ^
+      (print_type type_c) ^ " " ^
+      (map_and_concat print_inline_expr " " args) ^ ")"
+
   | App (expr, args) ->
       "(" ^ (map_and_concat print_inline_expr " " (expr :: args)) ^ ")"

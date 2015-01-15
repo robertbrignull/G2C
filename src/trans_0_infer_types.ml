@@ -76,15 +76,9 @@ let get_prim_type prim arg_types =
     | "not" -> F.FunctionType ([F.BoolType], F.BoolType)
 
     | "cons" -> F.FunctionType([first_arg_type; F.ListType], F.ListType)
-    | "first_num"  -> F.FunctionType([F.ListType], F.NumType)
-    | "first_bool"  -> F.FunctionType([F.ListType], F.BoolType)
-    | "first_list"  -> F.FunctionType([F.ListType], F.ListType)
     | "rest"  -> F.FunctionType([F.ListType], F.ListType)
     | "empty?" -> F.FunctionType([F.ListType], F.BoolType)
     | "count" -> F.FunctionType([F.ListType], F.NumType)
-    | "nth_num"  -> F.FunctionType([F.ListType; F.NumType], F.NumType)
-    | "nth_bool"  -> F.FunctionType([F.ListType; F.NumType], F.BoolType)
-    | "nth_list"  -> F.FunctionType([F.ListType; F.NumType], F.ListType)
 
     | "log" -> F.FunctionType ([F.NumType], F.NumType)
     | "log10" -> F.FunctionType ([F.NumType], F.NumType)
@@ -120,7 +114,14 @@ let get_prim_type prim arg_types =
     | "uniform-discrete" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
     | "discrete" -> F.FunctionType([F.ListType], F.NumType)
 
-    | prim -> raise Not_found
+    | _ -> raise Not_found
+
+and get_typed_prim_type prim type_c arg_types =
+  match prim, type_c with
+  | "first", type_c -> F.FunctionType ([F.ListType], type_c)
+  | "nth", type_c -> F.FunctionType ([F.ListType; F.NumType], type_c)
+
+  | _, _ -> raise Not_found
 
 and is_probabilistic_prim = function
   | "beta" -> true
@@ -197,6 +198,19 @@ let rec infer_types_expr env (expr_guts, pos) =
         let prim_type = get_prim_type prim arg_types in
         if check_app_types prim_type arg_types then
           ((F.Prim (prim, args), get_result_type pos prim_type), env)
+        else
+          raise (Exceptions.typing_error (Printf.sprintf "Application: expected %s but received %s" (PF.print_type_list (get_arg_types pos prim_type)) (PF.print_type_list arg_types)) pos)
+      with Not_found ->
+        raise (Exceptions.typing_error (Printf.sprintf "Invalid builtin primitive '%s' used" prim) pos))
+
+  | U.TypedPrim (prim, type_c, args) -> 
+      (try
+        let args = List.map fst (List.map (infer_types_expr env) args) in
+        let arg_types = List.map get_type args in
+        let type_c = convert_type type_c in
+        let prim_type = get_typed_prim_type prim type_c arg_types in
+        if check_app_types prim_type arg_types then
+          ((F.TypedPrim (prim, type_c, args), get_result_type pos prim_type), env)
         else
           raise (Exceptions.typing_error (Printf.sprintf "Application: expected %s but received %s" (PF.print_type_list (get_arg_types pos prim_type)) (PF.print_type_list arg_types)) pos)
       with Not_found ->

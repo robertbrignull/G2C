@@ -26,10 +26,9 @@ let kwtable =
       ("and", PRIM "and"); ("or", PRIM "or"); ("not", PRIM "not");
 
       ("cons", PRIM "cons"); ("list", LIST);
-      ("first_num", PRIM "first_num"); ("first_bool", PRIM "first_bool"); ("first_list", PRIM "first_list");
-      ("rest", PRIM "rest"); ("empty?", PRIM "empty?");
-      ("count", PRIM "count");
-      ("nth_num", PRIM "nth_num"); ("nth_bool", PRIM "nth_bool"); ("nth_list", PRIM "nth_list");
+      ("first", TYPED_PRIM "first"); ("nth", TYPED_PRIM "nth");
+      ("rest", PRIM "rest"); 
+      ("empty?", PRIM "empty?"); ("count", PRIM "count");
       
       ("log", PRIM "log"); ("log10", PRIM "log10"); ("exp", PRIM "exp");
       ("pow", PRIM "pow"); ("sqrt", PRIM "sqrt"); ("cbrt", PRIM "cbrt");

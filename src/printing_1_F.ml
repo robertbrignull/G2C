@@ -69,6 +69,15 @@ let rec print_expr i (expr_guts, expr_info) =
                       (indent (i + 2))
                       args)
 
+  | TypedPrim (prim, type_c, args) ->
+      print_prim prim ^
+      (indent (i + 2)) ^
+      (print_type type_c) ^
+      (indent (i + 2)) ^
+      (map_and_concat (print_expr (i + 2))
+                      (indent (i + 2))
+                      args)
+
   | App (expr, args) ->
       "app" ^
       (indent (i + 2)) ^

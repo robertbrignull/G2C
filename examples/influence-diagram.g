@@ -13,7 +13,7 @@
 ; Utility function 
 [assume utility (lambda (drill : Bool) -> Num 
 	(if drill
-		  (nth_num (list -70 50 200) oil-quant)
+		  (nth Num (list -70 50 200) oil-quant)
 		  0))]
 
 ; Make a sound observation

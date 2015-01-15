@@ -44,6 +44,15 @@ let rec print_value i = function
                       (indent (i + 2))
                       args)
 
+  | TypedPrim (prim, type_c, args) ->
+      print_prim prim ^
+      (indent (i + 2)) ^
+      (print_type type_c) ^
+      (indent (i + 2)) ^
+      (map_and_concat print_id
+                      (indent (i + 2))
+                      args)
+
 and print_expr i = function
   | Let (id, value, expr) ->
       "let " ^

@@ -126,6 +126,11 @@ and transform_let env let_id = function
       C.Assign (transform_id env let_id,
                 C.Prim (prim, List.map (transform_id env) args))
 
+  | H.TypedPrim (prim, type_c, args) ->
+      let type_c = transform_type env type_c in
+      C.Assign (transform_id env let_id,
+                C.TypedPrim (prim, type_c, List.map (transform_id env) args))
+
 and transform_expr env scope current_proc_id = function
   | H.Let (id, value, expr) ->
       let scope = (transform_id env id) :: scope in

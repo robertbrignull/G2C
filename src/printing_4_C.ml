@@ -108,6 +108,12 @@ and print_prim_app prim args =
       | NumType -> print_func_app "create_list_node_num" args
       | BoolType -> print_func_app "create_list_node_bool" args
       | ListType -> print_func_app "create_list_node_list" args
+      | BundleType id ->
+          "create_list_node_bundle(*((abstract_bundle*) &" ^
+          (fst (List.hd args)) ^
+          "), " ^
+          (fst (List.hd (List.tl args))) ^
+          ")"
       | _ -> raise (Exceptions.transform_error "Trying to cons invalid type to list"))
   | "first_num" -> print_func_app "first_num" args
   | "first_bool" -> print_func_app "first_bool" args
@@ -125,10 +131,26 @@ and print_prim_app prim args =
   | "normal" -> print_func_app "normal_rng" args
   | "poisson" -> print_func_app "poisson_rng" args
   | "uniform-continuous" -> print_func_app "uniform_rng" args
-  | "uniform-discrete" -> print_func_app "uniform_discrete_rng" args
+  | "uniform-discrete" ->
+      let l = fst (List.hd args) in
+      let u = fst (List.hd (List.tl args)) in
+      l ^ " + uniform_discrete_rng(" ^ u ^ " - " ^ l ^ ")"
   | "discrete" -> print_func_app "discrete_rng_wrapper" args
 
-  | x -> print_func_app (print_prim prim) args
+  | _ -> print_func_app (print_prim prim) args
+
+and print_typed_prim_app prim type_c args =
+  match prim, type_c with
+  | "first", NumType -> print_func_app "first_num" args
+  | "first", BoolType -> print_func_app "first_bool" args
+  | "first", ListType -> print_func_app "first_list" args
+  | "first", BundleType id -> "(" ^ id ^ ") " ^ print_func_app "first_bundle" args
+
+  | "nth", NumType -> print_func_app "nth_num" args
+  | "nth", BoolType -> print_func_app "nth_bool" args
+  | "nth", ListType -> print_func_app "nth_list" args
+
+  | _, _ -> print_func_app (print_prim prim) args
 
 and print_prim_observe prim args value =
   match prim with
@@ -140,9 +162,18 @@ and print_value = function
   | Num x -> string_of_float x
   | Id (id, type_c) -> id
   | Prim (prim, args) -> print_prim_app prim args
+  | TypedPrim (prim, type_c, args) -> print_typed_prim_app prim type_c args
 
 and print_stmt i = function
   | Seq stmts -> map_and_concat (print_stmt i) "" stmts
+
+  | Assign (id, TypedPrim ("nth", BundleType bundle_id, args)) ->
+      let abs_id = new_id () in
+      (indent i) ^ "abstract_bundle " ^ abs_id ^ " = " ^
+      (print_func_app "nth_bundle" args) ^
+      ";\n" ^
+      (indent i) ^ (print_id id) ^
+      " = *((" ^  bundle_id ^ "*) &" ^ abs_id ^ ");\n"
 
   | Assign (id, value) ->
       (indent i) ^

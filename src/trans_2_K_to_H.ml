@@ -27,6 +27,9 @@ and find_free_vars env expr =
     | K.Prim (prim, args) ->
         List.concat (List.map (find_free_vars_id env) args)
 
+    | K.TypedPrim (prim, type_c, args) ->
+        List.concat (List.map (find_free_vars_id env) args)
+
   and find_free_vars_expr env = function
     | K.Let (id, K.Lambda (args, body), expr) ->
         let env = id :: env in
@@ -79,6 +82,7 @@ and replace_id source target expr =
   and replace_id_value = function
     | H.Id id -> H.Id (replace_id_id id)
     | H.Prim (prim, args) -> H.Prim (prim, List.map replace_id_id args)
+    | H.TypedPrim (prim, type_c, args) -> H.TypedPrim (prim, type_c, List.map replace_id_id args)
     | x -> x
 
   and replace_id_expr = function
@@ -131,6 +135,10 @@ and transform_value = function
 
   | K.Prim (prim, args) ->
       ([], H.Prim (prim, List.map transform_id args))
+
+  | K.TypedPrim (prim, type_c, args) ->
+      let type_c = transform_type type_c in
+      ([], H.TypedPrim (prim, type_c, List.map transform_id args))
 
 and transform_expr = function
   | K.Let (let_id, K.Lambda (args, body), expr) ->
