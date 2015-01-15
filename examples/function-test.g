@@ -1,9 +1,9 @@
 [assume g
-  (lambda (x : num) -> num
+  (lambda (x : Num) -> Num
   	x)]
 
 [assume f
-	(lambda (x : num) -> num
+	(lambda (x : Num) -> Num
 		(g (g x)))]
 
 [predict (f 42)]

@@ -1,6 +1,7 @@
 type type_c =
   | NumType
   | BoolType
+  | ListType
   | FunctionType of type_c list
 
 and id = (string * type_c)

@@ -1,6 +1,7 @@
 type type_c =
   | NumType
   | BoolType
+  | ListType
   | DataType of string
   | BundleType of string
   | FunctionType of type_c list
@@ -26,8 +27,9 @@ and stmt =
   | PackBundleItem of id * id * id
   | UnpackBundleItem of id * id
   | DeallocateBundle
-  | IncrementRefCount of id
-  | DecrementRefCount of id
+  | IncrementDataRefCount of id
+  | DecrementDataRefCount of id
+  | DeleteList of id
   | Observe of string * args * id
   | Predict of string * id
   | Halt

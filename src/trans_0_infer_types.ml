@@ -9,6 +9,7 @@ let rec equal_types t1 t2 =
   match t1, t2 with
   | F.BoolType, F.BoolType -> true
   | F.NumType, F.NumType -> true
+  | F.ListType, F.ListType -> true
   | F.FunctionType (args1, res1), F.FunctionType (args2, res2) ->
       List.length args1 == List.length args2 &&
       (List.fold_right2 (fun t1 t2 c -> equal_types t1 t2 && c) args1 args2 true) &&
@@ -37,6 +38,7 @@ let rec check_app_types expected ts =
 let rec convert_type = function
   | U.NumType -> F.NumType
   | U.BoolType -> F.BoolType
+  | U.ListType -> F.ListType
   | U.FunctionType (args, res) -> F.FunctionType (List.map convert_type args, convert_type res)
 
 let convert_args args =
@@ -52,7 +54,10 @@ let rec env_find env id =
 let get_prim_type prim arg_types =
   let num_args = List.length arg_types in
   if num_args == 0 then
-    raise Not_found
+    match prim with
+    | "empty" -> F.FunctionType([], F.ListType)
+    | prim -> raise Not_found
+    
   else
     let first_arg_type = List.hd arg_types in
     match prim with
@@ -69,6 +74,17 @@ let get_prim_type prim arg_types =
     | "and" -> F.FunctionType (duplicate num_args F.BoolType, F.BoolType)
     | "or" -> F.FunctionType (duplicate num_args F.BoolType, F.BoolType)
     | "not" -> F.FunctionType ([F.BoolType], F.BoolType)
+
+    | "cons" -> F.FunctionType([first_arg_type; F.ListType], F.ListType)
+    | "first_num"  -> F.FunctionType([F.ListType], F.NumType)
+    | "first_bool"  -> F.FunctionType([F.ListType], F.BoolType)
+    | "first_list"  -> F.FunctionType([F.ListType], F.ListType)
+    | "rest"  -> F.FunctionType([F.ListType], F.ListType)
+    | "empty?" -> F.FunctionType([F.ListType], F.BoolType)
+    | "count" -> F.FunctionType([F.ListType], F.NumType)
+    | "nth_num"  -> F.FunctionType([F.ListType; F.NumType], F.NumType)
+    | "nth_bool"  -> F.FunctionType([F.ListType; F.NumType], F.BoolType)
+    | "nth_list"  -> F.FunctionType([F.ListType; F.NumType], F.ListType)
 
     | "log" -> F.FunctionType ([F.NumType], F.NumType)
     | "log10" -> F.FunctionType ([F.NumType], F.NumType)
@@ -102,6 +118,8 @@ let get_prim_type prim arg_types =
     | "poisson" -> F.FunctionType ([F.NumType], F.NumType)
     | "uniform-continuous" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
     | "uniform-discrete" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
+    | "discrete" -> F.FunctionType([F.ListType], F.NumType)
+
     | prim -> raise Not_found
 
 and is_probabilistic_prim = function
@@ -112,6 +130,7 @@ and is_probabilistic_prim = function
   | "poisson" -> true
   | "uniform-continuous" -> true
   | "uniform-discrete" -> true
+  | "discrete" -> true
   | _ -> false
 
 let rec infer_types_expr env (expr_guts, pos) =
@@ -144,7 +163,6 @@ let rec infer_types_expr env (expr_guts, pos) =
          env)
       else
         raise (Exceptions.typing_error (Printf.sprintf "Lambda expression: inferred type '%s' does not match specified type '%s'" (PF.print_type (get_type body)) (PF.print_type ret_type)) pos)
-      
 
   | U.Lambda (args, ret_type, body) -> 
       let args = convert_args args in

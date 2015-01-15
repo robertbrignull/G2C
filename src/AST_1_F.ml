@@ -3,6 +3,7 @@ type id = string
 and type_c =
   | NumType
   | BoolType
+  | ListType
   | FunctionType of type_c list * type_c
 
 and expr_guts =

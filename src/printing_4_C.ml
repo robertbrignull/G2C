@@ -9,6 +9,7 @@ let il = 4
 let rec print_type = function
   | NumType -> "double"
   | BoolType -> "int"
+  | ListType -> "list_node*"
   | DataType id -> id
   | BundleType id -> id
   | FunctionType args -> raise (Exceptions.transform_error "Cannot have function type here")
@@ -52,8 +53,8 @@ and print_vararg_op op args =
   map_and_concat fst (" " ^ op ^ " ") args
 
 and print_anded_binary_op op = function
+  | [] -> "1"
   | [x] -> "1"
-
   | x :: y :: args ->
       (print_binary_op op [x; y]) ^
       " && " ^
@@ -101,6 +102,23 @@ and print_prim_app prim args =
   | "or" -> print_vararg_op "||" args
   | "not" -> print_unary_op "!" args
 
+  | "empty" -> print_func_app "create_empty_list" args
+  | "cons" ->
+      (match snd (List.hd args) with
+      | NumType -> print_func_app "create_list_node_num" args
+      | BoolType -> print_func_app "create_list_node_bool" args
+      | ListType -> print_func_app "create_list_node_list" args
+      | _ -> raise (Exceptions.transform_error "Trying to cons invalid type to list"))
+  | "first_num" -> print_func_app "first_num" args
+  | "first_bool" -> print_func_app "first_bool" args
+  | "first_list" -> print_func_app "first_list" args
+  | "rest" -> print_func_app "rest" args
+  | "empty?" -> print_func_app "is_empty_list" args
+  | "count" -> print_func_app "count_list" args
+  | "nth_num" -> print_func_app "nth_num" args
+  | "nth_bool" -> print_func_app "nth_bool" args
+  | "nth_list" -> print_func_app "nth_list" args
+
   | "beta" -> print_func_app "beta_rng" args
   | "flip" -> print_func_app "flip_rng" args
   | "gamma" -> print_func_app "gamma_rng" args
@@ -108,8 +126,14 @@ and print_prim_app prim args =
   | "poisson" -> print_func_app "poisson_rng" args
   | "uniform-continuous" -> print_func_app "uniform_rng" args
   | "uniform-discrete" -> print_func_app "uniform_discrete_rng" args
+  | "discrete" -> print_func_app "discrete_rng_wrapper" args
 
   | x -> print_func_app (print_prim prim) args
+
+and print_prim_observe prim args value =
+  match prim with
+  | "discrete" -> print_func_app ("discrete_lnp_wrapper") (value :: args)
+  | prim -> print_func_app (prim ^ "_lnp") (value :: args)
 
 and print_value = function
   | Bool b -> if b then "1" else "0"
@@ -181,23 +205,23 @@ and print_stmt i = function
       (indent i) ^
       "if (--((int*) data)[0] == 0) { free(data); }\n"
 
-  | IncrementRefCount (id, _) ->
+  | IncrementDataRefCount (id, _) ->
       (indent i) ^
       "((int*) " ^ id ^ ".data)[0]++;\n"
 
-  | DecrementRefCount (id, _) ->
+  | DecrementDataRefCount (id, _) ->
       (indent i) ^
       "if (--((int*) " ^ id ^ ".data)[0] == 0) { free(" ^ id ^ ".data); }\n"
+
+  | DeleteList (id, _) ->
+      (indent i) ^
+      "delete_list_node(" ^ id ^ ");\n"
 
   | Observe (prim, args, value) ->
       (indent i) ^
       "observe(" ^
-      (print_prim prim) ^
-      "_lnp(" ^
-      (fst value) ^
-      ", " ^
-      (map_and_concat fst ", " args) ^
-      "));\n"
+      (print_prim_observe prim args value) ^
+      ");\n"
 
   | Predict (label, (id, type_c)) ->
       (indent i) ^

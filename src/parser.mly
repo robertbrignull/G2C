@@ -13,8 +13,9 @@ let p nterm = rhs_start_pos nterm
 %token LPAREN RPAREN LSQUARE RSQUARE
 %token ARROW COLON COMMA DOT
 %token LAMBDA LET IF COND ELSE
+%token EMPTY_LIST LIST
 %token ASSUME OBSERVE PREDICT
-%token NUM_TYPE BOOL_TYPE
+%token NUM_TYPE BOOL_TYPE LIST_TYPE
 %token EOF ERR
 
 %type <AST_0_U.prog> main
@@ -38,6 +39,8 @@ expr:
   | LPAREN COND cond_expr RPAREN       { $3 }
   | LPAREN PRIM exprs RPAREN           { (Prim ($2, $3), p 1) }
   | LPAREN expr exprs RPAREN           { (App ($2, $3), p 1) }
+  | EMPTY_LIST                         { (Prim ("empty", []), p 1) }
+  | LPAREN LIST exprs RPAREN           { (List.fold_right (fun f r -> (Prim ("cons", [f; r]), p 1)) $3 (Prim ("empty", []), p 1)) }
   | error                              { raise (Exceptions.parse_error "Invalid expression" 1) }
 ;
 
@@ -57,6 +60,7 @@ lambda_args:
 type_c:
   | NUM_TYPE                           { NumType }
   | BOOL_TYPE                          { BoolType }
+  | LIST_TYPE                          { ListType }
   | LPAREN type_cs RPAREN ARROW type_c { FunctionType ($2, $5) }
   | error                              { raise (Exceptions.parse_error "Invalid type" 1) }
 ;

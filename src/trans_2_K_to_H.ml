@@ -4,9 +4,8 @@ open Common
 
 let rec transform_type = function
   | K.NumType -> H.NumType
-
   | K.BoolType -> H.BoolType
-
+  | K.ListType -> H.ListType
   | K.FunctionType args ->
       H.FunctionType (List.map transform_type args)
 

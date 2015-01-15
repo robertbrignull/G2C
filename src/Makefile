@@ -71,6 +71,6 @@ printing_2_K.cmx: AST_2_K.cmi common.cmi printing_2_K.cmi
 printing_3_H.cmi: AST_3_H.cmi common.cmi
 printing_3_H.cmo: AST_3_H.cmi common.cmi printing_3_H.cmi
 printing_3_H.cmx: AST_3_H.cmi common.cmi printing_3_H.cmi
-printing_4_C.cmi: AST_4_C.cmi common.cmi
-printing_4_C.cmo: AST_4_C.cmi common.cmi printing_4_C.cmi
-printing_4_C.cmx: AST_4_C.cmi common.cmi printing_4_C.cmi
+printing_4_C.cmi: AST_4_C.cmi common.cmi default_header.c
+printing_4_C.cmo: AST_4_C.cmi common.cmi default_header.c printing_4_C.cmi
+printing_4_C.cmx: AST_4_C.cmi common.cmi default_header.c printing_4_C.cmi

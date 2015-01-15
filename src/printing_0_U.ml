@@ -4,6 +4,7 @@ open Common
 let rec print_type = function
   | NumType                   -> "num"
   | BoolType                  -> "bool"
+  | ListType                  -> "list"
   | FunctionType (args, res)  -> (print_type_list args) ^
                                  " -> " ^
                                  (print_type res)

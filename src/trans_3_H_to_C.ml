@@ -71,11 +71,17 @@ and is_bundle_type (id, type_c) =
   | C.BundleType id -> true
   | _ -> false
 
+and is_list_type (id, type_c) =
+  match type_c with
+  | C.ListType -> true
+  | _ -> false
+
 
 
 and transform_type env = function
   | H.NumType -> C.NumType
   | H.BoolType -> C.BoolType
+  | H.ListType -> C.ListType
   | H.FunctionType args ->
       snd (get_bundle_id env (H.FunctionType args))
 
@@ -107,7 +113,7 @@ and transform_let env let_id = function
           if is_bundle_type arg then
             C.Seq [
               C.PackBundleItem (bundle_id, data_id, arg);
-              C.IncrementRefCount arg
+              C.IncrementDataRefCount arg
             ]
           else
             C.PackBundleItem (bundle_id, data_id, arg) in
@@ -135,14 +141,17 @@ and transform_expr env scope current_proc_id = function
       let proc_id = transform_id env proc_id in
       let args = List.map (transform_id env) args in
       let id_find a = fun b -> fst a == fst b in
-      let rec generate_decrements = function
+      let rec gen_dealocations = function
         | [] -> []
         | id :: ids ->
             let in_args = contains (id_find id) args in
+            let rest = gen_dealocations ids in
             if is_bundle_type id && not in_args && not (id_find id proc_id) then
-              (C.DecrementRefCount id) :: generate_decrements ids
+              (C.DecrementDataRefCount id) :: rest
+            else if is_list_type id && not in_args then
+              (C.DeleteList id) :: rest
             else
-              generate_decrements ids
+              rest
       in
       let bundle_deallocation =
         match current_proc_id with
@@ -158,7 +167,7 @@ and transform_expr env scope current_proc_id = function
         | _ -> C.BundleApp (proc_id, args)
       in
       C.Seq [
-        C.Seq (generate_decrements scope);
+        C.Seq (gen_dealocations scope);
         C.Seq bundle_deallocation;
         app
       ]

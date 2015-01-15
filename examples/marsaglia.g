@@ -1,5 +1,5 @@
 [assume marsaglia-normal
-	(lambda (mu : num, std : num) -> num
+	(lambda (mu : Num, std : Num) -> Num
     (let x (uniform-continuous -1.0 1.0)
     (let y (uniform-continuous -1.0 1.0)
     (let s (+ (* x x) (* y y))

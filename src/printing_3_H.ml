@@ -4,6 +4,7 @@ open Common
 let rec print_type = function
   | NumType            -> "num"
   | BoolType           -> "bool"
+  | ListType           -> "list"
   | FunctionType args ->
       "lambda (" ^
       (map_and_concat print_type ", " args) ^
