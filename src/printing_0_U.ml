@@ -2,9 +2,9 @@ open AST_0_U
 open Common
 
 let rec print_type = function
-  | NumType                   -> "num"
-  | BoolType                  -> "bool"
-  | ListType                  -> "list"
+  | NumType                   -> "Num"
+  | BoolType                  -> "Bool"
+  | ListType                  -> "List"
   | FunctionType (args, res)  -> (print_type_list args) ^
                                  " -> " ^
                                  (print_type res)
@@ -68,6 +68,9 @@ let rec print_inline_expr (expr_guts, expr_info) =
       "(" ^ print_prim prim ^ " " ^
       (print_type type_c) ^ " " ^
       (map_and_concat print_inline_expr " " args) ^ ")"
+
+  | Mem expr ->
+      "(mem " ^ (print_inline_expr expr) ^ ")"
 
   | App (expr, args) ->
       "(" ^ (map_and_concat print_inline_expr " " (expr :: args)) ^ ")"

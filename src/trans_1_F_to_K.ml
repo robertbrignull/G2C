@@ -77,6 +77,13 @@ and gen_expr (expr_guts, type_c) cont_gen =
                K.TypedPrim (prim, prim_type, arg_ids),
                cont_gen out_id))
 
+  | F.Mem expr ->
+      let out_id = (new_id (), type_c) in
+      gen_expr expr (fun expr_id ->
+        K.Let (out_id,
+               K.Mem expr_id,
+               cont_gen out_id))
+
   | F.App (expr, args) ->
       gen_expr expr (fun expr_id ->
         gen_args args (fun arg_ids ->

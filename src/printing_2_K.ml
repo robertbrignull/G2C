@@ -2,9 +2,9 @@ open AST_2_K
 open Common
 
 let rec print_type = function
-  | NumType            -> "num"
-  | BoolType           -> "bool"
-  | ListType           -> "list"
+  | NumType            -> "Num"
+  | BoolType           -> "Bool"
+  | ListType           -> "List"
   | FunctionType args  -> "lambda (" ^ (map_and_concat print_type ", " args) ^ ")"
 
 let print_bool b = "bool " ^ if b then "true" else "false"
@@ -52,6 +52,10 @@ let rec print_value i = function
       (map_and_concat print_id
                       (indent (i + 2))
                       args)
+
+  | Mem id ->
+      "mem" ^
+      (print_id id)
 
 and print_expr i = function
   | Let (id, value, expr) ->

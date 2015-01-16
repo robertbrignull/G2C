@@ -26,6 +26,7 @@ and stmt =
   | RecursiveApp of id * args         (* function_id, args *)
   | AllocateBundle of id * id * id    (* bundle_id, proc_id, data_id *)
   | PackBundleItem of id * id * id    (* bundle_id, data_id, arg_id *)
+  | PackMemBundle of id * id * id     (* bundle_id, data_id, proc_id *)
   | UnpackBundleItem of id * id       (* data_id, arg_id *)
   | DeallocateBundle
   | IncrementDataRefCount of id       (* id *)
@@ -38,7 +39,9 @@ and stmt =
 and bundle_struct = id * args
 and data_struct = id * bundle
 
-and proc = id * args * stmt
+and proc =
+  | Proc of id * args * stmt          (* proc_id, args, body *)
+  | MemProc of id * id * args         (* id, data_id, args *)
 
 and prog = bundle_struct list *
            data_struct list *

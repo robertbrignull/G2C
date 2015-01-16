@@ -45,6 +45,9 @@ let replace_id source target expr =
     | TypedPrim (prim, type_c, args) ->
         TypedPrim (prim, type_c, List.map id_replace_id args)
 
+    | Mem id ->
+        Mem (id_replace_id id)
+
   and id_replace_id id =
     if id = source then target
     else id
@@ -92,6 +95,9 @@ let count_id target expr =
 
     | TypedPrim (prim, type_c, args) ->
         List.fold_left (+) 0 (List.map id_count_id args)
+
+    | Mem id ->
+        id_count_id id
 
   and id_count_id id =
     if id = target then 1 else 0
@@ -159,6 +165,9 @@ let rec optimise expr_in =
         
     | TypedPrim (prim, type_c, args) ->
         TypedPrim (prim, type_c, args)
+
+    | Mem id ->
+        Mem id
 
   (* Keep applying optimisations until we can do no more *)
   in begin

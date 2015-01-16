@@ -15,6 +15,7 @@ and expr_guts =
   | If of expr * expr * expr                    (* test, then_expr, else_expr *)
   | Prim of string * expr list                  (* prim_name, args *)
   | TypedPrim of string * type_c * expr list    (* prim_name, type, args *)
+  | Mem of expr                                 (* expr *)
   | App of expr * expr list                     (* function, args *)
 
 and expr = expr_guts * type_c

@@ -33,38 +33,59 @@ let rec gen_struct_ids = function
       let env = gen_data_id env proc in
       gen_bundle_id_for_proc env proc
 
-and gen_data_id env ((proc_id, _), _, _, _) =
-  let data_id = new_data_id () in
-  add_data_to_env env proc_id (data_id, C.DataType data_id)
+and gen_data_id env = function
+  | H.Proc ((proc_id, _), _, _, _) ->
+      let data_id = new_data_id () in
+      add_data_to_env env proc_id (data_id, C.DataType data_id)
 
-and gen_bundle_id_for_proc env ((_, type_c), _, _, _) =
-  try
-    let _ = get_bundle_id env type_c in env
-  with Not_found ->
-    let bundle_id = new_bundle_id () in
-    add_bundle_to_env env type_c (bundle_id, C.BundleType bundle_id)
+  | H.MemProc ((mem_id, _), _) ->
+      let data_id = new_data_id () in
+      add_data_to_env env mem_id (data_id, C.DataType data_id)
+
+and gen_bundle_id_for_proc env = function
+  | H.Proc ((_, type_c), _, _, _) ->
+      (try
+        let _ = get_bundle_id env type_c in env
+      with Not_found ->
+        let bundle_id = new_bundle_id () in
+        add_bundle_to_env env type_c (bundle_id, C.BundleType bundle_id))
+
+  | H.MemProc ((_, type_c), _) ->
+      (try
+        let _ = get_bundle_id env type_c in env
+      with Not_found ->
+        let bundle_id = new_bundle_id () in
+        add_bundle_to_env env type_c (bundle_id, C.BundleType bundle_id))
 
 and gen_structs env = function
   | [] -> ([], [])
   | proc :: procs ->
-      let (bs1, ds1) = gen_structs env procs in
-      let bs2 = gen_bundle_struct_for_proc env proc in
-      let ds2 = gen_data_struct env proc in
+      let (bss, dss) = gen_structs env procs in
+      let bs = gen_bundle_struct_for_proc env proc in
+      let ds = gen_data_struct env proc in
       ((try
-         let _ = List.find (fun b -> fst b = fst bs2) bs1 in bs1
+         let _ = List.find (fun b -> fst b = fst bs) bss in bss
        with Not_found ->
-         List.append bs1 [bs2]),
-       List.append ds1 [ds2])
+         List.append bss [bs]),
+       List.append dss [ds])
 
-and gen_data_struct env ((proc_id, _), bundle, _, _) =
-  (get_data_id env proc_id,
-   List.map (transform_id env) bundle)
+and gen_data_struct env = function
+  | H.Proc ((proc_id, _), bundle, _, _) ->
+      (get_data_id env proc_id,
+       List.map (transform_id env) bundle)
 
-and gen_bundle_struct_for_proc env ((_, type_c), _, args, _) =
-  (get_bundle_id env type_c,
-   List.map (transform_id env) args)
+  | H.MemProc ((mem_id, type_c), _) ->
+      (get_data_id env mem_id,
+       [("func", snd (get_bundle_id env type_c))])
 
+and gen_bundle_struct_for_proc env = function
+  | H.Proc ((_, type_c), _, args, _) ->
+      (get_bundle_id env type_c,
+       List.map (transform_id env) args)
 
+  | H.MemProc ((_, type_c), args) ->
+      (get_bundle_id env type_c,
+       List.map (transform_id env) args)
 
 and is_bundle_type (id, type_c) =
   match type_c with
@@ -107,16 +128,15 @@ and transform_let env let_id = function
         with Not_found -> raise (Exceptions.transform_error ("Could not find bundle for '" ^ (fst let_id) ^ ": " ^ (Printing_3_H.print_type (snd let_id)) ^ "'"))) in
       let proc_id = transform_id env proc_id in
       let data_id = get_data_id env (fst proc_id) in
-      let packItem =
-        fun arg ->
-          let arg = transform_id env arg in
-          if is_bundle_type arg then
-            C.Seq [
-              C.PackBundleItem (bundle_id, data_id, arg);
-              C.IncrementDataRefCount arg
-            ]
-          else
-            C.PackBundleItem (bundle_id, data_id, arg) in
+      let packItem arg =
+        let arg = transform_id env arg in
+        if is_bundle_type arg then
+          C.Seq [
+            C.PackBundleItem (bundle_id, data_id, arg);
+            C.IncrementDataRefCount arg
+          ]
+        else
+          C.PackBundleItem (bundle_id, data_id, arg) in
       C.Seq [
         C.AllocateBundle (bundle_id, proc_id, data_id);
         C.Seq (List.map packItem bundle)
@@ -130,6 +150,19 @@ and transform_let env let_id = function
       let type_c = transform_type env type_c in
       C.Assign (transform_id env let_id,
                 C.TypedPrim (prim, type_c, List.map (transform_id env) args))
+
+  | H.Mem (mem_id, proc_id) ->
+      let bundle_id =
+        (try (fst let_id, snd (get_bundle_id env (snd let_id)))
+        with Not_found -> raise (Exceptions.transform_error ("Could not find bundle for '" ^ (fst let_id) ^ ": " ^ (Printing_3_H.print_type (snd let_id)) ^ "'"))) in
+      let mem_id = transform_id env mem_id in
+      let proc_id = transform_id env proc_id in
+      let data_id = get_data_id env (fst mem_id) in
+      C.Seq [
+        C.AllocateBundle (bundle_id, mem_id, data_id);
+        C.PackMemBundle (bundle_id, data_id, proc_id);
+        C.IncrementDataRefCount proc_id
+      ]
 
 and transform_expr env scope current_proc_id = function
   | H.Let (id, value, expr) ->
@@ -193,19 +226,27 @@ and transform_expr env scope current_proc_id = function
 
   | H.Halt -> C.Halt
 
-and transform_proc env (id, bundle, args, expr) =
-  let id = transform_id env id in
-  let bundle = List.map (transform_id env) bundle in
-  let args = List.map (transform_id env) args in
-  let scope = List.append bundle args in
-  let data_id = get_data_id env (fst id) in
-  let unpackItem = fun arg -> C.UnpackBundleItem (data_id, arg) in
-  (id,
-   args,
-   C.Seq [
-     C.Seq (List.map unpackItem bundle);
-     transform_expr env scope (Some id) expr
-   ])
+and transform_proc env = function
+  | H.Proc (id, bundle, args, expr) ->
+      let id = transform_id env id in
+      let bundle = List.map (transform_id env) bundle in
+      let args = List.map (transform_id env) args in
+      let scope = List.append bundle args in
+      let data_id = get_data_id env (fst id) in
+      let unpackItem = fun arg -> C.UnpackBundleItem (data_id, arg) in
+      C.Proc (id,
+              args,
+              C.Seq [
+                C.Seq (List.map unpackItem bundle);
+                transform_expr env scope (Some id) expr
+              ])
+
+  | H.MemProc (mem_id, args) ->
+      let mem_id = transform_id env mem_id in
+      let data_id = get_data_id env (fst mem_id) in
+      C.MemProc (mem_id,
+                 data_id,
+                 List.map (transform_id env) args)
 
 let transform (procs, expr) =
   let env = gen_struct_ids procs in

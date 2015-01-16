@@ -216,6 +216,14 @@ let rec infer_types_expr env (expr_guts, pos) =
       with Not_found ->
         raise (Exceptions.typing_error (Printf.sprintf "Invalid builtin primitive '%s' used" prim) pos))
 
+  | U.Mem expr ->
+      let (expr, _) = infer_types_expr env expr in
+      let expr_type = get_type expr in
+      if is_function_type expr_type then
+        ((F.Mem expr, expr_type), env)
+      else
+        raise (Exceptions.typing_error (Printf.sprintf "Mem: expected a function type but received %s" (PF.print_type expr_type)) pos)
+
   | U.App (expr, args) ->
       let (expr, _) = infer_types_expr env expr in
       let expr_type = get_type expr in

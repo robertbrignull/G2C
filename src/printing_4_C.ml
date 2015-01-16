@@ -212,11 +212,6 @@ and print_stmt i = function
       (String.concat ", " ("" :: (List.map fst args))) ^
       ");\n"
 
-  | PackBundleItem ((bundle_id, _), (data_id, _), (arg_id, _)) ->
-      (indent i) ^
-      "((" ^ data_id ^ "*) " ^ bundle_id ^ ".data)->" ^
-      arg_id ^ " = " ^ arg_id ^ ";\n"
-
   | AllocateBundle ((bundle_id, bundle_type), (proc_id, _), (data_id, _)) ->
       (indent i) ^
       (print_type bundle_type) ^ " " ^ bundle_id ^ ";\n" ^
@@ -227,6 +222,15 @@ and print_stmt i = function
       (indent i) ^
       "((int*) " ^ bundle_id ^ ".data)[0] = 1;\n"
 
+  | PackBundleItem ((bundle_id, _), (data_id, _), (arg_id, _)) ->
+      (indent i) ^
+      "((" ^ data_id ^ "*) " ^ bundle_id ^ ".data)->" ^
+      arg_id ^ " = " ^ arg_id ^ ";\n"
+
+  | PackMemBundle ((bundle_id, _), (data_id, _), (proc_id, _)) ->
+      (indent i) ^
+      "((" ^ data_id ^ "*) " ^ bundle_id ^ ".data)->func = " ^ proc_id ^ ";\n"
+
   | UnpackBundleItem ((data_id, _), (arg_id, arg_type)) ->
       (indent i) ^
       (print_id (arg_id, arg_type)) ^ " = " ^
@@ -234,7 +238,7 @@ and print_stmt i = function
 
   | DeallocateBundle ->
       (indent i) ^
-      "if (--((int*) data)[0] == 0) { free(data); }\n"
+      "//if (--((int*) data)[0] == 0) { free(data); }\n"
 
   | IncrementDataRefCount (id, _) ->
       (indent i) ^
@@ -242,7 +246,7 @@ and print_stmt i = function
 
   | DecrementDataRefCount (id, _) ->
       (indent i) ^
-      "if (--((int*) " ^ id ^ ".data)[0] == 0) { free(" ^ id ^ ".data); }\n"
+      "//if (--((int*) " ^ id ^ ".data)[0] == 0) { free(" ^ id ^ ".data); }\n"
 
   | DeleteList (id, _) ->
       (indent i) ^
@@ -263,17 +267,34 @@ and print_stmt i = function
 
   | Halt -> ""
 
-and print_proc_decl ((id, type_c), args, stmt) =
-  "void " ^ id ^ "(void *data" ^
-  (String.concat ", " ("" :: (List.map print_id args))) ^
-  ");\n"
+and print_proc_decl = function
+  | Proc ((id, _), args, _) ->
+      "void " ^ id ^ "(void *data" ^
+      (String.concat ", " ("" :: (List.map print_id args))) ^
+      ");\n"
 
-and print_proc ((id, type_c), args, stmt) =
-  "void " ^ id ^ "(void *data" ^
-  (String.concat ", " ("" :: (List.map print_id args))) ^
-  ") {\n" ^
-  (print_stmt il stmt) ^
-  "}\n"
+  | MemProc ((id, _), (_, _), args) ->
+      "void " ^ id ^ "(void *data" ^
+      (String.concat ", " ("" :: (List.map print_id args))) ^
+      ");\n"
+
+and print_proc = function
+  | Proc ((proc_id, _), args, stmt) ->
+      "void " ^ proc_id ^ "(void *data" ^
+      (String.concat ", " ("" :: (List.map print_id args))) ^
+      ") {\n" ^
+      (print_stmt il stmt) ^
+      "}\n"
+
+  | MemProc ((proc_id, _), (data_id, _), args) ->
+      "void " ^ proc_id ^ "(void *data" ^
+      (String.concat ", " ("" :: (List.map print_id args))) ^
+      ") {\n" ^
+      (indent il) ^ data_id ^ " *cast_data = (" ^ data_id ^ "*) data;\n" ^
+      (indent il) ^ "cast_data->func.func(" ^
+      (String.concat ", " ("cast_data->func.data" :: List.map fst args)) ^
+      ");\n" ^
+      "}\n"
 
 and print_main stmt =
   "int main(int argc, char **argv) {\n" ^

@@ -13,7 +13,7 @@ let p nterm = rhs_start_pos nterm
 %token <string> TYPED_PRIM
 %token LPAREN RPAREN LSQUARE RSQUARE
 %token ARROW COLON COMMA DOT
-%token LAMBDA LET IF COND ELSE
+%token LAMBDA LET IF COND ELSE MEM
 %token EMPTY_LIST LIST
 %token ASSUME OBSERVE PREDICT
 %token NUM_TYPE BOOL_TYPE LIST_TYPE
@@ -41,6 +41,7 @@ expr:
   | LPAREN PRIM exprs RPAREN           { (Prim ($2, $3), p 1) }
   | LPAREN TYPED_PRIM type_c exprs RPAREN
                                        { (TypedPrim ($2, $3, $4), p 1) }
+  | LPAREN MEM expr RPAREN             { (Mem $3, p 1) }
   | LPAREN expr exprs RPAREN           { (App ($2, $3), p 1) }
   | EMPTY_LIST                         { (Prim ("empty", []), p 1) }
   | LPAREN LIST exprs RPAREN           { (List.fold_right (fun f r -> (Prim ("cons", [f; r]), p 1)) $3 (Prim ("empty", []), p 1)) }

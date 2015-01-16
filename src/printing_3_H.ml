@@ -2,13 +2,10 @@ open AST_3_H
 open Common
 
 let rec print_type = function
-  | NumType            -> "num"
-  | BoolType           -> "bool"
-  | ListType           -> "list"
-  | FunctionType args ->
-      "lambda (" ^
-      (map_and_concat print_type ", " args) ^
-      ")"
+  | NumType            -> "Num"
+  | BoolType           -> "Bool"
+  | ListType           -> "List"
+  | FunctionType args  -> "lambda (" ^ (map_and_concat print_type ", " args) ^ ")"
 
 let print_bool b = "bool " ^ if b then "true" else "false"
 
@@ -54,6 +51,13 @@ let rec print_value i = function
       (map_and_concat print_id
                       (indent (i + 2))
                       args)
+
+  | Mem (mem_id, proc_id) ->
+      "mem" ^
+      (indent (i + 2)) ^
+      (print_id mem_id) ^
+      (indent (i + 2)) ^
+      (print_id proc_id)
 
 and print_expr i = function
   | Let (id, value, expr) ->
@@ -103,23 +107,34 @@ and print_expr i = function
 
   | Halt -> "halt"
 
-and print_proc i (id, closure, args, expr) =
-  "proc " ^
-  (print_id id) ^
-  (indent (i + 2)) ^
-  "(" ^
-  (map_and_concat print_id
-                  (indent (i + 3))
-                  closure) ^
-  ")" ^
-  (indent (i + 2)) ^
-  "(" ^
-  (map_and_concat print_id
-                  (indent (i + 3))
-                  args) ^
-  ")" ^
-  (indent (i + 2)) ^
-  (print_expr (i + 2) expr)
+and print_proc i = function
+  | Proc (id, closure, args, expr) ->
+      "proc " ^
+      (print_id id) ^
+      (indent (i + 2)) ^
+      "(" ^
+      (map_and_concat print_id
+                      (indent (i + 3))
+                      closure) ^
+      ")" ^
+      (indent (i + 2)) ^
+      "(" ^
+      (map_and_concat print_id
+                      (indent (i + 3))
+                      args) ^
+      ")" ^
+      (indent (i + 2)) ^
+      (print_expr (i + 2) expr)
+
+  | MemProc (mem_id, args) ->
+      "mem proc " ^
+      (print_id mem_id) ^
+      (indent (i + 2)) ^
+      "(" ^
+      (map_and_concat print_id
+                      (indent (i + 3))
+                      args) ^
+      ")"
 
 
 

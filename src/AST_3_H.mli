@@ -16,6 +16,7 @@ and value =
   | ProcInstance of id * bundle
   | Prim of string * args
   | TypedPrim of string * type_c * args
+  | Mem of id * id
 
 and expr =
   | Let of id * value * expr
@@ -25,6 +26,8 @@ and expr =
   | Predict of string * id * expr
   | Halt
 
-and proc = id * bundle * args * expr
+and proc =
+  | Proc of id * bundle * args * expr
+  | MemProc of id * args
 
 and prog = proc list * expr

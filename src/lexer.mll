@@ -15,6 +15,7 @@ let kwtable =
       ("Num", NUM_TYPE); ("Bool", BOOL_TYPE); ("List", LIST_TYPE);
       ("lambda", LAMBDA); ("let", LET); ("if", IF);
       ("cond", COND); ("else", ELSE);
+      ("mem", MEM);
 
       ("assume", ASSUME); ("observe", OBSERVE); ("predict", PREDICT);
 

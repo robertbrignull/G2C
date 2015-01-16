@@ -9,6 +9,10 @@ let rec transform_type = function
   | K.FunctionType args ->
       H.FunctionType (List.map transform_type args)
 
+and get_arg_types = function
+  | H.FunctionType args -> args
+  | _ -> raise (Exceptions.transform_error "Tried to get argument types of a non-function type")
+
 and find_free_vars env expr =
   let rec find_free_vars_id env id =
     (try let _ = List.find (fun x -> x = id) env in []
@@ -29,6 +33,9 @@ and find_free_vars env expr =
 
     | K.TypedPrim (prim, type_c, args) ->
         List.concat (List.map (find_free_vars_id env) args)
+
+    | K.Mem id ->
+        find_free_vars_id env id
 
   and find_free_vars_expr env = function
     | K.Let (id, K.Lambda (args, body), expr) ->
@@ -83,6 +90,7 @@ and replace_id source target expr =
     | H.Id id -> H.Id (replace_id_id id)
     | H.Prim (prim, args) -> H.Prim (prim, List.map replace_id_id args)
     | H.TypedPrim (prim, type_c, args) -> H.TypedPrim (prim, type_c, List.map replace_id_id args)
+    | H.Mem (mem_id, proc_id) -> H.Mem (replace_id_id mem_id, replace_id_id proc_id)
     | x -> x
 
   and replace_id_expr = function
@@ -129,7 +137,7 @@ and transform_value = function
       let (procs_1, body) = transform_expr body in
       let proc_type = H.FunctionType (List.map snd args) in
       let proc_id = (new_id (), proc_type) in
-      let new_proc = (proc_id, free_vars, args, body) in
+      let new_proc = H.Proc (proc_id, free_vars, args, body) in
       let proc_instance = H.ProcInstance (proc_id, free_vars) in
       (new_proc :: procs_1, proc_instance)
 
@@ -140,6 +148,13 @@ and transform_value = function
       let type_c = transform_type type_c in
       ([], H.TypedPrim (prim, type_c, List.map transform_id args))
 
+  | K.Mem proc_id ->
+      let proc_id = transform_id proc_id in
+      let mem_id = (new_id (), snd proc_id) in
+      let args = List.map (fun type_c -> (new_id (), type_c)) (get_arg_types (snd proc_id)) in
+      let mem_proc = H.MemProc (mem_id, args) in
+      ([mem_proc], H.Mem (mem_id, proc_id))
+
 and transform_expr = function
   | K.Let (let_id, K.Lambda (args, body), expr) ->
       let free_vars = find_free_vars (let_id :: args) body in
@@ -149,7 +164,7 @@ and transform_expr = function
       let proc_type = H.FunctionType (List.map snd args) in
       let proc_id = (new_id (), proc_type) in
       let body = replace_id let_id proc_id body in
-      let new_proc = (proc_id, free_vars, args, body) in
+      let new_proc = H.Proc (proc_id, free_vars, args, body) in
       let proc_instance = H.ProcInstance (proc_id, free_vars) in
       let (procs_2, expr) = transform_expr expr in
       (new_proc :: (List.append procs_1 procs_2),

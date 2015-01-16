@@ -2,9 +2,9 @@ open AST_1_F
 open Common
 
 let rec print_type = function
-  | NumType                   -> "num"
-  | BoolType                  -> "bool"
-  | ListType                  -> "list"
+  | NumType                   -> "Num"
+  | BoolType                  -> "Bool"
+  | ListType                  -> "List"
   | FunctionType (args, res)  -> (print_type_list args) ^
                                  " -> " ^
                                  (print_type res)
@@ -77,6 +77,11 @@ let rec print_expr i (expr_guts, expr_info) =
       (map_and_concat (print_expr (i + 2))
                       (indent (i + 2))
                       args)
+
+  | Mem expr ->
+      "mem" ^
+      (indent (i + 2)) ^
+      (print_expr (i + 2) expr)
 
   | App (expr, args) ->
       "app" ^

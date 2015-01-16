@@ -15,6 +15,7 @@ and value =
   | Lambda of id list * expr
   | Prim of string * args
   | TypedPrim of string * type_c * args
+  | Mem of id
 
 and expr =
   | Let of id * value * expr
