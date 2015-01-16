@@ -31,7 +31,7 @@ let rec gen_struct_ids = function
   | proc :: procs ->
       let env = gen_struct_ids procs in
       let env = gen_data_id env proc in
-      gen_bundle_id_for_proc env proc
+      gen_bundle_id env proc
 
 and gen_data_id env = function
   | H.Proc ((proc_id, _), _, _, _) ->
@@ -42,7 +42,7 @@ and gen_data_id env = function
       let data_id = new_data_id () in
       add_data_to_env env mem_id (data_id, C.DataType data_id)
 
-and gen_bundle_id_for_proc env = function
+and gen_bundle_id env = function
   | H.Proc ((_, type_c), _, _, _) ->
       (try
         let _ = get_bundle_id env type_c in env
@@ -57,35 +57,39 @@ and gen_bundle_id_for_proc env = function
         let bundle_id = new_bundle_id () in
         add_bundle_to_env env type_c (bundle_id, C.BundleType bundle_id))
 
-and gen_structs env = function
-  | [] -> ([], [])
-  | proc :: procs ->
-      let (bss, dss) = gen_structs env procs in
-      let bs = gen_bundle_struct_for_proc env proc in
-      let ds = gen_data_struct env proc in
-      ((try
-         let _ = List.find (fun b -> fst b = fst bs) bss in bss
-       with Not_found ->
-         List.append bss [bs]),
-       List.append dss [ds])
+and gen_data_structs env = function
+  | [] -> []
 
-and gen_data_struct env = function
-  | H.Proc ((proc_id, _), bundle, _, _) ->
-      (get_data_id env proc_id,
-       List.map (transform_id env) bundle)
+  | H.Proc ((proc_id, _), bundle, _, _) :: procs ->
+      let ds = (get_data_id env proc_id,
+                List.map (transform_id env) bundle) in
+      ds :: (gen_data_structs env procs)
 
-  | H.MemProc ((mem_id, type_c), _) ->
-      (get_data_id env mem_id,
-       [("func", snd (get_bundle_id env type_c))])
+  | H.MemProc ((mem_id, type_c), _) :: procs ->
+      let ds = (get_data_id env mem_id,
+                [("bundle", snd (get_bundle_id env type_c))]) in
+      ds :: (gen_data_structs env procs)
 
-and gen_bundle_struct_for_proc env = function
-  | H.Proc ((_, type_c), _, args, _) ->
-      (get_bundle_id env type_c,
-       List.map (transform_id env) args)
+and gen_bundle_structs env = function
+  | [] -> []  
 
-  | H.MemProc ((_, type_c), args) ->
-      (get_bundle_id env type_c,
-       List.map (transform_id env) args)
+  | H.Proc ((_, type_c), _, args, _) :: procs ->
+      let bs = (get_bundle_id env type_c,
+                List.map (transform_id env) args) in
+      let bss = gen_bundle_structs env procs in
+      if contains (fun b -> fst b = fst bs) bss then
+        bss
+      else
+        bs :: bss
+
+  | H.MemProc ((_, type_c), args) :: procs ->
+      let bs = (get_bundle_id env type_c,
+                List.map (transform_id env) args) in
+      let bss = gen_bundle_structs env procs in
+      if contains (fun b -> fst b = fst bs) bss then
+        bss
+      else
+        bs :: bss
 
 and is_bundle_type (id, type_c) =
   match type_c with
@@ -105,6 +109,10 @@ and transform_type env = function
   | H.ListType -> C.ListType
   | H.FunctionType args ->
       snd (get_bundle_id env (H.FunctionType args))
+
+and get_function_args = function
+  | H.FunctionType args -> args
+  | _ -> raise (Exceptions.transform_error "Trying to get arguments of a non-function type")
 
 and transform_id env (id, type_c) =
   (id, transform_type env type_c)
@@ -205,14 +213,19 @@ and transform_proc env = function
 
   | H.MemProc (mem_id, args) ->
       let mem_id = transform_id env mem_id in
+      let bundle_id = get_bundle_id env (snd (last args)) in
       let data_id = get_data_id env (fst mem_id) in
       C.MemProc (mem_id,
                  data_id,
-                 List.map (transform_id env) args)
+                 List.map (transform_id env) args,
+                 bundle_id,
+                 List.map (fun type_c -> (new_id (), transform_type env type_c))
+                          (get_function_args (snd (last args))))
 
 let transform (procs, expr) =
   let env = gen_struct_ids procs in
-  let (bundle_structs, data_structs) = gen_structs env procs in
+  let bundle_structs = gen_bundle_structs env procs in
+  let data_structs = gen_data_structs env procs in
   (bundle_structs,
    data_structs,
    List.map (transform_proc env) procs,

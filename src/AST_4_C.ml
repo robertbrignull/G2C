@@ -36,8 +36,8 @@ and bundle_struct = id * args
 and data_struct = id * bundle
 
 and proc =
-  | Proc of id * args * stmt          (* proc_id, args, body *)
-  | MemProc of id * id * args         (* id, data_id, args *)
+  | Proc of id * args * stmt               (* proc_id, args, body *)
+  | MemProc of id * id * args * id * args  (* id, data_id, args, cont_bundle_id, cont_args *)
 
 and prog = bundle_struct list *
            data_struct list *

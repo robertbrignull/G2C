@@ -26,3 +26,13 @@ let rec remove_dups = function
 let contains pred xs =
 	try let _ = List.find pred xs in true
   with Not_found -> false
+
+let rec last = function
+  | [] -> raise (Failure "Trying to get last item of empty list")
+  | [x] -> x
+  | x :: xs -> last xs
+
+let rec remove_last = function
+  | [] -> raise (Failure "Trying to remove last item of empty list")
+  | [x] -> []
+  | x :: xs -> x :: remove_last xs
