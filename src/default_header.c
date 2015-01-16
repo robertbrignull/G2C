@@ -18,7 +18,6 @@ typedef enum {
 typedef struct list_node list_node;
 
 typedef struct list_node {
-	int references;
 	int first_type;
 	union {
 		double first_num;
@@ -37,7 +36,6 @@ list_node *create_empty_list() {
 
 list_node *create_list_node(list_node *rest) {
 	list_node *node = (list_node*) malloc(sizeof(list_node));
-	node->references = 1;
 	node->rest = rest;
 	return node;
 }
@@ -68,15 +66,6 @@ list_node *create_list_node_bundle(abstract_bundle x, list_node *rest) {
 	node->first_type = FIRST_TYPE_BUNDLE;
 	node->first_bundle = x;
 	return node;
-}
-
-
-
-void delete_list_node(list_node *node) {
-	// if (--node->references == 0) {
-	// 	if (node->rest != NULL) { delete_list_node(node->rest); }
-	// 	free(node);
-	// }
 }
 
 

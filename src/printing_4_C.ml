@@ -33,7 +33,6 @@ and print_bundle_struct ((id, _), args) =
 
 and print_data_struct ((id, _), bundle) =
   "typedef struct " ^ id ^ " {\n" ^
-  (indent il) ^ "int references;\n" ^
   (String.concat "" (List.map (fun b -> (indent il) ^ (print_id b) ^ ";\n") bundle)) ^
   "} " ^ id ^ ";\n"
 
@@ -235,22 +234,6 @@ and print_stmt i = function
       (indent i) ^
       (print_id (arg_id, arg_type)) ^ " = " ^
       "((" ^ data_id ^ "*) data)->" ^ arg_id ^ ";\n"
-
-  | DeallocateBundle ->
-      (indent i) ^
-      "//if (--((int*) data)[0] == 0) { free(data); }\n"
-
-  | IncrementDataRefCount (id, _) ->
-      (indent i) ^
-      "((int*) " ^ id ^ ".data)[0]++;\n"
-
-  | DecrementDataRefCount (id, _) ->
-      (indent i) ^
-      "//if (--((int*) " ^ id ^ ".data)[0] == 0) { free(" ^ id ^ ".data); }\n"
-
-  | DeleteList (id, _) ->
-      (indent i) ^
-      "delete_list_node(" ^ id ^ ");\n"
 
   | Observe (prim, args, value) ->
       (indent i) ^

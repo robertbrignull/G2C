@@ -28,10 +28,6 @@ and stmt =
   | PackBundleItem of id * id * id    (* bundle_id, data_id, arg_id *)
   | PackMemBundle of id * id * id     (* bundle_id, data_id, proc_id *)
   | UnpackBundleItem of id * id       (* data_id, arg_id *)
-  | DeallocateBundle
-  | IncrementDataRefCount of id       (* id *)
-  | DecrementDataRefCount of id       (* id *)
-  | DeleteList of id                  (* id *)
   | Observe of string * args * id     (* label, args, value *)
   | Predict of string * id            (* label, value *)
   | Halt

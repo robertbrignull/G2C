@@ -128,15 +128,7 @@ and transform_let env let_id = function
         with Not_found -> raise (Exceptions.transform_error ("Could not find bundle for '" ^ (fst let_id) ^ ": " ^ (Printing_3_H.print_type (snd let_id)) ^ "'"))) in
       let proc_id = transform_id env proc_id in
       let data_id = get_data_id env (fst proc_id) in
-      let packItem arg =
-        let arg = transform_id env arg in
-        if is_bundle_type arg then
-          C.Seq [
-            C.PackBundleItem (bundle_id, data_id, arg);
-            C.IncrementDataRefCount arg
-          ]
-        else
-          C.PackBundleItem (bundle_id, data_id, arg) in
+      let packItem arg = C.PackBundleItem (bundle_id, data_id, transform_id env arg) in
       C.Seq [
         C.AllocateBundle (bundle_id, proc_id, data_id);
         C.Seq (List.map packItem bundle)
@@ -160,68 +152,39 @@ and transform_let env let_id = function
       let data_id = get_data_id env (fst mem_id) in
       C.Seq [
         C.AllocateBundle (bundle_id, mem_id, data_id);
-        C.PackMemBundle (bundle_id, data_id, proc_id);
-        C.IncrementDataRefCount proc_id
+        C.PackMemBundle (bundle_id, data_id, proc_id)
       ]
 
-and transform_expr env scope current_proc_id = function
+and transform_expr env current_proc_id = function
   | H.Let (id, value, expr) ->
-      let scope = (transform_id env id) :: scope in
       C.Seq [transform_let env id value;
-             transform_expr env scope current_proc_id expr]
+             transform_expr env current_proc_id expr]
 
   | H.If (test, then_expr, else_expr) ->
       C.If (transform_id env test,
-            transform_expr env scope current_proc_id then_expr,
-            transform_expr env scope current_proc_id else_expr)
+            transform_expr env current_proc_id then_expr,
+            transform_expr env current_proc_id else_expr)
 
   | H.App (proc_id, args) ->
       let proc_id = transform_id env proc_id in
       let args = List.map (transform_id env) args in
-      let id_find a = fun b -> fst a == fst b in
-      let rec gen_dealocations = function
-        | [] -> []
-        | id :: ids ->
-            let in_args = contains (id_find id) args in
-            let rest = gen_dealocations ids in
-            if is_bundle_type id && not in_args && not (id_find id proc_id) then
-              (C.DecrementDataRefCount id) :: rest
-            else if is_list_type id && not in_args then
-              (C.DeleteList id) :: rest
-            else
-              rest
-      in
-      let bundle_deallocation =
-        match current_proc_id with
-        | Some id ->
-            if fst id = fst proc_id then []
-            else [C.DeallocateBundle]
-        | _ -> []
-      in
-      let app =
-        match current_proc_id with
-        | Some id when fst id = fst proc_id ->
-            C.RecursiveApp (proc_id, args)
-        | _ -> C.BundleApp (proc_id, args)
-      in
-      C.Seq [
-        C.Seq (gen_dealocations scope);
-        C.Seq bundle_deallocation;
-        app
-      ]
+      (match current_proc_id with
+      | Some id when fst id = fst proc_id ->
+          C.RecursiveApp (proc_id, args)
+      | _ -> C.BundleApp (proc_id, args))
 
   | H.Observe (prim, args, value, next) ->
       let args = List.map (transform_id env) args in
       let value = transform_id env value in
       C.Seq [
         C.Observe (prim, args, value);
-        transform_expr env scope current_proc_id next
+        transform_expr env current_proc_id next
       ]
 
   | H.Predict (label, id, next) ->
       C.Seq [
         C.Predict (label, transform_id env id);
-        transform_expr env scope current_proc_id next
+        transform_expr env current_proc_id next
       ]
 
   | H.Halt -> C.Halt
@@ -231,14 +194,13 @@ and transform_proc env = function
       let id = transform_id env id in
       let bundle = List.map (transform_id env) bundle in
       let args = List.map (transform_id env) args in
-      let scope = List.append bundle args in
       let data_id = get_data_id env (fst id) in
       let unpackItem = fun arg -> C.UnpackBundleItem (data_id, arg) in
       C.Proc (id,
               args,
               C.Seq [
                 C.Seq (List.map unpackItem bundle);
-                transform_expr env scope (Some id) expr
+                transform_expr env (Some id) expr
               ])
 
   | H.MemProc (mem_id, args) ->
@@ -254,4 +216,4 @@ let transform (procs, expr) =
   (bundle_structs,
    data_structs,
    List.map (transform_proc env) procs,
-   transform_expr env [] None expr)
+   transform_expr env None expr)
