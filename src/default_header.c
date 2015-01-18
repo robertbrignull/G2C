@@ -79,7 +79,7 @@ double first_num(list_node *node) {
 }
 
 int first_bool(list_node *node) {
-	if (node->first_type != FIRST_TYPE_NUM) {
+	if (node->first_type != FIRST_TYPE_BOOL) {
 		fprintf(stderr, "Tried to pop a bool from list but head element was of a different type.\n");
 		exit(EXIT_FAILURE);
 	}
@@ -87,7 +87,7 @@ int first_bool(list_node *node) {
 }
 
 list_node *first_list(list_node *node) {
-	if (node->first_type != FIRST_TYPE_NUM) {
+	if (node->first_type != FIRST_TYPE_LIST) {
 		fprintf(stderr, "Tried to pop a list from list but head element was of a different type.\n");
 		exit(EXIT_FAILURE);
 	}
@@ -105,7 +105,7 @@ abstract_bundle first_bundle(list_node *node) {
 
 
 list_node *rest(list_node *node) {
-	if (node->rest == NULL) {
+	if (node == NULL) {
 		fprintf(stderr, "Tried to get tail of empty list.\n");
 		exit(EXIT_FAILURE);
 	}
@@ -157,6 +157,44 @@ abstract_bundle nth_bundle(list_node *node, double n) {
 		n--;
 	}
 	return first_bundle(node);
+}
+
+
+
+char *print_list(list_node *node) {
+	char *out = NULL;
+	asprintf(&out, "(");
+
+	if (node != NULL) {
+		if (node->first_type == FIRST_TYPE_NUM) {
+			asprintf(&out, "%s%f", out, first_num(node));
+		}
+		else if (node->first_type == FIRST_TYPE_BOOL) {
+			asprintf(&out, "%s%s", out, (first_bool(node)) ? "true" : "false");
+		}
+		else if (node->first_type == FIRST_TYPE_LIST) {
+			asprintf(&out, "%s%s", out, print_list(first_list(node)));
+		}
+	}
+
+	node = rest(node);
+	
+	while (node != NULL) {
+		if (node->first_type == FIRST_TYPE_NUM) {
+			asprintf(&out, "%s %f", out, first_num(node));
+		}
+		else if (node->first_type == FIRST_TYPE_BOOL) {
+			asprintf(&out, "%s %s", out, (first_bool(node)) ? "true" : "false");
+		}
+		else if (node->first_type == FIRST_TYPE_LIST) {
+			asprintf(&out, "%s %s", out, print_list(first_list(node)));
+		}
+
+		node = rest(node);
+	}
+
+	asprintf(&out, "%s)", out);
+	return out;
 }
 
 

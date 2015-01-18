@@ -145,9 +145,19 @@ and print_typed_prim_app prim type_c args =
   | "first", ListType -> print_func_app "first_list" args
   | "first", BundleType id -> "(" ^ id ^ ") " ^ print_func_app "first_bundle" args
 
+  | "second", NumType -> "first_num(rest(" ^ (fst (List.hd args)) ^ "))"
+  | "second", BoolType -> "first_bool(rest(" ^ (fst (List.hd args)) ^ "))"
+  | "second", ListType -> "first_list(rest(" ^ (fst (List.hd args)) ^ "))"
+  | "second", BundleType id -> "(" ^ id ^ ") first_bundle(rest(" ^ (fst (List.hd args)) ^ "))"
+
   | "nth", NumType -> print_func_app "nth_num" args
   | "nth", BoolType -> print_func_app "nth_bool" args
   | "nth", ListType -> print_func_app "nth_list" args
+
+  | "categorical", NumType -> print_func_app "categorical_num_rng_wrapper" args
+  | "categorical", BoolType -> print_func_app "categorical_bool_rng_wrapper" args
+  | "categorical", ListType -> print_func_app "categorical_list_rng_wrapper" args
+  | "categorical", BundleType id -> print_func_app "categorical_bundle_rng_wrapper" args
 
   | _, _ -> print_func_app (print_prim prim) args
 
@@ -246,6 +256,7 @@ and print_stmt i = function
       (match type_c with
       | NumType -> "predict(\"%s,%f\\n\", \"" ^ label ^ "\", " ^ id ^ ");\n"
       | BoolType -> "predict(\"%s,%s\\n\", \"" ^ label ^ "\", (" ^ id ^ ")?\"true\":\"false\");\n"
+      | ListType -> "predict(\"%s,%s\\n\", \"" ^ label ^ "\", " ^ print_func_app "print_list" [(id, type_c)] ^ ");\n"
       | _ -> raise (Exceptions.transform_error "Can only predict a number or boolean type"))
 
   | Halt -> ""

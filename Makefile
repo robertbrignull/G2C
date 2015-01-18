@@ -1,8 +1,23 @@
 # This should point to an installation of prob c
 PROBC = /home/robert/Documents/oxford/year\ 4/project/languages/prob-c/
 
-EXAMPLES = examples/bayesian examples/large-bayesian examples/coin-flip examples/gaussian-unknown-mean examples/tricky-coin examples/sum-equals examples/function-test examples/marsaglia examples/influence-diagram examples/list-test examples/mem-test
-
+EXAMPLES =\
+  examples/bayesian\
+  examples/large-bayesian\
+  examples/coin-flip\
+  examples/gaussian-unknown-mean\
+  examples/tricky-coin\
+  examples/sum-equals\
+  examples/function-test\
+  examples/marsaglia\
+  examples/influence-diagram\
+  examples/list-test\
+  examples/mem-test\
+  examples/neural-net\
+  examples/kalman-filter-application\
+  examples/kalman-filter-missing-values\
+  examples/kalman-filter-learning
+  
 
 
 all: g2c $(EXAMPLES)

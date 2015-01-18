@@ -119,7 +119,10 @@ let get_prim_type prim arg_types =
 and get_typed_prim_type prim type_c arg_types =
   match prim, type_c with
   | "first", type_c -> F.FunctionType ([F.ListType], type_c)
+  | "second", type_c -> F.FunctionType ([F.ListType], type_c)
   | "nth", type_c -> F.FunctionType ([F.ListType; F.NumType], type_c)
+
+  | "categorical", type_c -> F.FunctionType ([F.ListType], type_c)
 
   | _, _ -> raise Not_found
 
@@ -132,6 +135,7 @@ and is_probabilistic_prim = function
   | "uniform-continuous" -> true
   | "uniform-discrete" -> true
   | "discrete" -> true
+  | "categorical" -> true
   | _ -> false
 
 let rec infer_types_expr env (expr_guts, pos) =
@@ -268,6 +272,11 @@ and infer_types_stmt env (stmt_guts, pos) =
       if equal_types expr_type value_type then
         (match expr with
         | (F.Prim (prim, args), _) ->
+            if is_probabilistic_prim prim then
+              ((F.Observe (prim, args, value), value_type), env)
+            else
+              raise (Exceptions.typing_error "Observe: outer expresion must be a probabilistic primitive" pos)
+        | (F.TypedPrim (prim, type_c, args), _) ->
             if is_probabilistic_prim prim then
               ((F.Observe (prim, args, value), value_type), env)
             else

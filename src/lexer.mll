@@ -27,7 +27,8 @@ let kwtable =
       ("and", PRIM "and"); ("or", PRIM "or"); ("not", PRIM "not");
 
       ("cons", PRIM "cons"); ("list", LIST);
-      ("first", TYPED_PRIM "first"); ("nth", TYPED_PRIM "nth");
+      ("first", TYPED_PRIM "first"); ("second", TYPED_PRIM "second"); 
+      ("nth", TYPED_PRIM "nth");
       ("rest", PRIM "rest"); 
       ("empty?", PRIM "empty?"); ("count", PRIM "count");
       
@@ -47,7 +48,8 @@ let kwtable =
       ("normal", PRIM "normal"); ("poisson", PRIM "poisson");
       ("uniform-continuous", PRIM "uniform-continuous");
       ("uniform-discrete", PRIM "uniform-discrete");
-      ("discrete", PRIM "discrete") ]
+      ("discrete", PRIM "discrete");
+      ("categorical", TYPED_PRIM "categorical") ]
 
 let lookup s = try Hashtbl.find kwtable s with Not_found -> ID s
 }
