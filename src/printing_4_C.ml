@@ -225,12 +225,15 @@ and print_stmt i = function
   | AllocateBundle ((bundle_id, bundle_type), (proc_id, _), (data_id, _)) ->
       (indent i) ^
       (print_type bundle_type) ^ " " ^ bundle_id ^ ";\n" ^
-      (indent i) ^ bundle_id ^
-      ".func = " ^ proc_id ^ ";\n" ^
+      (indent i) ^ bundle_id ^ ".func = " ^ proc_id ^ ";\n" ^
+      (indent i) ^ bundle_id ^ ".data = (void*) malloc(sizeof(" ^ data_id ^ "));\n" ^
+      (indent i) ^ "((int*) " ^ bundle_id ^ ".data)[0] = 1;\n"
+
+  | AllocateRecursiveBundle ((bundle_id, bundle_type), (proc_id, _)) ->
       (indent i) ^
-      bundle_id ^ ".data = (void*) malloc(sizeof(" ^ data_id ^ "));\n" ^
-      (indent i) ^
-      "((int*) " ^ bundle_id ^ ".data)[0] = 1;\n"
+      (print_type bundle_type) ^ " " ^ bundle_id ^ ";\n" ^
+      (indent i) ^ bundle_id ^ ".func = " ^ proc_id ^ ";\n" ^
+      (indent i) ^ bundle_id ^ ".data = data;\n"
 
   | PackBundleItem ((bundle_id, _), (data_id, _), (arg_id, _)) ->
       (indent i) ^

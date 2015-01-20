@@ -14,6 +14,7 @@ and value =
   | Num of float
   | Id of id
   | ProcInstance of id * bundle
+  | RecursiveProcInstance of id
   | Prim of string * args
   | TypedPrim of string * type_c * args
   | Mem of id * id

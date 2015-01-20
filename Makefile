@@ -16,7 +16,8 @@ EXAMPLES =\
   examples/neural-net\
   examples/kalman-filter-application\
   examples/kalman-filter-missing-values\
-  examples/kalman-filter-learning
+  examples/kalman-filter-learning\
+  examples/fib
   
 
 

@@ -36,6 +36,10 @@ let rec print_value i = function
                       bundle) ^
       ")"
 
+  | RecursiveProcInstance id ->
+      "recursive proc instance " ^
+      (print_id id)
+
   | Prim (prim, args) ->
       print_prim prim ^
       (indent (i + 2)) ^

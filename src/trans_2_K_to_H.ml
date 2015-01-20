@@ -87,37 +87,38 @@ and replace_id source target expr =
     if fst id == fst source then target else id
 
   and replace_id_value = function
-    | H.Id id -> H.Id (replace_id_id id)
-    | H.Prim (prim, args) -> H.Prim (prim, List.map replace_id_id args)
-    | H.TypedPrim (prim, type_c, args) -> H.TypedPrim (prim, type_c, List.map replace_id_id args)
-    | H.Mem (mem_id, proc_id) -> H.Mem (replace_id_id mem_id, replace_id_id proc_id)
+    | K.Id id -> K.Id (replace_id_id id)
+    | K.Lambda (args, expr) -> K.Lambda (args, replace_id_expr expr)
+    | K.Prim (prim, args) -> K.Prim (prim, List.map replace_id_id args)
+    | K.TypedPrim (prim, type_c, args) -> K.TypedPrim (prim, type_c, List.map replace_id_id args)
+    | K.Mem (mem_id) -> K.Mem (replace_id_id mem_id)
     | x -> x
 
   and replace_id_expr = function
-    | H.Let (id, value, expr) ->
-        H.Let (id, replace_id_value value, replace_id_expr expr)
+    | K.Let (id, value, expr) ->
+        K.Let (id, replace_id_value value, replace_id_expr expr)
 
-    | H.If (test, then_expr, else_expr) ->
-        H.If (replace_id_id test,
+    | K.If (test, then_expr, else_expr) ->
+        K.If (replace_id_id test,
               replace_id_expr then_expr,
               replace_id_expr else_expr)
 
-    | H.App (proc, args) ->
-        H.App (replace_id_id proc,
+    | K.App (proc, args) ->
+        K.App (replace_id_id proc,
                List.map replace_id_id args)
 
-    | H.Observe (label, args, value, next) ->
-        H.Observe (label,
+    | K.Observe (label, args, value, next) ->
+        K.Observe (label,
                    List.map replace_id_id args,
                    replace_id_id value,
                    replace_id_expr next)
 
-    | H.Predict (label, value, next) ->
-        H.Predict (label,
+    | K.Predict (label, value, next) ->
+        K.Predict (label,
                    replace_id_id value,
                    replace_id_expr next)
 
-    | H.Halt -> H.Halt
+    | K.Halt -> K.Halt
 
   in replace_id_expr expr
 
@@ -159,16 +160,21 @@ and transform_expr = function
   | K.Let (let_id, K.Lambda (args, body), expr) ->
       let free_vars = find_free_vars (let_id :: args) body in
       let let_id = transform_id let_id in
-      let args = List.map transform_id args in
+      let proc_id = (new_id (), K.FunctionType (List.map snd args)) in
+      let recursive_proc_instance_id = (new_id (), snd proc_id) in
+      let body = replace_id let_id recursive_proc_instance_id body in
+      let proc_id = transform_id proc_id in
+      let recursive_proc_instance_id = transform_id recursive_proc_instance_id in
       let (procs_1, body) = transform_expr body in
-      let proc_type = H.FunctionType (List.map snd args) in
-      let proc_id = (new_id (), proc_type) in
-      let body = replace_id let_id proc_id body in
+      let args = List.map transform_id args in
+      let body = H.Let (recursive_proc_instance_id, H.RecursiveProcInstance proc_id, body) in
       let new_proc = H.Proc (proc_id, free_vars, args, body) in
       let proc_instance = H.ProcInstance (proc_id, free_vars) in
       let (procs_2, expr) = transform_expr expr in
       (new_proc :: (List.append procs_1 procs_2),
-       H.Let (let_id, proc_instance, expr))
+       H.Let (let_id,
+              proc_instance,
+              expr))
 
   | K.Let (id, value, expr) ->
       let id = transform_id id in

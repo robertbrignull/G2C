@@ -142,6 +142,13 @@ and transform_let env let_id = function
         C.Seq (List.map packItem bundle)
       ];
 
+  | H.RecursiveProcInstance proc_id ->
+      let bundle_id =
+        (try (fst let_id, snd (get_bundle_id env (snd let_id)))
+        with Not_found -> raise (Exceptions.transform_error ("Could not find bundle for '" ^ (fst let_id) ^ ": " ^ (Printing_3_H.print_type (snd let_id)) ^ "'"))) in
+      let proc_id = transform_id env proc_id in
+      C.AllocateRecursiveBundle (bundle_id, proc_id)
+
   | H.Prim (prim, args) ->
       C.Assign (transform_id env let_id,
                 C.Prim (prim, List.map (transform_id env) args))

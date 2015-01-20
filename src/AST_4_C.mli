@@ -25,6 +25,7 @@ and stmt =
   | BundleApp of id * args
   | RecursiveApp of id * args
   | AllocateBundle of id * id * id
+  | AllocateRecursiveBundle of id * id
   | PackBundleItem of id * id * id
   | PackMemBundle of id * id * id
   | UnpackBundleItem of id * id
