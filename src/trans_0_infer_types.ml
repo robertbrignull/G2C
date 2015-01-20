@@ -110,6 +110,7 @@ let get_prim_type prim arg_types =
     | "gamma" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
     | "normal" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
     | "poisson" -> F.FunctionType ([F.NumType], F.NumType)
+    | "exponential" -> F.FunctionType ([F.NumType], F.NumType)
     | "uniform-continuous" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
     | "uniform-discrete" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
     | "discrete" -> F.FunctionType([F.ListType], F.NumType)
@@ -301,5 +302,49 @@ and infer_types_stmts env = function
       let (stmts, env) = infer_types_stmts env stmts in
       (stmt :: stmts, env)
 
+and infer_function_types env_in prog =
+  let addded_to_env = ref true in
+  let infer_function_types_stmt env (stmt_guts, stmt_info) =
+    match stmt_guts with
+    | U.Assume (assume_id, (U.Lambda (args, ret_type, _), _)) ->
+        (try let _ = env_find env assume_id in env
+        with Not_found -> begin
+          addded_to_env := true;
+          let func_type = U.FunctionType (List.map snd args, ret_type) in
+          env_add env [(assume_id, convert_type func_type)]
+        end)
+
+    | U.Assume (assume_id, (U.Mem (U.Lambda (args, ret_type, _), _), _)) ->
+        (try let _ = env_find env assume_id in env
+        with Not_found -> begin
+          addded_to_env := true;
+          let func_type = U.FunctionType (List.map snd args, ret_type) in
+          env_add env [(assume_id, convert_type func_type)]
+        end)
+
+    | U.Assume (assume_id, (U.Mem (U.Id proc_id, _), _)) ->
+        (try let _ = env_find env assume_id in env
+        with Not_found -> begin
+          addded_to_env := true;
+          (try env_add env [(assume_id, env_find env proc_id)]
+          with Not_found -> env)
+        end)
+
+    | _ -> env
+  in
+  let rec infer_function_types_pass env = function
+    | [] -> env
+    | stmt :: stmts ->
+        let env = infer_function_types_stmt env stmt in
+        infer_function_types_pass env stmts
+  in
+  let env_top = ref env_in in
+  while !addded_to_env do
+    addded_to_env := false;
+    env_top := infer_function_types_pass !env_top prog
+  done;
+  !env_top
+
 let infer_types prog =
-  fst (infer_types_stmts (empty_env ()) prog)
+  let env = infer_function_types (empty_env ()) prog in
+  fst (infer_types_stmts env prog)

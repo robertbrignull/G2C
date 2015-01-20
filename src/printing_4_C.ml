@@ -129,6 +129,7 @@ and print_prim_app prim args =
   | "gamma" -> print_func_app "gamma_rng" args
   | "normal" -> print_func_app "normal_rng" args
   | "poisson" -> print_func_app "poisson_rng" args
+  | "exponential" -> print_func_app "exponential_rng" args
   | "uniform-continuous" -> print_func_app "uniform_rng" args
   | "uniform-discrete" ->
       let l = fst (List.hd args) in

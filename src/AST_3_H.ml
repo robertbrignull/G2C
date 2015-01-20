@@ -16,7 +16,7 @@ and value =
   | ProcInstance of id * bundle
   | Prim of string * args
   | TypedPrim of string * type_c * args
-  | Mem of id * id                        (* mem_proc_id, proc_id *)
+  | Mem of id * id                        (* mem_proc_id, proc_id *)     
 
 and expr =
   | Let of id * value * expr              (* id, value, expr *)

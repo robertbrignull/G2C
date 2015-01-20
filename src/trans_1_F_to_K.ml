@@ -2,6 +2,53 @@ module F = AST_1_F
 module K = AST_2_K
 open Common
 
+
+
+let replace_id source target expr =
+  let rec replace_id_id id =
+    if id == source then target else id
+
+  and replace_id_expr (expr_guts, expr_info) =
+    let expr_guts =
+    (match expr_guts with
+    | F.Bool b -> F.Bool b
+
+    | F.Num x -> F.Num x
+
+    | F.Id id -> F.Id (replace_id_id id)
+
+    | F.Lambda (args, expr) ->
+        F.Lambda (args, replace_id_expr expr)
+
+    | F.Let (id, value, expr) ->
+        F.Let (replace_id_id id,
+               replace_id_expr value,
+               replace_id_expr expr)
+
+    | F.If (test, then_expr, else_expr) ->
+        F.If (replace_id_expr test,
+              replace_id_expr then_expr,
+              replace_id_expr else_expr)
+
+    | F.Prim (prim, args) ->
+        F.Prim (prim, List.map replace_id_expr args)
+
+    | F.TypedPrim (prim, type_c, args) ->
+        F.TypedPrim (prim, type_c, List.map replace_id_expr args)
+
+    | F.Mem expr ->
+        F.Mem (replace_id_expr expr)
+
+    | F.App (proc, args) ->
+        F.App (replace_id_expr proc,
+               List.map replace_id_expr args)
+    ) in
+    (expr_guts, expr_info)
+
+  in replace_id_expr expr
+
+
+
 let rec transform_type = function
   | F.NumType -> K.NumType
   | F.BoolType -> K.BoolType
@@ -108,15 +155,27 @@ and gen_args args cont_gen =
 
 and gen_stmt (stmt_guts, type_c) cont =
   match stmt_guts with
-  | F.Assume (assume_id, (F.Lambda (args, expr), lambda_type)) ->
+  | F.Assume (assume_id, (F.Lambda (args, expr), _)) ->
       let type_c = transform_type type_c in
-      let lambda_type = transform_type lambda_type in
-      let cont_id = (new_id (), get_cont_type lambda_type) in
+      let cont_id = (new_id (), get_cont_type type_c) in
       let args = List.append (transform_args args) [cont_id] in
       let expr = gen_expr expr (fun out_id -> K.App (cont_id, [out_id])) in
       K.Let ((assume_id, type_c),
              K.Lambda (args, expr),
              cont)
+
+  | F.Assume (assume_id, (F.Mem (F.Lambda (args, expr), _), _)) ->
+      let type_c = transform_type type_c in
+      let cont_id = (new_id (), get_cont_type type_c) in
+      let lambda_id = new_id () in
+      let args = List.append (transform_args args) [cont_id] in
+      let expr = replace_id assume_id lambda_id expr in
+      let expr = gen_expr expr (fun out_id -> K.App (cont_id, [out_id])) in
+      K.Let ((lambda_id, type_c),
+             K.Lambda (args, expr),
+             K.Let ((assume_id, type_c),
+                    K.Mem (lambda_id, type_c),
+                    cont))
 
   | F.Assume (assume_id, value) ->
       gen_expr value (fun value_id ->
