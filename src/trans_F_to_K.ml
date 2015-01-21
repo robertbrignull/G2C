@@ -1,5 +1,5 @@
-module F = AST_1_F
-module K = AST_2_K
+module F = AST_F
+module K = AST_K
 open Common
 
 

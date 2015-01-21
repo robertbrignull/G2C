@@ -1,1 +1,1 @@
-val optimise : AST_2_K.prog -> AST_2_K.prog
+val optimise : AST_K.prog -> AST_K.prog

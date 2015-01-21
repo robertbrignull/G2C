@@ -1,5 +1,5 @@
-module K = AST_2_K
-module H = AST_3_H
+module K = AST_K
+module H = AST_H
 open Common
 
 let rec transform_type = function

@@ -1,5 +1,5 @@
-module H = AST_3_H
-module C = AST_4_C
+module H = AST_H
+module C = AST_C
 open Common
 
 let new_data_id () =
@@ -133,7 +133,7 @@ and transform_let env let_id = function
   | H.ProcInstance (proc_id, bundle) ->
       let bundle_id =
         (try (fst let_id, snd (get_bundle_id env (snd let_id)))
-        with Not_found -> raise (Exceptions.transform_error ("Could not find bundle for '" ^ (fst let_id) ^ ": " ^ (Printing_3_H.print_type (snd let_id)) ^ "'"))) in
+        with Not_found -> raise (Exceptions.transform_error ("Could not find bundle for '" ^ (fst let_id) ^ ": " ^ (Printing_H.print_type (snd let_id)) ^ "'"))) in
       let proc_id = transform_id env proc_id in
       let data_id = get_data_id env (fst proc_id) in
       let packItem arg = C.PackBundleItem (bundle_id, data_id, transform_id env arg) in
@@ -145,7 +145,7 @@ and transform_let env let_id = function
   | H.RecursiveProcInstance proc_id ->
       let bundle_id =
         (try (fst let_id, snd (get_bundle_id env (snd let_id)))
-        with Not_found -> raise (Exceptions.transform_error ("Could not find bundle for '" ^ (fst let_id) ^ ": " ^ (Printing_3_H.print_type (snd let_id)) ^ "'"))) in
+        with Not_found -> raise (Exceptions.transform_error ("Could not find bundle for '" ^ (fst let_id) ^ ": " ^ (Printing_H.print_type (snd let_id)) ^ "'"))) in
       let proc_id = transform_id env proc_id in
       C.AllocateRecursiveBundle (bundle_id, proc_id)
 
@@ -161,7 +161,7 @@ and transform_let env let_id = function
   | H.Mem (mem_id, proc_id) ->
       let bundle_id =
         (try (fst let_id, snd (get_bundle_id env (snd let_id)))
-        with Not_found -> raise (Exceptions.transform_error ("Could not find bundle for '" ^ (fst let_id) ^ ": " ^ (Printing_3_H.print_type (snd let_id)) ^ "'"))) in
+        with Not_found -> raise (Exceptions.transform_error ("Could not find bundle for '" ^ (fst let_id) ^ ": " ^ (Printing_H.print_type (snd let_id)) ^ "'"))) in
       let mem_id = transform_id env mem_id in
       let proc_id = transform_id env proc_id in
       let data_id = get_data_id env (fst mem_id) in

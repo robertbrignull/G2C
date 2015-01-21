@@ -1,4 +1,4 @@
-open AST_4_C
+open AST_C
 open Common
 
 let indent i = String.make i ' '

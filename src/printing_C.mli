@@ -1,1 +1,1 @@
-val pretty_print_prog : AST_4_C.prog -> string
+val pretty_print_prog : AST_C.prog -> string

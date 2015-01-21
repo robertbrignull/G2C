@@ -23,7 +23,7 @@ EXAMPLES =\
 
 all: g2c $(EXAMPLES)
 
-G2C = src/exceptions.ml src/exceptions.mli src/AST_0_U.ml src/AST_0_U.mli src/AST_1_F.ml src/AST_1_F.mli src/AST_2_K.ml src/AST_2_K.mli src/AST_3_H.ml src/AST_3_H.mli src/AST_4_C.ml src/AST_4_C.mli src/common.ml src/common.mli src/printing_0_U.ml src/printing_0_U.mli src/printing_1_F.ml src/printing_1_F.mli src/printing_2_K.ml src/printing_2_K.mli src/printing_3_H.ml src/printing_3_H.mli src/printing_4_C.ml src/printing_4_C.mli src/lexer.mll src/parser.mly src/trans_0_infer_types.ml src/trans_0_infer_types.mli src/trans_1_F_to_K.ml src/trans_1_F_to_K.mli src/trans_2_K_to_H.ml src/trans_2_K_to_H.mli src/trans_3_H_to_C.ml src/trans_3_H_to_C.mli src/opt_1_unique_ids.ml src/opt_1_unique_ids.mli src/opt_2_K.ml src/opt_2_K.mli src/main.ml
+G2C = src/exceptions.ml src/exceptions.mli src/AST_U.ml src/AST_U.mli src/AST_F.ml src/AST_F.mli src/AST_K.ml src/AST_K.mli src/AST_H.ml src/AST_H.mli src/AST_C.ml src/AST_C.mli src/common.ml src/common.mli src/printing_U.ml src/printing_U.mli src/printing_F.ml src/printing_F.mli src/printing_K.ml src/printing_K.mli src/printing_H.ml src/printing_H.mli src/printing_C.ml src/printing_C.mli src/lexer.mll src/parser.mly src/trans_infer_types.ml src/trans_infer_types.mli src/trans_F_to_K.ml src/trans_F_to_K.mli src/trans_K_to_H.ml src/trans_K_to_H.mli src/trans_H_to_C.ml src/trans_H_to_C.mli src/opt_unique_ids.ml src/opt_unique_ids.mli src/opt_K.ml src/opt_K.mli src/main.ml
 g2c: $(G2C)
 	cd src && $(MAKE)
 

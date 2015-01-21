@@ -1,5 +1,5 @@
 %{
-open AST_0_U
+open AST_U
 open Parsing
 
 let p nterm = rhs_start_pos nterm
@@ -19,7 +19,7 @@ let p nterm = rhs_start_pos nterm
 %token NUM_TYPE BOOL_TYPE LIST_TYPE
 %token EOF ERR
 
-%type <AST_0_U.prog> main
+%type <AST_U.prog> main
 %start main
 
 %%

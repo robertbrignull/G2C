@@ -1,6 +1,6 @@
 all: g2c
 
-G2C = exceptions.cmo AST_0_U.ml AST_1_F.ml AST_2_K.ml AST_3_H.ml AST_4_C.ml common.cmo printing_0_U.cmo printing_1_F.cmo printing_2_K.cmo printing_3_H.cmo printing_4_C.cmo lexer.cmo parser.cmo trans_0_infer_types.cmo trans_1_F_to_K.cmo trans_2_K_to_H.cmo trans_3_H_to_C.cmo opt_1_unique_ids.cmo opt_2_K.cmo main.cmo
+G2C = exceptions.cmo AST_U.ml AST_F.ml AST_K.ml AST_H.ml AST_C.ml common.cmo printing_U.cmo printing_F.cmo printing_K.cmo printing_H.cmo printing_C.cmo lexer.cmo parser.cmo trans_infer_types.cmo trans_F_to_K.cmo trans_K_to_H.cmo trans_H_to_C.cmo opt_unique_ids.cmo opt_K.cmo main.cmo
 g2c: $(G2C)
 	ocamlc -o ../g2c $(G2C)
 
@@ -23,54 +23,54 @@ clean:
 
 ###
 
-AST_0_U.cmi:
-AST_1_F.cmi:
-AST_2_K.cmi:
-AST_4_C.cmi:
+AST_U.cmi:
+AST_F.cmi:
+AST_K.cmi:
+AST_C.cmi:
 common.cmi:
 common.cmo: common.cmi
 common.cmx: common.cmi
 exceptions.cmi:
 exceptions.cmo: exceptions.cmi
 exceptions.cmx: exceptions.cmi
-trans_0_infer_types.cmi: AST_0_U.cmi AST_1_F.cmi printing_0_U.cmi exceptions.cmi
-trans_0_infer_types.cmo: AST_0_U.cmi AST_1_F.cmi printing_0_U.cmi exceptions.cmi trans_0_infer_types.cmi
-trans_0_infer_types.cmx: AST_0_U.cmi AST_1_F.cmi printing_0_U.cmi exceptions.cmi trans_0_infer_types.cmi
-trans_1_F_to_K.cmi: AST_1_F.cmi AST_2_K.cmi common.cmi exceptions.cmi
-trans_1_F_to_K.cmo: AST_1_F.cmi AST_2_K.cmi common.cmi exceptions.cmi trans_1_F_to_K.cmi
-trans_1_F_to_K.cmx: AST_1_F.cmi AST_2_K.cmi common.cmi exceptions.cmi trans_1_F_to_K.cmi
-trans_2_K_to_H.cmi: AST_2_K.cmi AST_3_H.cmi common.cmi exceptions.cmi
-trans_2_K_to_H.cmo: AST_2_K.cmi AST_3_H.cmi common.cmi exceptions.cmi trans_2_K_to_H.cmi
-trans_2_K_to_H.cmx: AST_2_K.cmi AST_3_H.cmi common.cmi exceptions.cmi trans_2_K_to_H.cmi
-trans_3_H_to_C.cmi: AST_3_H.cmi AST_4_C.cmi common.cmi exceptions.cmi
-trans_3_H_to_C.cmo: AST_3_H.cmi AST_4_C.cmi common.cmi exceptions.cmi trans_3_H_to_C.cmi
-trans_3_H_to_C.cmx: AST_3_H.cmi AST_4_C.cmi common.cmi exceptions.cmi trans_3_H_to_C.cmi
+trans_infer_types.cmi: AST_U.cmi AST_F.cmi printing_U.cmi exceptions.cmi
+trans_infer_types.cmo: AST_U.cmi AST_F.cmi printing_U.cmi exceptions.cmi trans_infer_types.cmi
+trans_infer_types.cmx: AST_U.cmi AST_F.cmi printing_U.cmi exceptions.cmi trans_infer_types.cmi
+trans_F_to_K.cmi: AST_F.cmi AST_K.cmi common.cmi exceptions.cmi
+trans_F_to_K.cmo: AST_F.cmi AST_K.cmi common.cmi exceptions.cmi trans_F_to_K.cmi
+trans_F_to_K.cmx: AST_F.cmi AST_K.cmi common.cmi exceptions.cmi trans_F_to_K.cmi
+trans_K_to_H.cmi: AST_K.cmi AST_H.cmi common.cmi exceptions.cmi
+trans_K_to_H.cmo: AST_K.cmi AST_H.cmi common.cmi exceptions.cmi trans_K_to_H.cmi
+trans_K_to_H.cmx: AST_K.cmi AST_H.cmi common.cmi exceptions.cmi trans_K_to_H.cmi
+trans_H_to_C.cmi: AST_H.cmi AST_C.cmi common.cmi exceptions.cmi
+trans_H_to_C.cmo: AST_H.cmi AST_C.cmi common.cmi exceptions.cmi trans_H_to_C.cmi
+trans_H_to_C.cmx: AST_H.cmi AST_C.cmi common.cmi exceptions.cmi trans_H_to_C.cmi
 lexer.cmi: exceptions.cmi parser.cmi
 lexer.cmo: exceptions.cmi parser.cmi lexer.cmi
 lexer.cmx: exceptions.cmi parser.cmx lexer.cmi
-main.cmo: exceptions.cmi parser.cmi lexer.cmi trans_0_infer_types.cmi trans_1_F_to_K.cmi trans_2_K_to_H.cmi trans_3_H_to_C.cmi printing_1_F.cmi printing_2_K.cmi printing_3_H.cmi printing_4_C.cmi opt_1_unique_ids.cmi opt_2_K.cmi
-main.cmx: exceptions.cmi parser.cmi lexer.cmi trans_0_infer_types.cmi trans_1_F_to_K.cmi trans_2_K_to_H.cmi trans_3_H_to_C.cmi printing_1_F.cmi printing_2_K.cmi printing_3_H.cmi printing_4_C.cmi opt_1_unique_ids.cmi opt_2_K.cmi
-opt_1_unique_ids.cmi: AST_1_F.cmi common.cmi
-opt_1_unique_ids.cmo: AST_1_F.cmi common.cmi opt_1_unique_ids.cmi
-opt_1_unique_ids.cmx: AST_1_F.cmi common.cmi opt_1_unique_ids.cmi
-opt_2_K.cmi: AST_2_K.cmi
-opt_2_K.cmo: AST_2_K.cmi opt_2_K.cmi
-opt_2_K.cmx: AST_2_K.cmi opt_2_K.cmi
-parser.cmi: exceptions.cmi AST_0_U.cmi
-parser.cmo: exceptions.cmi AST_0_U.cmi parser.cmi
-parser.cmx: exceptions.cmi AST_0_U.cmi parser.cmi
-printing_0_U.cmi: AST_0_U.cmi common.cmi
-printing_0_U.cmo: AST_0_U.cmi common.cmi printing_0_U.cmi
-printing_0_U.cmx: AST_0_U.cmi common.cmi printing_0_U.cmi
-printing_1_F.cmi: AST_1_F.cmi common.cmi
-printing_1_F.cmo: AST_1_F.cmi common.cmi printing_1_F.cmi
-printing_1_F.cmx: AST_1_F.cmi common.cmi printing_1_F.cmi
-printing_2_K.cmi: AST_2_K.cmi common.cmi
-printing_2_K.cmo: AST_2_K.cmi common.cmi printing_2_K.cmi
-printing_2_K.cmx: AST_2_K.cmi common.cmi printing_2_K.cmi
-printing_3_H.cmi: AST_3_H.cmi common.cmi
-printing_3_H.cmo: AST_3_H.cmi common.cmi printing_3_H.cmi
-printing_3_H.cmx: AST_3_H.cmi common.cmi printing_3_H.cmi
-printing_4_C.cmi: AST_4_C.cmi common.cmi default_header.c
-printing_4_C.cmo: AST_4_C.cmi common.cmi default_header.c printing_4_C.cmi
-printing_4_C.cmx: AST_4_C.cmi common.cmi default_header.c printing_4_C.cmi
+main.cmo: exceptions.cmi parser.cmi lexer.cmi trans_infer_types.cmi trans_F_to_K.cmi trans_K_to_H.cmi trans_H_to_C.cmi printing_F.cmi printing_K.cmi printing_H.cmi printing_C.cmi opt_unique_ids.cmi opt_K.cmi
+main.cmx: exceptions.cmi parser.cmi lexer.cmi trans_infer_types.cmi trans_F_to_K.cmi trans_K_to_H.cmi trans_H_to_C.cmi printing_F.cmi printing_K.cmi printing_H.cmi printing_C.cmi opt_unique_ids.cmi opt_K.cmi
+opt_unique_ids.cmi: AST_F.cmi common.cmi
+opt_unique_ids.cmo: AST_F.cmi common.cmi opt_unique_ids.cmi
+opt_unique_ids.cmx: AST_F.cmi common.cmi opt_unique_ids.cmi
+opt_K.cmi: AST_K.cmi
+opt_K.cmo: AST_K.cmi opt_K.cmi
+opt_K.cmx: AST_K.cmi opt_K.cmi
+parser.cmi: exceptions.cmi AST_U.cmi
+parser.cmo: exceptions.cmi AST_U.cmi parser.cmi
+parser.cmx: exceptions.cmi AST_U.cmi parser.cmi
+printing_U.cmi: AST_U.cmi common.cmi
+printing_U.cmo: AST_U.cmi common.cmi printing_U.cmi
+printing_U.cmx: AST_U.cmi common.cmi printing_U.cmi
+printing_F.cmi: AST_F.cmi common.cmi
+printing_F.cmo: AST_F.cmi common.cmi printing_F.cmi
+printing_F.cmx: AST_F.cmi common.cmi printing_F.cmi
+printing_K.cmi: AST_K.cmi common.cmi
+printing_K.cmo: AST_K.cmi common.cmi printing_K.cmi
+printing_K.cmx: AST_K.cmi common.cmi printing_K.cmi
+printing_H.cmi: AST_H.cmi common.cmi
+printing_H.cmo: AST_H.cmi common.cmi printing_H.cmi
+printing_H.cmx: AST_H.cmi common.cmi printing_H.cmi
+printing_C.cmi: AST_C.cmi common.cmi default_header.c
+printing_C.cmo: AST_C.cmi common.cmi default_header.c printing_C.cmi
+printing_C.cmx: AST_C.cmi common.cmi default_header.c printing_C.cmi

@@ -1,6 +1,6 @@
-module U = AST_0_U
-module F = AST_1_F
-module PF = Printing_1_F
+module U = AST_U
+module F = AST_F
+module PF = Printing_F
 open Common
 
 let get_type = snd
@@ -287,7 +287,7 @@ and infer_types_stmt env (stmt_guts, pos) =
         raise (Exceptions.typing_error (Printf.sprintf "Observe: types %s and %s do not match" (PF.print_type expr_type) (PF.print_type value_type)) pos)
 
   | U.Predict expr ->
-      let label = Printing_0_U.print_inline_expr expr in
+      let label = Printing_U.print_inline_expr expr in
       let (expr, _) = infer_types_expr env expr in
       let expr_type = get_type expr in
       if not (is_function_type expr_type) then

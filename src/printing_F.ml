@@ -1,4 +1,4 @@
-open AST_1_F
+open AST_F
 open Common
 
 let rec print_type = function
