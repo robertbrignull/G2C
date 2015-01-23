@@ -222,8 +222,8 @@ let commute_sample_observe prog =
           commute_sample_observe_expr else_expr
 
     | Observe (prim, args, value, next) ->
-        (match prim, args with
-        | "normal", [(m2, NumType, Prim ("normal", [m1; b1])); b2] ->
+        (match prim, args, value with
+        | "normal", [(m2, NumType, Prim ("normal", [m1; b1])); b2], (_, _, Num value_val) ->
             (match m1, b1, b2 with
             | (m1_id, NumType, Num m1_val), (b1_id, NumType, Num b1_val), (b2_id, NumType, Num b2_val) ->
                 let nm1 = (new_id (), NumType, Unknown) in
@@ -238,18 +238,20 @@ let commute_sample_observe prog =
                   let id5 = (new_id (), NumType, Unknown) in
                   let id6 = (new_id (), NumType, Unknown) in
                   let id7 = (new_id (), NumType, Unknown) in
+                  let id8 = (new_id (), NumType, Unknown) in
                   Let (id1, Num b2_val,
                   Let (id2, Prim ("divide", [b1]),
                   Let (id3, Prim ("divide", [id1]),
                   Let (id4, Prim ("plus", [id2; id3]),
                   Let (nb1, Prim ("divide", [id4]),
                   Let (id5, Prim ("divide", [m1; b1]),
-                  Let (id6, Num 1.0,
-                  Let (id7, Prim ("plus", [id5; id6]),
-                  Let (nm1, Prim ("times", [nb1; id7]),
+                  Let (id6, Num value_val,
+                  Let (id7, Prim ("divide", [id6; id1]),
+                  Let (id8, Prim ("plus", [id5; id7]),
+                  Let (nm1, Prim ("times", [nb1; id8]),
                   Let ((m2, NumType, Unknown),
                        Prim ("normal", [nm1; nb1]),
-                       next))))))))))
+                       next)))))))))))
                 in
                 let new_observe next =
                   Let (nb2, Prim ("plus", [b1; b2]),
@@ -265,7 +267,7 @@ let commute_sample_observe prog =
 
             | _, _, _ -> commute_sample_observe_expr next)
 
-        | _, _ -> commute_sample_observe_expr next)
+        | _, _, _ -> commute_sample_observe_expr next)
 
     | Predict (label, id, next) ->
         commute_sample_observe_expr next
