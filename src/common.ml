@@ -36,3 +36,17 @@ let rec remove_last = function
   | [] -> raise (Failure "Trying to remove last item of empty list")
   | [x] -> []
   | x :: xs -> x :: remove_last xs
+
+
+
+and is_probabilistic_prim = function
+  | "beta" -> true
+  | "flip" -> true
+  | "gamma" -> true
+  | "normal" -> true
+  | "poisson" -> true
+  | "uniform-continuous" -> true
+  | "uniform-discrete" -> true
+  | "discrete" -> true
+  | "categorical" -> true
+  | _ -> false

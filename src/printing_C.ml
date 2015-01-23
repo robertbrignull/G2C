@@ -90,7 +90,7 @@ and print_prim_app prim args =
   | "plus" -> print_vararg_op "+" args
   | "minus" -> if num_args == 1 then print_unary_op "-" args else print_vararg_op "-" args
   | "times" -> print_vararg_op "*" args
-  | "divide" -> print_vararg_op "/" args
+  | "divide" -> if num_args == 1 then "(1.0 / " ^ (fst (List.hd args)) ^ ")" else print_vararg_op "/" args
   | "eq" -> print_anded_binary_op "==" args
   | "neq" -> print_anded_binary_op "!=" args
   | "lt" -> print_anded_binary_op "<" args
@@ -373,6 +373,26 @@ and print_main stmt =
   "return 0;\n" ^
   "}\n"
 
+let rec uses_prim_stmt prim = function
+  | Seq stmts -> List.fold_right (||) (List.map (uses_prim_stmt prim) stmts) false
+  | Assign (_, Prim (prim2, _)) when prim = prim2 -> true
+  | Assign (_, TypedPrim (prim2, _, _)) when prim = prim2 -> true
+  | If (_, then_stmt, else_stmt) -> uses_prim_stmt prim then_stmt || uses_prim_stmt prim else_stmt
+  | Observe (prim2, _, _) when prim = prim2 -> true
+  | _ -> false
+
+let uses_prim_proc prim = function
+  | Proc (_, _, stmt) -> uses_prim_stmt prim stmt
+  | MemProc (_, _, _, _, _) -> false
+
+let uses_prim prim (bundle_structs, data_structs, procs, main) =
+     List.fold_right (||) (List.map (fun proc -> uses_prim_proc prim proc) procs) false
+  || uses_prim_stmt prim main
+
+let uses_lists prog =
+  let prims = ["cons"; "rest"; "empty"; "count"; "fist"; "second"; "nth"] in
+  List.fold_right (||) (List.map (fun prim -> uses_prim prim prog) prims) false
+
 let read_file f =
   let ic = open_in f in
   let n = in_channel_length ic in
@@ -381,9 +401,13 @@ let read_file f =
   close_in ic;
   (s)
 
-let pretty_print_prog (bundle_structs, data_structs, procs, main) =
-  (read_file "src/default_header.c") ^
+let pretty_print_prog prog =
+  let (bundle_structs, data_structs, procs, main) = prog in
   String.concat "\n" (List.concat [
+    [read_file "src/c_headers/default.c"];
+    if uses_lists prog then [read_file "src/c_headers/lists.c"] else [];
+    if uses_prim "discrete" prog then [read_file "src/c_headers/discrete.c"] else [];
+    if uses_prim "categorical" prog then [read_file "src/c_headers/categorical.c"] else [];
     List.map print_bundle_decl bundle_structs;
     List.map print_data_decl data_structs;
     List.map print_proc_decl procs;

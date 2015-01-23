@@ -127,18 +127,6 @@ and get_typed_prim_type prim type_c arg_types =
 
   | _, _ -> raise Not_found
 
-and is_probabilistic_prim = function
-  | "beta" -> true
-  | "flip" -> true
-  | "gamma" -> true
-  | "normal" -> true
-  | "poisson" -> true
-  | "uniform-continuous" -> true
-  | "uniform-discrete" -> true
-  | "discrete" -> true
-  | "categorical" -> true
-  | _ -> false
-
 let rec infer_types_expr env (expr_guts, pos) =
   match expr_guts with
   | U.Bool b ->

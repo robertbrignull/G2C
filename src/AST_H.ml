@@ -4,7 +4,7 @@ type type_c =
   | ListType
   | FunctionType of type_c list
 
-and id = (string * type_c)
+and id = string * type_c
 
 and bundle = id list
 and args = id list

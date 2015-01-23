@@ -14,3 +14,7 @@ val contains : ('a -> bool) -> 'a list -> bool
 
 val last : 'a list -> 'a
 val remove_last : 'a list -> 'a list
+
+
+
+val is_probabilistic_prim : string -> bool

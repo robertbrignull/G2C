@@ -4,7 +4,7 @@ type type_c =
   | ListType
   | FunctionType of type_c list
 
-and id = (string * type_c)
+and id = string * type_c
 
 and args = id list
 
@@ -12,7 +12,7 @@ and value =
   | Bool of bool
   | Num of float
   | Id of id
-  | Lambda of id list * expr
+  | Lambda of args * expr
   | Prim of string * args
   | TypedPrim of string * type_c * args
   | Mem of id
