@@ -1,15 +1,18 @@
 let input_filename = ref ""
 let output_filename = ref "out.c"
 let verbose = ref false
+let optimisation_level = ref 2
 
 let set_input_filename filename = input_filename := filename
 let set_output_filename filename = output_filename := filename
+let set_optimisation_level level = optimisation_level := level
 
 let main () =
   let speclist = [
     ("-i", Arg.String (set_input_filename), "Sets the input file, by default reads from stdin.");
     ("-o", Arg.String (set_output_filename), "Sets the output file.");
-    ("-v", Arg.Set verbose, "Be verbose and print out intermediate syntax trees.")
+    ("-v", Arg.Set verbose, "Be verbose and print out intermediate syntax trees.");
+    ("-O", Arg.Int (set_optimisation_level), "Optimisation level. 0 is no optimisation, 1 is only non-probabilistic optimisations, 2 is all optimisations and is the default.")
   ] in
   let usage_msg = "g2c converts the probabilistic programming language G to probabilistic C." in
 
@@ -45,7 +48,7 @@ let main () =
       print_newline ();
     end;
 
-    let prog_K_opt = Opt_K.optimise prog_K in
+    let prog_K_opt = Opt_K.optimise !optimisation_level prog_K in
     if !verbose then begin
       print_endline "----- K AST optimised -----";
       print_endline (Printing_K.pretty_print_expr prog_K_opt);
