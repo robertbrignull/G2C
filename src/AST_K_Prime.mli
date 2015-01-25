@@ -31,6 +31,8 @@ and prog = expr
 
 
 val id_name : id -> string
+val id_type : id -> type_c
+val id_value : id -> value
 
 val transform_K : AST_K.prog -> prog
 val rebuild_values : prog -> prog

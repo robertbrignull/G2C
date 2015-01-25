@@ -33,6 +33,8 @@ and prog = expr
 
 
 let id_name (id, _, _) = id
+let id_type (_, type_c, _) = type_c
+let id_value (_, _, value) = value
 
 
 

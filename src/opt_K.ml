@@ -117,6 +117,48 @@ let rec is_const (_, _, value) =
 
 
 
+let is_direct_path_from_let_to_expr let_id target_expr source_expr = 
+  let rec find_let = function
+    | Let (id, value, expr) when id_name id = let_id -> expr
+    | Let (id, value, expr) -> find_let expr
+    | If (test, then_expr, else_expr) ->
+        (try
+          find_let then_expr
+        with Not_found ->
+          find_let else_expr)
+    | Observe (prim, args, value, next) -> find_let next
+    | Predict (label, id, next) -> find_let next
+    | _ -> raise Not_found
+
+  in
+  let rec is_direct_path = function
+    | x when x = target_expr -> true
+    | Let (id, value, expr) -> is_direct_path expr
+    | Observe (prim, args, value, next) -> is_direct_path next
+    | Predict (label, id, next) -> is_direct_path next
+    | _ -> false
+
+  in
+  is_direct_path (find_let source_expr)
+
+
+
+let rec gen_const_let let_id value next =
+  let gen_const_let_args args next =
+    let args = List.map (fun id -> (new_id (), id_type id, id_value id)) args in
+    List.fold_right (fun id next -> gen_const_let id (id_value id) next) args (next args)
+  in
+  match value with
+    | Bool b -> Let (let_id, Bool b, next)
+    | Num x -> Let (let_id, Num x, next)
+    | Prim (prim, args) ->
+        gen_const_let_args args (fun args -> Let (let_id, Prim (prim, args), next))
+    | TypedPrim (prim, type_c, args) ->
+        gen_const_let_args args (fun args -> Let (let_id, TypedPrim (prim, type_c, args), next))
+    | _ -> raise Not_found
+
+
+
 let rec replace_let src_id new_let = function
   | Let (id, value, expr) ->
       if id_name id = src_id then
@@ -222,52 +264,57 @@ let commute_sample_observe prog =
           commute_sample_observe_expr else_expr
 
     | Observe (prim, args, value, next) ->
-        (match prim, args, value with
-        | "normal", [(m2, NumType, Prim ("normal", [m1; b1])); b2], (_, _, Num value_val) ->
-            (match m1, b1, b2 with
-            | (m1_id, NumType, Num m1_val), (b1_id, NumType, Num b1_val), (b2_id, NumType, Num b2_val) ->
-                let nm1 = (new_id (), NumType, Unknown) in
-                let nb1 = (new_id (), NumType, Unknown) in
-                let nm2 = (new_id (), NumType, Unknown) in
-                let nb2 = (new_id (), NumType, Unknown) in
-                let new_let next =
-                  let id1 = (new_id (), NumType, Unknown) in
-                  let id2 = (new_id (), NumType, Unknown) in
-                  let id3 = (new_id (), NumType, Unknown) in
-                  let id4 = (new_id (), NumType, Unknown) in
-                  let id5 = (new_id (), NumType, Unknown) in
-                  let id6 = (new_id (), NumType, Unknown) in
-                  let id7 = (new_id (), NumType, Unknown) in
-                  let id8 = (new_id (), NumType, Unknown) in
-                  Let (id1, Num b2_val,
-                  Let (id2, Prim ("divide", [b1]),
-                  Let (id3, Prim ("divide", [id1]),
-                  Let (id4, Prim ("plus", [id2; id3]),
-                  Let (nb1, Prim ("divide", [id4]),
-                  Let (id5, Prim ("divide", [m1; b1]),
-                  Let (id6, Num value_val,
-                  Let (id7, Prim ("divide", [id6; id1]),
-                  Let (id8, Prim ("plus", [id5; id7]),
-                  Let (nm1, Prim ("times", [nb1; id8]),
-                  Let ((m2, NumType, Unknown),
-                       Prim ("normal", [nm1; nb1]),
-                       next)))))))))))
-                in
-                let new_observe next =
-                  Let (nb2, Prim ("plus", [b1; b2]),
-                  Let (nm2, Id m1,
-                  Observe ("normal",
-                           [nm2; nb2],
-                           value,
-                           next)))
-                in
-                let prog = replace_let m2 new_let prog in
-                let prog = replace_observe (prim, args, value) new_observe prog in
-                (true, rebuild_values prog)
+        (match prim, args with
+        | "normal", [(m2, NumType, Prim ("normal", [m1; b1])); b2] ->
+            if    is_direct_path_from_let_to_expr m2 (Observe (prim, args, value, next)) prog
+               && is_const m1
+               && is_const b1
+               && is_const b2
+               && is_const value
+            then
+              let nm1 = (new_id (), NumType, Unknown) in
+              let nb1 = (new_id (), NumType, Unknown) in
+              let nm2 = (new_id (), NumType, Unknown) in
+              let nb2 = (new_id (), NumType, Unknown) in
+              let gend_b2 = (new_id (), NumType, Unknown) in
+              let gend_value = (new_id (), NumType, Unknown) in
+              let new_let next =
+                let id1 = (new_id (), NumType, Unknown) in
+                let id2 = (new_id (), NumType, Unknown) in
+                let id3 = (new_id (), NumType, Unknown) in
+                let id4 = (new_id (), NumType, Unknown) in
+                let id5 = (new_id (), NumType, Unknown) in
+                let id6 = (new_id (), NumType, Unknown) in
+                gen_const_let gend_b2 (id_value b2)
+                (gen_const_let gend_value (id_value value)
+                (Let (id1, Prim ("divide", [b1]),
+                Let (id2, Prim ("divide", [gend_b2]),
+                Let (id3, Prim ("plus", [id1; id2]),
+                Let (nb1, Prim ("divide", [id3]),
+                Let (id4, Prim ("divide", [m1; b1]),
+                Let (id5, Prim ("divide", [gend_value; gend_b2]),
+                Let (id6, Prim ("plus", [id4; id5]),
+                Let (nm1, Prim ("times", [nb1; id6]),
+                Let ((m2, NumType, Unknown),
+                     Prim ("normal", [nm1; nb1]),
+                     next)))))))))))
+              in
+              let new_observe next =
+                Let (nb2, Prim ("plus", [b1; gend_b2]),
+                Let (nm2, Id m1,
+                Observe ("normal",
+                         [nm2; nb2],
+                         gend_value,
+                         next)))
+              in
+              let prog = replace_let m2 new_let prog in
+              let prog = replace_observe (prim, args, value) new_observe prog in
+              let prog = rebuild_values prog in
+              (true, prog)
+            
+            else commute_sample_observe_expr next
 
-            | _, _, _ -> commute_sample_observe_expr next)
-
-        | _, _, _ -> commute_sample_observe_expr next)
+        | _, _ -> commute_sample_observe_expr next)
 
     | Predict (label, id, next) ->
         commute_sample_observe_expr next
