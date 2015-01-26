@@ -1,3 +1,6 @@
+(* This is the first AST after parsing, it is designed to match the structure
+   of the input language closely and to be as forgiving as possible. *)
+
 type id = string
 
 and type_c =

@@ -1,3 +1,14 @@
+(* This is the third AST and here we have transformed into
+   continuation passing style. So functions no longer return
+   anything but instead call a continuation.
+   All lambdas will have had an extra argument added for the
+   continuation.
+   Also at this point we make the distinction between expressions
+   and values, and we perform only one prim at a time.
+   Note as well that assume no longer exists, it is now just a let.
+   Also from here on types are only associated with ids, not every
+   value or expr*)
+
 type type_c =
   | NumType
   | BoolType

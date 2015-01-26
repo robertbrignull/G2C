@@ -1,3 +1,8 @@
+(* This is the fourth AST and here functions are no longer
+   inline but have been hoisted to the top level. This means
+   that functions now take as well as their arguments a
+ bundle of all the variables they use that were in scope. *)
+
 type type_c =
   | NumType
   | BoolType

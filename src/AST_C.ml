@@ -1,3 +1,7 @@
+(* This is the fifth AST and from this we print C code directly.
+   It has all the information needed to print C as everything
+   difficult was done during transformation rather than printing. *)
+
 type type_c =
   | NumType
   | BoolType

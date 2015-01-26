@@ -1,3 +1,6 @@
+(* This is the second AST and the only real difference to U is
+   that lexing positions have been replaced with types *)
+
 type id = string
 
 and type_c =

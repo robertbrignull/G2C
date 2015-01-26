@@ -1,6 +1,11 @@
 open AST_F
 open Common
 
+(* The purpose of this optimisation is to make all ids unique in the program,
+   this make subsequent transformation far easier.
+   Throughtout this file, 'env' is a map from old ids to new ids. *)
+
+(* make_ids_unique_expr :: (id * id) list -> expr -> expr *)
 let rec make_ids_unique_expr env (expr_guts, type_c) =
   match expr_guts with
   | Bool b -> ((Bool b, type_c), env)
@@ -55,6 +60,7 @@ let rec make_ids_unique_expr env (expr_guts, type_c) =
              List.map fst (List.map (make_ids_unique_expr env) args)),
        type_c), env)
 
+(* make_ids_unique_stmt :: (id * id) list -> stmt -> stmt *)
 and make_ids_unique_stmt env (stmt_guts, type_c) =
   match stmt_guts with
   | Assume (id, expr) ->
@@ -73,7 +79,7 @@ and make_ids_unique_stmt env (stmt_guts, type_c) =
       ((Predict (label, fst (make_ids_unique_expr env expr)),
        type_c), env)
 
-
+(* make_ids_unique_stmts :: (id * id) list -> stmts -> stmts *)
 and make_ids_unique_stmts env = function
   | [] -> ([], env)
   | stmt :: stmts ->
@@ -81,5 +87,6 @@ and make_ids_unique_stmts env = function
       let (stmts, env) = make_ids_unique_stmts env stmts in
       (stmt :: stmts, env)
 
+(* make_ids_unique :: prog -> prog *)
 let make_ids_unique prog =
   fst (make_ids_unique_stmts [] prog)

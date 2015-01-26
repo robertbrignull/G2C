@@ -6,6 +6,7 @@ let il = 4
 
 
 
+(* print_type :: type_c -> string *)
 let rec print_type = function
   | NumType -> "double"
   | BoolType -> "int"
@@ -14,15 +15,22 @@ let rec print_type = function
   | BundleType id -> id
   | FunctionType args -> raise (Exceptions.transform_error "Cannot have function type here")
 
+(* print_id :: id -> string *)
 and print_id (id, type_c) =
   (print_type type_c) ^ " " ^ id
 
+(* Print a declaration of a bundle struct *)
+(* print_bundle_decl :: bundle_struct -> string *)
 and print_bundle_decl ((id, _), _) =
   "typedef struct " ^ id ^ " " ^ id ^ ";\n"
 
+(* Print a declaration of a data struct *)
+(* print_data_decl :: data_struct -> string *)
 and print_data_decl ((id, _), _) =
   "typedef struct " ^ id ^ " " ^ id ^ ";\n"
 
+(* Print a definition of a bundle struct *)
+(* print_bundle_struct :: bundle_struct -> string *)
 and print_bundle_struct ((id, _), args) =
   "typedef struct " ^ id ^ " {\n" ^
   (indent il) ^ "void (*func)(void *data" ^
@@ -31,26 +39,41 @@ and print_bundle_struct ((id, _), args) =
   (indent il) ^ "void *data;\n" ^
   "} " ^ id ^ ";\n"
 
+(* Print a definition of a data struct *)
+(* print_data_struct :: data_struct -> string *)
 and print_data_struct ((id, _), bundle) =
   "typedef struct " ^ id ^ " {\n" ^
   (String.concat "" (List.map (fun b -> (indent il) ^ (print_id b) ^ ";\n") bundle)) ^
   "} " ^ id ^ ";\n"
 
+(* Print an op that takes one argument, hence it is prefixed.
+   Basically only '-' and '!' use this. *)
+(* print_unary_op :: string -> args -> string *)
 and print_unary_op op = function
   | [x] ->
       op ^ (fst x)
 
   | args -> raise (Exceptions.transform_error (Printf.sprintf "Wrong number of arguments to '%s', %d expected, %d received" op 1 (List.length args)))
 
+(* Print an op that takes two arguments and hence is infix.
+   Eg: mod *)
+(* print_binary_op :: string -> args -> string *)
 and print_binary_op op = function
   | [x; y] ->
       (fst x) ^ " " ^ op ^ " " ^ (fst y)
 
   | args -> raise (Exceptions.transform_error (Printf.sprintf "Wrong number of arguments to '%s', %d expected, %d received" op 2 (List.length args)))
 
+(* Print an op that can take any number of arguments.
+   Eg: '+', '&&' *)
+(* print_vararg_op :: string -> args -> string *)
 and print_vararg_op op args =
   map_and_concat fst (" " ^ op ^ " ") args
 
+(* Print an op that in scheme can take any number of arguments
+   but in C is binary.
+   Eg: '<', '!=' *)
+(* print_anded_binary_op :: string -> args -> string *)
 and print_anded_binary_op op = function
   | [] -> "1"
   | [x] -> "1"
@@ -59,31 +82,16 @@ and print_anded_binary_op op = function
       " && " ^
       (print_anded_binary_op op (y :: args))
 
+(* Print a prim as a function with that name *)
+(* print_func_app :: string -> args -> string *)
 and print_func_app prim args =
   prim ^ "(" ^
   (map_and_concat fst ", " args) ^
   ")"
 
-and print_prim = function
-  | "plus" -> "+"
-  | "minus" -> "-"
-  | "times" -> "*"
-  | "divide" -> "/"
-  | "eq" -> "="
-  | "neq" -> "!="
-  | "lt" -> "<"
-  | "gt" -> ">"
-  | "leq" -> "<="
-  | "geq" -> ">="
-  | "and" -> "&&"
-  | "or" -> "||"
-  | "not" -> "!"
-
-  | "uniform-continuous" -> "uniform"
-  | "uniform-discrete" -> "uniform_discrete"
-
-  | x -> x
-
+(* Print any prim application correctly.
+   This delegates to one of the above functions in most cases. *)
+(* print_prim_app :: string -> args -> string *)
 and print_prim_app prim args =
   let num_args = List.length args in
   match prim with
@@ -100,6 +108,13 @@ and print_prim_app prim args =
   | "and" -> print_vararg_op "&&" args
   | "or" -> print_vararg_op "||" args
   | "not" -> print_unary_op "!" args
+
+  | "cbrt" -> "pow(" ^ (fst (List.hd args)) ^ ", 1.0/3)"
+  | "rint" -> print_func_app "round" args
+  | "abs" -> print_func_app "fabs" args
+  | "inc" -> (fst (List.hd args)) ^ " + 1"
+  | "dec" -> (fst (List.hd args)) ^ " - 1"
+  | "mod" -> print_binary_op "%" args
 
   | "empty" -> print_func_app "create_empty_list" args
   | "cons" ->
@@ -137,8 +152,10 @@ and print_prim_app prim args =
       l ^ " + uniform_discrete_rng(" ^ u ^ " - " ^ l ^ ")"
   | "discrete" -> print_func_app "discrete_rng_wrapper" args
 
-  | _ -> print_func_app (print_prim prim) args
+  | _ -> print_func_app prim args
 
+(* The same for a typed prim *)
+(* print_typed_prim_app :: string -> type_c -> args -> string *)
 and print_typed_prim_app prim type_c args =
   match prim, type_c with
   | "first", NumType -> print_func_app "first_num" args
@@ -160,13 +177,20 @@ and print_typed_prim_app prim type_c args =
   | "categorical", ListType -> print_func_app "categorical_list_rng_wrapper" args
   | "categorical", BundleType id -> print_func_app "categorical_bundle_rng_wrapper" args
 
-  | _, _ -> print_func_app (print_prim prim) args
+  | _, _ -> print_func_app prim args
 
+(* Print a observe, for most they have the same name so you just
+   add on '_lnp'.
+   For some however (eg: discrete, categorical) we must convert
+   the list to an array first using a wrapper. *)
+(* print_prim_observe :: string -> args -> id -> string *)
 and print_prim_observe prim args value =
   match prim with
   | "discrete" -> print_func_app ("discrete_lnp_wrapper") (value :: args)
   | prim -> print_func_app (prim ^ "_lnp") (value :: args)
 
+(* Print any value *)
+(* print_value :: value -> string *)
 and print_value = function
   | Bool b -> if b then "1" else "0"
   | Num x -> string_of_float x
@@ -174,6 +198,8 @@ and print_value = function
   | Prim (prim, args) -> print_prim_app prim args
   | TypedPrim (prim, type_c, args) -> print_typed_prim_app prim type_c args
 
+(* Print any statement *)
+(* print_stmt :: int -> stmt -> string *)
 and print_stmt i = function
   | Seq stmts -> map_and_concat (print_stmt i) "" stmts
 
@@ -265,6 +291,8 @@ and print_stmt i = function
 
   | Halt -> ""
 
+(* Print the declaration of a procedure *)
+(* print_proc_decl :: proc -> string *)
 and print_proc_decl = function
   | Proc ((id, _), args, _) ->
       "void " ^ id ^ "(void *data" ^
@@ -276,6 +304,8 @@ and print_proc_decl = function
       (String.concat ", " ("" :: (List.map print_id args))) ^
       ");\n"
 
+(* Print the definition of a procedure *)
+(* print_proc :: proc -> string *)
 and print_proc = function
   | Proc ((proc_id, _), args, stmt) ->
       "void " ^ proc_id ^ "(void *data" ^
@@ -366,6 +396,8 @@ and print_proc = function
       (indent il) ^ "}\n" ^
       "}\n"
 
+(* Print the C main function *)
+(* print_main :: stmt -> string *)
 and print_main stmt =
   "int main(int argc, char **argv) {\n" ^
   (print_stmt il stmt) ^
@@ -373,6 +405,11 @@ and print_main stmt =
   "return 0;\n" ^
   "}\n"
 
+(* The next four functions determine whether the program uses various
+   features. This is so that only the headers that are needed are included *)
+
+(* Returns true iff the statement uses the given prim somewhere *)
+(* uses_prim_stmt :: string -> stmt -> bool *)
 let rec uses_prim_stmt prim = function
   | Seq stmts -> List.fold_right (||) (List.map (uses_prim_stmt prim) stmts) false
   | Assign (_, Prim (prim2, _)) when prim = prim2 -> true
@@ -381,18 +418,26 @@ let rec uses_prim_stmt prim = function
   | Observe (prim2, _, _) when prim = prim2 -> true
   | _ -> false
 
+(* Returns true iff the proc uses the given prim somewhere *)
+(* uses_prim_proc :: string -> proc -> bool *)
 let uses_prim_proc prim = function
   | Proc (_, _, stmt) -> uses_prim_stmt prim stmt
   | MemProc (_, _, _, _, _) -> false
 
+(* Returns true iff the program uses the given prim somewhere *)
+(* uses_prim :: string -> prog -> bool *)
 let uses_prim prim (bundle_structs, data_structs, procs, main) =
      List.fold_right (||) (List.map (fun proc -> uses_prim_proc prim proc) procs) false
   || uses_prim_stmt prim main
 
+(* Returns true iff the statement uses lists somewhere *)
+(* uses_lists :: prog -> bool *)
 let uses_lists prog =
   let prims = ["cons"; "rest"; "empty"; "count"; "fist"; "second"; "nth"] in
   List.fold_right (||) (List.map (fun prim -> uses_prim prim prog) prims) false
 
+(* Reads an entire file and outputs it as a string *)
+(* read_file :: string -> string *)
 let read_file f =
   let ic = open_in f in
   let n = in_channel_length ic in
@@ -401,10 +446,13 @@ let read_file f =
   close_in ic;
   (s)
 
+(* Pretty prints an entire program *)
+(* pretty_print_prog :: prog -> bool *)
 let pretty_print_prog prog =
   let (bundle_structs, data_structs, procs, main) = prog in
   String.concat "\n" (List.concat [
     [read_file "src/c_headers/default.c"];
+    if uses_prim "signum" prog then [read_file "src/c_headers/signum.c"] else [];
     if uses_lists prog then [read_file "src/c_headers/lists.c"] else [];
     if uses_prim "discrete" prog then [read_file "src/c_headers/discrete.c"] else [];
     if uses_prim "categorical" prog then [read_file "src/c_headers/categorical.c"] else [];
