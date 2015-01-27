@@ -18,7 +18,8 @@ EXAMPLES =\
   examples/kalman-filter-missing-values\
   examples/kalman-filter-learning\
   examples/fib\
-  examples/observe-removal-test
+  examples/observe-removal-test-1\
+  examples/observe-removal-test-2
   
 
 

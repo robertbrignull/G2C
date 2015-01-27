@@ -38,6 +38,9 @@ let contains pred xs =
 	try let _ = List.find pred xs in true
   with Not_found -> false
 
+let eq a b = (a = b)
+let neq a b = not (a = b)
+
 (* returns the last element of a list *)
 (* last :: 'a list -> 'a *)
 let rec last = function

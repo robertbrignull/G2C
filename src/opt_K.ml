@@ -1,3 +1,5 @@
+open List
+
 open AST_K_Prime
 module F = AST_F
 open Trans_F_to_K
@@ -18,11 +20,11 @@ let rec replace_id_expr source target = function
 
   | App (expr, args) ->
       App (replace_id_id source target expr,
-           List.map (replace_id_id source target) args)
+           map (replace_id_id source target) args)
 
   | Observe (prim, args, value, next) ->
       Observe (prim,
-               List.map (replace_id_id source target) args,
+               map (replace_id_id source target) args,
                replace_id_id source target value,
                replace_id_expr source target next)
 
@@ -40,10 +42,10 @@ and replace_id_value source target = function
       Lambda (args, replace_id_expr source target expr)
 
   | Prim (prim, args) ->
-      Prim (prim, List.map (replace_id_id source target) args)
+      Prim (prim, map (replace_id_id source target) args)
 
   | TypedPrim (prim, type_c, args) ->
-      TypedPrim (prim, type_c, List.map (replace_id_id source target) args)
+      TypedPrim (prim, type_c, map (replace_id_id source target) args)
 
   | Mem id -> Mem (replace_id_id source target id)
 
@@ -68,10 +70,10 @@ let rec is_free_in_expr target = function
       || is_free_in_expr target else_expr
 
   | App (expr, args) ->
-      List.fold_left (||) false (List.map (is_free_in_id target) (expr :: args))
+      fold_left (||) false (map (is_free_in_id target) (expr :: args))
 
   | Observe (prim, args, value, next) ->
-         List.fold_left (||) false (List.map (is_free_in_id target) (value :: args))
+         fold_left (||) false (map (is_free_in_id target) (value :: args))
       || is_free_in_expr target next
 
   | Predict (label, id, next) ->
@@ -86,10 +88,10 @@ and is_free_in_value target = function
   | Lambda (args, expr) -> is_free_in_expr target expr
 
   | Prim (prim, args) ->
-      List.fold_left (||) false (List.map (is_free_in_id target) args)
+      fold_left (||) false (map (is_free_in_id target) args)
 
   | TypedPrim (prim, type_c, args) ->
-      List.fold_left (||) false (List.map (is_free_in_id target) args)
+      fold_left (||) false (map (is_free_in_id target) args)
 
   | Mem id -> is_free_in_id target id
 
@@ -100,6 +102,38 @@ and is_free_in_id target id =
 
 
 
+(* Note this should only be used for values not using Lambda or Mem *)
+(* list_ids_used :: id -> string list *)
+let rec list_ids_used (id, _, value) =
+  id :: list_ids_used_value value
+
+(* list_ids_used_value :: value -> string list *)
+and list_ids_used_value = function
+  | Id id -> (id_name id) :: (list_ids_used id)
+  | Prim (prim, args) -> concat (map list_ids_used args)
+  | TypedPrim (prim, type_c, args) -> concat (map list_ids_used args)
+  | _ -> []
+
+
+
+(* Returns true iff the given id is determined,
+   it may use probabilistic primitives but they have all been
+   sampled already and now it is just arithmetic *)
+let rec is_determined (_, _, value) =
+  match value with
+  | Unknown -> false
+  | Bool b -> true
+  | Num x -> true
+  | Id id -> is_determined id
+  | Lambda (args, expr) -> false
+  | Prim (prim, args) -> fold_right (&&) (map is_determined args) true
+  | TypedPrim (prim, type_c, args) -> fold_right (&&) (map is_determined args) true
+  | Mem id -> false
+
+
+
+(* Returns true iff the given id has a constant value,
+   ie: it uses no probabilistic primitives or lambdas *)
 let rec is_const (_, _, value) =
   match value with
   | Unknown -> false
@@ -109,10 +143,10 @@ let rec is_const (_, _, value) =
   | Lambda (args, expr) -> false
   | Prim (prim, args) ->
       if is_probabilistic_prim prim then false
-      else List.fold_right (&&) (List.map is_const args) true
+      else fold_right (&&) (map is_const args) true
   | TypedPrim (prim, type_c, args) ->
       if is_probabilistic_prim prim then false
-      else List.fold_right (&&) (List.map is_const args) true
+      else fold_right (&&) (map is_const args) true
   | Mem id -> false
 
 
@@ -127,36 +161,51 @@ let rec extract_nums = function
 
 
 
-let is_direct_path_from_let_to_expr let_id target_expr source_expr = 
-  let rec find_let = function
-    | Let (id, value, expr) when id_name id = let_id -> expr
-    | Let (id, value, expr) -> find_let expr
-    | If (test, then_expr, else_expr) ->
-        (try
-          find_let then_expr
-        with Not_found ->
-          find_let else_expr)
-    | Observe (prim, args, value, next) -> find_let next
-    | Predict (label, id, next) -> find_let next
-    | _ -> raise Not_found
+(* find_let :: string -> expr -> expr *)
+let rec find_let let_id = function
+  | Let (id, value, expr) when id_name id = let_id ->
+      Let (id, value, expr)
+  | Let (id, value, expr) -> find_let let_id expr
+  | If (test, then_expr, else_expr) ->
+      (try find_let let_id then_expr
+      with Not_found -> find_let let_id else_expr)
+  | Observe (prim, args, value, next) -> find_let let_id next
+  | Predict (label, id, next) -> find_let let_id next
+  | _ -> raise Not_found
 
-  in
+
+
+(* defined_in :: string -> expr -> bool *)
+let rec defined_in let_id = function
+  | Let (id, value, expr) when id_name id = let_id -> true
+  | Let (id, value, expr) -> defined_in let_id expr
+  | If (test, then_expr, else_expr) ->
+      defined_in let_id then_expr || defined_in let_id else_expr
+  | Observe (prim, args, value, next) -> defined_in let_id next
+  | Predict (label, id, next) -> defined_in let_id next
+  | _ -> false
+
+
+
+(* is_direct_path_from_let_to_expr :: string -> expr -> expr -> bool *)
+let is_direct_path_from_let_to_expr let_id target_expr source_expr = 
   let rec is_direct_path = function
     | x when x = target_expr -> true
     | Let (id, value, expr) -> is_direct_path expr
     | Observe (prim, args, value, next) -> is_direct_path next
     | Predict (label, id, next) -> is_direct_path next
     | _ -> false
-
   in
-  is_direct_path (find_let source_expr)
+  try is_direct_path (find_let let_id source_expr)
+  with Not_found -> false
 
 
 
+(* gen_const_let :: id -> value -> expr -> expr *)
 let rec gen_const_let let_id value next =
   let gen_const_let_args args next =
-    let args = List.map (fun id -> (new_id (), id_type id, id_value id)) args in
-    List.fold_right (fun id next -> gen_const_let id (id_value id) next) args (next args)
+    let args = map (fun id -> (new_id (), id_type id, id_value id)) args in
+    fold_right (fun id next -> gen_const_let id (id_value id) next) args (next args)
   in
   match value with
     | Bool b -> Let (let_id, Bool b, next)
@@ -169,6 +218,7 @@ let rec gen_const_let let_id value next =
 
 
 
+(* replace_let :: string -> (expr -> expr) > expr -> expr *)
 let rec replace_let src_id new_let = function
   | Let (id, value, expr) ->
       if id_name id = src_id then
@@ -191,6 +241,7 @@ let rec replace_let src_id new_let = function
 
 
 
+(* replace_observe :: (string * args * id) -> (expr -> expr) -> expr -> expr *)
 let rec replace_observe src_observe new_observe = function
   | Let (id, value, expr) ->
       Let (id, value, replace_observe src_observe new_observe expr)
@@ -208,127 +259,127 @@ let rec replace_observe src_observe new_observe = function
 
 
 
-let is_linear_of_prim prim id_in =
-  let rec find_prim id =
-    let check_arg output arg =
-      match find_prim arg with
-      | Some id -> Some id
-      | None -> output
-    in
-    match id_value id with
+let is_linear_of_prim prim id_in prog =
+  let rec find_prims (id, _, value) =
+    match value with
     | Prim (prim2, args) ->
-        if prim2 = prim then Some (id_name id)
-        else List.fold_left check_arg None args
+        if prim2 = prim then [id]
+        else concat (map find_prims args)
     | TypedPrim (prim2, type_c, args) ->
-        if prim2 = prim then Some (id_name id)
-        else List.fold_left check_arg None args
-    | _ -> None
+        if prim2 = prim then [id]
+        else concat (map find_prims args)
+    | _ -> []
   in
 
-  let rec gen_args args next =
-    match args with
-    | [] -> next []
-    | arg :: new_args ->
-        let let_id = (new_id (), id_type arg, id_value arg) in
-        let new_next = fun new_args -> next (let_id :: new_args) in
-        gen_const_let let_id (id_value arg) (gen_args new_args new_next)
+  let rec contains_id target (id, _, value) =
+    if id = target then true
+    else
+      match value with
+      | Id id ->
+          contains_id target id
+      | Prim (prim2, args) ->
+          fold_right (||) (map (contains_id target) args) false
+      | TypedPrim (prim2, type_c, args) ->
+          fold_right (||) (map (contains_id target) args) false
+      | _ -> false
   in
 
   let rec calc_coeff_const prim_id = function
     | Prim (prim2, args) when prim2 = prim ->
         let coeff = (new_id (), NumType, Unknown) in
         let const = (new_id (), NumType, Unknown) in
-        Some (prim_id, List.nth args 0, List.nth args 1,
+        Some (prim_id, nth args 0, nth args 1,
               coeff, const,
+              [],
               fun next ->
                 Let (coeff, Num 1.0,
                 Let (const, Num 0.0,
                 next)))
 
     | Prim ("plus", args) ->
-        let (const_args, non_const_args) = List.partition is_const args in
-        if List.length non_const_args = 1 then
-          (match calc_coeff_const prim_id (id_value (List.hd non_const_args)) with
-          | Some (prim_id, m1, b1, coeff, const, gen_values) ->
+        let (containing_args, non_containing_args) = partition (contains_id prim_id) args in
+        if length containing_args = 1 then
+          (match calc_coeff_const prim_id (id_value (hd containing_args)) with
+          | Some (prim_id, m1, b1, coeff, const, dependent_ids, gen_values) ->
               let new_const = (new_id (), NumType, Unknown) in
               Some (prim_id, m1, b1,
                     coeff, new_const,
+                    concat (dependent_ids :: (map list_ids_used non_containing_args)),
                     fun next ->
                       gen_values
-                        (gen_args const_args (fun const_args ->
-                          (Let (new_const, Prim ("plus", const :: const_args),
-                          next)))))
+                        (Let (new_const, Prim ("plus", const :: non_containing_args),
+                         next)))
           | None -> None)
         else
           None
 
     | Prim ("minus", args) ->
-        let (const_args, non_const_args) = List.partition is_const args in
-        if List.length non_const_args = 1 then
-          (match calc_coeff_const prim_id (id_value (List.hd non_const_args)) with
-          | Some (prim_id, m1, b1, coeff, const, gen_values) ->
+        let (containing_args, non_containing_args) = partition (contains_id prim_id) args in
+        if length containing_args = 1 then
+          (match calc_coeff_const prim_id (id_value (hd containing_args)) with
+          | Some (prim_id, m1, b1, coeff, const, dependent_ids, gen_values) ->
               let new_const = (new_id (), NumType, Unknown) in
               let new_coeff = (new_id (), NumType, Unknown) in
-              if List.hd non_const_args = List.hd args then
+              if hd containing_args = hd args then
                 Some (prim_id, m1, b1,
                       coeff, new_const,
+                      concat (dependent_ids :: (map list_ids_used non_containing_args)),
                       fun next ->
                         gen_values
-                          (gen_args const_args (fun const_args ->
-                            (Let (new_const, Prim ("minus", const :: const_args),
-                            next)))))
+                          (Let (new_const, Prim ("minus", const :: non_containing_args),
+                           next)))
               else
                 Some (prim_id, m1, b1,
                       new_coeff, new_const,
+                      concat (dependent_ids :: (map list_ids_used non_containing_args)),
                       fun next ->
                         gen_values
-                          (gen_args const_args (fun const_args ->
-                            (Let (new_coeff, Prim ("minus", [coeff]),
-                            Let (new_const, Prim ("minus", List.append const_args [const]),
-                            next))))))
+                          (Let (new_coeff, Prim ("minus", [coeff]),
+                           Let (new_const, Prim ("minus", append non_containing_args [const]),
+                           next))))
           | None -> None)
         else
           None
 
     | Prim ("times", args) ->
-        let (const_args, non_const_args) = List.partition is_const args in
-        if List.length non_const_args = 1 then
-          (match calc_coeff_const prim_id (id_value (List.hd non_const_args)) with
-          | Some (prim_id, m1, b1, coeff, const, gen_values) ->
+        let (containing_args, non_containing_args) = partition (contains_id prim_id) args in
+        if length containing_args = 1 then
+          (match calc_coeff_const prim_id (id_value (hd containing_args)) with
+          | Some (prim_id, m1, b1, coeff, const, dependent_ids, gen_values) ->
               let new_const = (new_id (), NumType, Unknown) in
               let new_coeff = (new_id (), NumType, Unknown) in
               let id1 = (new_id (), NumType, Unknown) in
               Some (prim_id, m1, b1,
                     new_coeff, new_const,
+                    concat (dependent_ids :: (map list_ids_used non_containing_args)),
                     fun next ->
                       gen_values
-                        (gen_args const_args (fun const_args ->
-                          (Let (id1, Prim ("times", const_args),
-                          Let (new_coeff, Prim ("times", [coeff; id1]),
-                          Let (new_const, Prim ("times", [const; id1]),
-                          next)))))))
+                        (Let (id1, Prim ("times", non_containing_args),
+                         Let (new_coeff, Prim ("times", [coeff; id1]),
+                         Let (new_const, Prim ("times", [const; id1]),
+                         next)))))
           | None -> None)
         else
           None
 
     | Prim ("divide", args) ->
-        let (const_args, non_const_args) = List.partition is_const args in
-        if List.length non_const_args = 1 then
-          (match calc_coeff_const prim_id (id_value (List.hd non_const_args)) with
-          | Some (prim_id, m1, b1, coeff, const, gen_values) ->
-              if List.hd non_const_args = List.hd args && List.length const_args > 0 then
+        let (containing_args, non_containing_args) = partition (contains_id prim_id) args in
+        if length containing_args = 1 then
+          (match calc_coeff_const prim_id (id_value (hd containing_args)) with
+          | Some (prim_id, m1, b1, coeff, const, dependent_ids, gen_values) ->
+              if hd containing_args = hd args && length non_containing_args > 0 then
                 let new_const = (new_id (), NumType, Unknown) in
                 let new_coeff = (new_id (), NumType, Unknown) in
                 let id1 = (new_id (), NumType, Unknown) in
                 Some (prim_id, m1, b1,
                       new_coeff, new_const,
+                      concat (dependent_ids :: (map list_ids_used non_containing_args)),
                       fun next ->
                         gen_values
-                          (gen_args const_args (fun const_args ->
-                            (Let (id1, Prim ("times", const_args),
-                            Let (new_coeff, Prim ("divide", [coeff; id1]),
-                            Let (new_const, Prim ("divide", [const; id1]),
-                            next)))))))
+                          (Let (id1, Prim ("times", non_containing_args),
+                           Let (new_coeff, Prim ("divide", [coeff; id1]),
+                           Let (new_const, Prim ("divide", [const; id1]),
+                           next)))))
               else
                 None
           | None -> None)
@@ -338,9 +389,82 @@ let is_linear_of_prim prim id_in =
     | _ -> None
   in
 
-  match find_prim id_in with
-  | Some prim_id -> calc_coeff_const prim_id (id_value id_in)
-  | None -> None
+  let ids_used = list_ids_used id_in in
+  let f prim_id output =
+    (* The idea here is that if prim_id appears in id_in more than once
+       then it cannot possibly be linear, however if it only appears once
+       and we determine it to be linear then we can later rearrange let
+       expressions so that everything is defined correctly.
+     *)
+    if length (filter (eq prim_id) ids_used) = 1 then
+      match calc_coeff_const prim_id (id_value id_in) with
+      | Some (prim_id, m1, b1, coeff, const, dependent_ids, gen_values) ->
+          Some (prim_id, m1, b1, coeff, const, dependent_ids, gen_values)
+      | None -> output
+    else
+      output
+  in
+  fold_right f (find_prims id_in) None
+
+
+
+(* move_let_after :: string -> string list -> prog -> prog *)
+let move_let_after let_id targets prog =
+  (* find_first_non_dependent_let :: string -> expr -> expr *)
+  let rec find_first_non_dependent_let let_id = function
+    | Let (id, value, expr) ->
+        let ids_used = list_ids_used_value value in
+        if not (contains (eq let_id) ids_used) then
+          Let (id, value, expr)
+        else
+          find_first_non_dependent_let let_id expr
+    | Observe (label, args, value, next) ->
+        find_first_non_dependent_let let_id next
+    | Predict (label, value, next) ->
+        find_first_non_dependent_let let_id next
+    | _ -> raise Not_found
+
+  in
+  (* move_let_after_target :: expr -> expr *)
+  let move_let_back_one = function
+    | Let (id_1, value_1, expr_1) ->
+        (match find_first_non_dependent_let (id_name id_1) expr_1 with
+        | Let (id_2, value_2, expr_2) ->
+            Let (id_2,
+                 value_2,
+                 replace_let (id_name id_2)
+                             (fun next -> next)
+                             (Let (id_1, value_1, expr_1)))
+
+        | _ -> raise Not_found)
+    | _ -> raise Not_found
+
+  in
+  (* must be called with the desired let_id at the head of the expr *)
+  (* move_let_after_target :: string -> expr -> prog *)
+  (* may throw Not_found *)
+  let rec move_let_after_target target expr =
+    if defined_in target expr then
+      match move_let_back_one expr with
+      | Let (id, value, expr) ->
+          Let (id, value, move_let_after_target target expr)
+      | Observe (label, args, value, next) ->
+          Observe (label, args, value, move_let_after_target target next)
+      | Predict (label, value, next) ->
+          Predict (label, value, move_let_after_target target next)
+      | _ -> raise Not_found
+    else
+      expr
+
+  in
+  fold_right
+    (fun target prog ->
+      let old_let = (find_let let_id prog) in
+      let new_let = move_let_after_target target old_let in
+      replace_let let_id (fun _ -> new_let) prog)
+    targets
+    prog
+
 
 
 
@@ -387,43 +511,43 @@ let local prog =
 
     (* Do some constant calculations *)
     | Prim ("plus", args) ->
-        let values_changed = List.map local_value (List.map id_value args) in
-        let values = List.map snd values_changed in
-        let changed = List.fold_right (||) (List.map fst values_changed) false in
+        let values_changed = map local_value (map id_value args) in
+        let values = map snd values_changed in
+        let changed = fold_right (||) (map fst values_changed) false in
         (match extract_nums values with
-        | Some nums -> (true, Num (List.fold_right (+.) nums 0.))
+        | Some nums -> (true, Num (fold_right (+.) nums 0.))
         | None -> (changed, Prim ("plus", args)))
 
     | Prim ("minus", args) ->
-        let values_changed = List.map local_value (List.map id_value args) in
-        let values = List.map snd values_changed in
-        let changed = List.fold_right (||) (List.map fst values_changed) false in
+        let values_changed = map local_value (map id_value args) in
+        let values = map snd values_changed in
+        let changed = fold_right (||) (map fst values_changed) false in
         (match extract_nums values with
         | Some nums ->
-            if List.length nums = 1 then
-              (true, Num (0. -. List.hd nums))
+            if length nums = 1 then
+              (true, Num (0. -. hd nums))
             else
-              (true, Num (List.hd nums -. List.fold_right (+.) (List.tl nums) 0.))
+              (true, Num (hd nums -. fold_right (+.) (tl nums) 0.))
         | None -> (changed, Prim ("minus", args)))
 
     | Prim ("times", args) ->
-        let values_changed = List.map local_value (List.map id_value args) in
-        let values = List.map snd values_changed in
-        let changed = List.fold_right (||) (List.map fst values_changed) false in
+        let values_changed = map local_value (map id_value args) in
+        let values = map snd values_changed in
+        let changed = fold_right (||) (map fst values_changed) false in
         (match extract_nums values with
-        | Some nums -> (true, Num (List.fold_right ( *. ) nums 1.))
+        | Some nums -> (true, Num (fold_right ( *. ) nums 1.))
         | None -> (changed, Prim ("times", args)))
 
     | Prim ("divide", args) ->
-        let values_changed = List.map local_value (List.map id_value args) in
-        let values = List.map snd values_changed in
-        let changed = List.fold_right (||) (List.map fst values_changed) false in
+        let values_changed = map local_value (map id_value args) in
+        let values = map snd values_changed in
+        let changed = fold_right (||) (map fst values_changed) false in
         (match extract_nums values with
         | Some nums ->
-            if List.length nums = 1 then
-              (true, Num (1. /. List.hd nums))
+            if length nums = 1 then
+              (true, Num (1. /. hd nums))
             else
-              (true, Num (List.hd nums /. List.fold_right ( *. ) (List.tl nums) 1.))
+              (true, Num (hd nums /. fold_right ( *. ) (tl nums) 1.))
         | None -> (changed, Prim ("divide", args)))
 
     (* End of optimisations, just recurse *)
@@ -446,76 +570,81 @@ let commute_sample_observe prog =
 
     | If (test, then_expr, else_expr) ->
         let (c, prog) = commute_sample_observe_expr then_expr in
-        if c then
-          (c, prog)
-        else
-          commute_sample_observe_expr else_expr
+        if c then (c, prog)
+        else commute_sample_observe_expr else_expr
 
     | Observe (prim, args, value, next) ->
-        (match prim, args with
-        | "normal", [m2; b2] ->
-            (match is_linear_of_prim "normal" m2 with
-            | Some (prim_id, m1, b1, coeff, const, gen_values) ->
-                if    is_direct_path_from_let_to_expr prim_id (Observe (prim, args, value, next)) prog
-                   && is_const m1
-                   && is_const b1
-                   && is_const b2
-                   && is_const value
-                then
-                  let nm1 = (new_id (), NumType, Unknown) in
-                  let nb1 = (new_id (), NumType, Unknown) in
-                  let nm2 = (new_id (), NumType, Unknown) in
-                  let nb2 = (new_id (), NumType, Unknown) in
-                  let gend_b2 = (new_id (), NumType, Unknown) in
-                  let gend_value = (new_id (), NumType, Unknown) in
-                  let id1 = (new_id (), NumType, Unknown) in
-                  let id2 = (new_id (), NumType, Unknown) in
-                  let id3 = (new_id (), NumType, Unknown) in
-                  let id4 = (new_id (), NumType, Unknown) in
-                  let id5 = (new_id (), NumType, Unknown) in
-                  let id6 = (new_id (), NumType, Unknown) in
-                  let id7 = (new_id (), NumType, Unknown) in
-                  let id8 = (new_id (), NumType, Unknown) in
-                  let id9 = (new_id (), NumType, Unknown) in
-                  let id10 = (new_id (), NumType, Unknown) in
-                  let id11 = (new_id (), NumType, Unknown) in
-                  let new_let next =
-                    gen_values
-                    (gen_const_let gend_b2 (id_value b2)
-                    (gen_const_let gend_value (id_value value)
-                    (Let (id1, Prim ("divide", [b1]),
-                    Let (id2, Prim ("times", [coeff; coeff]),
-                    Let (id3, Prim ("divide", [id2; gend_b2]),
-                    Let (id4, Prim ("plus", [id1; id3]),
-                    Let (nb1, Prim ("divide", [id4]),
-                    Let (id5, Prim ("divide", [m1; b1]),
-                    Let (id6, Prim ("divide", [coeff; gend_b2]),
-                    Let (id7, Prim ("minus", [gend_value; const]),
-                    Let (id8, Prim ("times", [id6; id7]),
-                    Let (id9, Prim ("plus", [id5; id8]),
-                    Let (nm1, Prim ("times", [nb1; id9]),
-                    Let ((prim_id, NumType, Unknown),
-                         Prim ("normal", [nm1; nb1]),
-                         next)))))))))))))))
-                  in
-                  let new_observe next =
-                    Let (id10, Prim ("times", [id2; b1]),
-                    Let (nb2, Prim ("plus", [gend_b2; id10]),
-                    Let (id11, Prim ("times", [coeff; m1]),
-                    Let (nm2, Prim ("plus", [id11; const]),
-                    Observe ("normal",
-                             [nm2; nb2],
-                             gend_value,
-                             next)))))
-                  in
-                  let prog = replace_let prim_id new_let prog in
-                  let prog = replace_observe (prim, args, value) new_observe prog in
-                  let prog = rebuild_values prog in
-                  (true, prog)
-            
-                else commute_sample_observe_expr next
-            | None -> commute_sample_observe_expr next)
-        | _, _ -> commute_sample_observe_expr next)
+        (try
+          (match prim, args with
+          | "normal", [m2; b2] ->
+              (match is_linear_of_prim "normal" m2 prog with
+              | Some (prim_id, m1, b1, coeff, const, dependent_ids, gen_values) ->
+                  if    is_direct_path_from_let_to_expr prim_id (Observe (prim, args, value, next)) prog
+                     && is_determined m1
+                     && is_determined b1
+                     && is_determined b2
+                     && is_determined value
+                  then
+                    let ids_used =
+                      concat [dependent_ids;
+                              list_ids_used b2;
+                              list_ids_used value] in
+                    let prog = move_let_after prim_id ids_used prog in
+                    let nm1 = (new_id (), NumType, Unknown) in
+                    let nb1 = (new_id (), NumType, Unknown) in
+                    let nm2 = (new_id (), NumType, Unknown) in
+                    let nb2 = (new_id (), NumType, Unknown) in
+                    let gend_b2 = (new_id (), NumType, Unknown) in
+                    let gend_value = (new_id (), NumType, Unknown) in
+                    let id1 = (new_id (), NumType, Unknown) in
+                    let id2 = (new_id (), NumType, Unknown) in
+                    let id3 = (new_id (), NumType, Unknown) in
+                    let id4 = (new_id (), NumType, Unknown) in
+                    let id5 = (new_id (), NumType, Unknown) in
+                    let id6 = (new_id (), NumType, Unknown) in
+                    let id7 = (new_id (), NumType, Unknown) in
+                    let id8 = (new_id (), NumType, Unknown) in
+                    let id9 = (new_id (), NumType, Unknown) in
+                    let id10 = (new_id (), NumType, Unknown) in
+                    let id11 = (new_id (), NumType, Unknown) in
+                    let new_let next =
+                      gen_values
+                      (gen_const_let gend_b2 (id_value b2)
+                      (gen_const_let gend_value (id_value value)
+                      (Let (id1, Prim ("divide", [b1]),
+                      Let (id2, Prim ("times", [coeff; coeff]),
+                      Let (id3, Prim ("divide", [id2; gend_b2]),
+                      Let (id4, Prim ("plus", [id1; id3]),
+                      Let (nb1, Prim ("divide", [id4]),
+                      Let (id5, Prim ("divide", [m1; b1]),
+                      Let (id6, Prim ("divide", [coeff; gend_b2]),
+                      Let (id7, Prim ("minus", [gend_value; const]),
+                      Let (id8, Prim ("times", [id6; id7]),
+                      Let (id9, Prim ("plus", [id5; id8]),
+                      Let (nm1, Prim ("times", [nb1; id9]),
+                      Let ((prim_id, NumType, Unknown),
+                           Prim ("normal", [nm1; nb1]),
+                           next)))))))))))))))
+                    in
+                    let new_observe next =
+                      Let (id10, Prim ("times", [id2; b1]),
+                      Let (nb2, Prim ("plus", [gend_b2; id10]),
+                      Let (id11, Prim ("times", [coeff; m1]),
+                      Let (nm2, Prim ("plus", [id11; const]),
+                      Observe ("normal",
+                               [nm2; nb2],
+                               gend_value,
+                               next)))))
+                    in
+                    let prog = replace_let prim_id new_let prog in
+                    let prog = replace_observe (prim, args, value) new_observe prog in
+                    let prog = rebuild_values prog in
+                    (true, prog)
+
+                  else commute_sample_observe_expr next
+              | None -> commute_sample_observe_expr next)
+          | _, _ -> commute_sample_observe_expr next)
+        with Not_found -> commute_sample_observe_expr next)
 
     | Predict (label, id, next) ->
         commute_sample_observe_expr next
@@ -533,7 +662,7 @@ let rec remove_const_observe = function
 
   | Observe (prim, args, value, next) ->
       let (c, next) = remove_const_observe next in
-      if List.fold_right (&&) (List.map is_const (value :: args)) true then
+      if fold_right (&&) (map is_const (value :: args)) true then
         (true, next)
       else
         (c, Observe (prim, args, value, next))
@@ -551,8 +680,9 @@ let rec apply_rules rules_left all_rules prog =
   | [] -> prog
   | rule :: rules_left ->
       let (changed, prog) = rule prog in
-      if changed then
+      if changed then begin
         apply_rules all_rules all_rules prog
+      end
       else
         apply_rules rules_left all_rules prog
 
