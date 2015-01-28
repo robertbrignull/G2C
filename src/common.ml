@@ -38,6 +38,7 @@ let contains pred xs =
 	try let _ = List.find pred xs in true
   with Not_found -> false
 
+(* eq, neq :: 'a -> 'a -> bool *)
 let eq a b = (a = b)
 let neq a b = not (a = b)
 

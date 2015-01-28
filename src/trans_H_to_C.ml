@@ -2,25 +2,32 @@ module H = AST_H
 module C = AST_C
 open Common
 
+(* new_data_id :: unit -> string *)
 let new_data_id () =
   "data_" ^ (id_index (new_id ()))
 
+(* new_bundle_id :: unit -> string *)
 let new_bundle_id () =
   "bundle_" ^ (id_index (new_id ()))
 
 
 
+(* empty_env :: unit -> ((H.id * C.id) list * (H.type_c * C.id) list) *)
 let empty_env () = ([], [])
 
+(* add_data_to_env :: (H.id * C.id) -> H.id -> C.id -> (H.id * C.id) *)
 let add_data_to_env (d_env, b_env) proc_id data_id =
   ((proc_id, data_id) :: d_env, b_env)
 
+(* get_data_id :: (H.id * C.id) -> H.id -> C.id *)
 let get_data_id (d_env, b_env) proc_id =
   List.assoc proc_id d_env
 
+(* add_bundle_to_env :: (H.id * C.id) -> H.type_c -> C.id -> (H.type_c * C.id) *)
 let add_bundle_to_env (d_env, b_env) type_c bundle_id =
   (d_env, (type_c, bundle_id) :: b_env)
 
+(* get_bundle_id :: (H.id * C.id) -> H.type_c -> C.id *)
 let get_bundle_id (d_env, b_env) type_c =
   List.assoc type_c b_env
 

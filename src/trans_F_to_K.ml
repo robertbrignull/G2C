@@ -1,13 +1,16 @@
+open List
+
 module F = AST_F
 module K = AST_K
 open Common
 
-
-
+(* replace_id :: F.id -> F.id -> F.expr -> F.expr *)
 let replace_id source target expr =
+  (* replace_id_id :: F.id -> F.id *)
   let rec replace_id_id id =
     if id == source then target else id
 
+  (* replace_id_id :: F.expr -> F.expr *)
   and replace_id_expr (expr_guts, expr_info) =
     let expr_guts =
     (match expr_guts with
@@ -31,17 +34,17 @@ let replace_id source target expr =
               replace_id_expr else_expr)
 
     | F.Prim (prim, args) ->
-        F.Prim (prim, List.map replace_id_expr args)
+        F.Prim (prim, map replace_id_expr args)
 
     | F.TypedPrim (prim, type_c, args) ->
-        F.TypedPrim (prim, type_c, List.map replace_id_expr args)
+        F.TypedPrim (prim, type_c, map replace_id_expr args)
 
     | F.Mem expr ->
         F.Mem (replace_id_expr expr)
 
     | F.App (proc, args) ->
         F.App (replace_id_expr proc,
-               List.map replace_id_expr args)
+               map replace_id_expr args)
     ) in
     (expr_guts, expr_info)
 
@@ -49,24 +52,29 @@ let replace_id source target expr =
 
 
 
+(* transform_type :: F.type_c -> K.type_c *)
 let rec transform_type = function
   | F.NumType -> K.NumType
   | F.BoolType -> K.BoolType
   | F.ListType -> K.ListType
   | F.FunctionType (args, res) ->
-      let args = List.map transform_type args in
+      let args = map transform_type args in
       let res = transform_type res in
-      K.FunctionType (List.append args [K.FunctionType [res]])
+      K.FunctionType (append args [K.FunctionType [res]])
 
+(* get_cont_type :: K.type_c -> K.type_c *)
 and get_cont_type = function
-  | K.FunctionType args -> (List.hd (List.rev args))
+  | K.FunctionType args -> (hd (rev args))
   | _ -> raise (Exceptions.transform_error "Trying to get return type of non-function type")
 
+(* get_id_type :: K.id -> K.type_c *)
 and get_id_type (id, type_c) = type_c
 
+(* transform_args :: F.args -> K.args *)
 and transform_args args =
-  List.map (fun (id, type_c) -> (id, transform_type type_c)) args
+  map (fun (id, type_c) -> (id, transform_type type_c)) args
 
+(* gen_expr :: F.expr -> (K.id -> K.expr) -> K.expr *)
 and gen_expr (expr_guts, type_c) cont_gen =
   let type_c = transform_type type_c in
   match expr_guts with
@@ -83,7 +91,7 @@ and gen_expr (expr_guts, type_c) cont_gen =
 
   | F.Lambda (args, expr) ->
       let cont_id = (new_id (), get_cont_type type_c) in
-      let args = List.append (transform_args args) [cont_id] in
+      let args = append (transform_args args) [cont_id] in
       let expr = gen_expr expr (fun out_id -> K.App (cont_id, [out_id])) in
       let out_id = (new_id (), type_c) in
       K.Let (out_id,
@@ -141,11 +149,12 @@ and gen_expr (expr_guts, type_c) cont_gen =
           K.Let (cont_id,
                  cont,
                  K.App (expr_id,
-                        List.append arg_ids [cont_id]))))
+                        append arg_ids [cont_id]))))
 
+(* gen_args :: F.args -> (K.id list -> K.expr) -> K.expr *)
 and gen_args args cont_gen =
   let rec gen_args_impl cont_gen ress = function
-    | [] -> cont_gen (List.rev ress)
+    | [] -> cont_gen (rev ress)
 
     | arg :: args ->
         gen_expr arg (fun out_id ->
@@ -153,22 +162,26 @@ and gen_args args cont_gen =
 
   in gen_args_impl cont_gen [] args
 
+(* gen_stmt :: F.stmt -> (K.id -> K.expr) -> K.expr *)
 and gen_stmt (stmt_guts, type_c) cont =
   match stmt_guts with
+  (* This case is for recursive lambdas, as otherwise the lambda
+     would have a different id to the one it was expecting. *)
   | F.Assume (assume_id, (F.Lambda (args, expr), _)) ->
       let type_c = transform_type type_c in
       let cont_id = (new_id (), get_cont_type type_c) in
-      let args = List.append (transform_args args) [cont_id] in
+      let args = append (transform_args args) [cont_id] in
       let expr = gen_expr expr (fun out_id -> K.App (cont_id, [out_id])) in
       K.Let ((assume_id, type_c),
              K.Lambda (args, expr),
              cont)
 
+  (* This case is for recursive mem lambdas, for the same reason. *)
   | F.Assume (assume_id, (F.Mem (F.Lambda (args, expr), _), _)) ->
       let type_c = transform_type type_c in
       let cont_id = (new_id (), get_cont_type type_c) in
       let lambda_id = new_id () in
-      let args = List.append (transform_args args) [cont_id] in
+      let args = append (transform_args args) [cont_id] in
       let expr = replace_id assume_id lambda_id expr in
       let expr = gen_expr expr (fun out_id -> K.App (cont_id, [out_id])) in
       K.Let ((lambda_id, type_c),
@@ -192,11 +205,6 @@ and gen_stmt (stmt_guts, type_c) cont =
       gen_expr expr (fun expr_id ->
         K.Predict (label, expr_id, cont))
 
-and gen_stmts stmts cont =
-  match stmts with
-  | [] -> cont
-  | stmt :: stmts ->
-      gen_stmt stmt (gen_stmts stmts cont)
-
+(* transform :: F.prog -> K.expr *)
 let transform prog =
-  gen_stmts prog K.Halt
+  fold_right gen_stmt prog K.Halt
