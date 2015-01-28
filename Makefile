@@ -19,7 +19,8 @@ EXAMPLES =\
   examples/kalman-filter-learning\
   examples/fib\
   examples/observe-removal-test-1\
-  examples/observe-removal-test-2
+  examples/observe-removal-test-2\
+  examples/gaussian-sum
   
 
 

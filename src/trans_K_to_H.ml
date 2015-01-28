@@ -17,14 +17,14 @@ let get_arg_types = function
   | H.FunctionType args -> args
   | _ -> raise (Exceptions.transform_error "Tried to get argument types of a non-function type")
 
-(* find_free_vars :: K.id list -> K.Expr -> H.id list *)
+(* find_free_vars :: K.id list -> K.Expr -> K.id list *)
 let find_free_vars env expr =
-  (* find_free_vars_id :: K.id list -> K.id -> H.id list *)
+  (* find_free_vars_id :: K.id list -> K.id -> K.id list *)
   let rec find_free_vars_id env id =
     (try let _ = find (fun x -> x = id) env in []
-      with Not_found -> [transform_id id])
+      with Not_found -> [id])
 
-  (* find_free_vars_value :: K.id list -> K.value -> H.id list *)
+  (* find_free_vars_value :: K.id list -> K.value -> K.id list *)
   and find_free_vars_value env = function
     | K.Bool b -> []
 
@@ -44,7 +44,7 @@ let find_free_vars env expr =
     | K.Mem id ->
         find_free_vars_id env id
 
-  (* find_free_vars_expr :: K.id list -> K.expr -> H.id list *)
+  (* find_free_vars_expr :: K.id list -> K.expr -> K.id list *)
   and find_free_vars_expr env = function
     | K.Let (id, K.Lambda (args, body), expr) ->
         let env = id :: env in
@@ -148,6 +148,7 @@ and transform_value = function
 
   | K.Lambda (args, body) ->
       let free_vars = find_free_vars args body in
+      let free_vars = map transform_id free_vars in
       let args = map transform_id args in
       let (procs_1, body) = transform_expr body in
       let proc_type = H.FunctionType (map snd args) in
@@ -174,6 +175,7 @@ and transform_value = function
 and transform_expr = function
   | K.Let (let_id, K.Lambda (args, body), expr) ->
       let free_vars = find_free_vars (let_id :: args) body in
+      let free_vars = map transform_id free_vars in
       let let_id = transform_id let_id in
       let proc_id = (new_id (), K.FunctionType (map snd args)) in
       let recursive_proc_instance_id = (new_id (), snd proc_id) in

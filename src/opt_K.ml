@@ -6,6 +6,53 @@ open Trans_F_to_K
 open Common
 
 
+(* find_uses_expr :: string -> expr -> id list *)
+let rec find_uses_expr target = function
+  | Let (id, value, expr) ->
+      concat [find_uses_value target value;
+             find_uses_expr target expr]
+
+  | If (test, then_expr, else_expr) ->
+      concat [find_uses_id target test;
+              find_uses_expr target then_expr;
+              find_uses_expr target else_expr]
+
+  | App (expr, args) ->
+      concat (map (find_uses_id target) (expr :: args))
+
+  | Observe (prim, args, value, next) ->
+      concat [concat (map (find_uses_id target) (value :: args));
+              find_uses_expr target next]
+
+  | Predict (label, id, next) ->
+      concat [find_uses_id target id;
+              find_uses_expr target next]
+
+  | Halt -> []
+
+(* find_uses_value :: string -> value -> id list *)
+and find_uses_value target = function
+  | Id id -> find_uses_id target id
+
+  | Lambda (args, expr) ->
+      concat [concat (map (find_uses_id target) args);
+              find_uses_expr target expr]
+
+  | Prim (prim, args) ->
+      concat (map (find_uses_id target) args)
+
+  | TypedPrim (prim, type_c, args) ->
+      concat (map (find_uses_id target) args)
+
+  | Mem id -> find_uses_id target id
+
+  | _ -> []
+
+(* find_uses_id :: string -> id -> id list *)
+and find_uses_id target id =
+  if target = id_name id then [id] else []
+
+
 
 let rec replace_id_expr source target = function
   | Let (id, value, expr) ->
@@ -199,6 +246,24 @@ let is_direct_path_from_let_to_expr let_id target_expr source_expr =
   try is_direct_path (find_let let_id source_expr)
   with Not_found -> false
 
+
+
+(* When given a prim and a list of ids,
+   returns a tuple of three lists (pa, paa, npa) where
+   - pa = the set of ids which are of the given prim type
+   - paa = the args of the above ids
+   - npa = the set of ids which are not of the given prim type *)
+(* extract_prim_args :: string -> id list -> (id list * id list list * id list) *)
+let rec extract_prim_args prim = function
+  | [] -> ([], [], [])
+  | arg :: args ->
+      let (pa, paa, npa) = extract_prim_args prim args in
+      (match arg with
+      | (id, type_c, Prim (prim2, prim_args)) when prim2 = prim ->
+          (arg :: pa, prim_args :: paa, npa)
+      | _ ->
+          (pa, paa, arg :: npa))
+      
 
 
 (* gen_const_let :: id -> value -> expr -> expr *)
@@ -510,6 +575,12 @@ let local prog =
         (true, Id f)
 
     (* Do some constant calculations *)
+    | Prim ("plus", [arg]) ->
+        (true, Id arg)
+
+    | Prim ("times", [arg]) ->
+        (true, Id arg)
+
     | Prim ("plus", args) ->
         let values_changed = map local_value (map id_value args) in
         let values = map snd values_changed in
@@ -560,6 +631,53 @@ let local prog =
   in
   let (c, prog) = local_expr prog in
   (c, rebuild_values prog)
+
+
+
+let merge_samples prog =
+  let id_used_once id =
+    length (find_uses_expr (id_name id) prog) = 1
+
+  in
+  let rec merge_samples_expr = function
+    | Let (let_id, Prim ("plus", args), expr) ->
+        let (c, expr) = merge_samples_expr expr in
+        let (normal_args, normal_args_args, non_normal_args) = extract_prim_args "normal" args in
+        if (  length normal_args >= 2
+           && fold_right (&&) (map id_used_once normal_args) true) then
+          let id_1 = (new_id (), NumType, Unknown) in
+          let id_2 = (new_id (), NumType, Unknown) in
+          let id_3 = (new_id (), NumType, Unknown) in
+          (true,
+          Let (id_1, Prim ("plus", map hd normal_args_args),
+          Let (id_2, Prim ("plus", map hd (map tl normal_args_args)),
+          Let (id_3, Prim ("normal", [id_1; id_2]),
+          Let (let_id, Prim ("plus", id_3 :: non_normal_args),
+            expr)))))
+
+        else
+          (c, Let (let_id, Prim ("plus", args), expr))
+
+    | Let (id, value, expr) ->
+        let (c, expr) = merge_samples_expr expr in
+        (c, Let (id, value, expr))
+
+    | If (test, then_expr, else_expr) ->
+        let (c1, then_expr) = merge_samples_expr then_expr in
+        let (c2, else_expr) = merge_samples_expr else_expr in
+        (c1 || c2, If (test, then_expr, else_expr))
+
+    | Observe (prim, args, value, next) ->
+        let (c, next) = merge_samples_expr next in
+        (c, Observe (prim, args, value, next))
+
+    | Predict (label, id, next) ->
+        let (c, next) = merge_samples_expr next in
+        (c, Predict (label, id, next))
+
+    | x -> (false, x)
+
+  in merge_samples_expr prog
 
 
 
@@ -692,6 +810,6 @@ let optimise level prog =
   let rules =
     if level = 0 then [ ]
     else if level = 1 then [ local ]
-    else [ local; commute_sample_observe; remove_const_observe ]
+    else [ local; merge_samples; commute_sample_observe; remove_const_observe ]
   in
   transform_K_Prime (optimise_prime rules (transform_K prog))
