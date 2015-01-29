@@ -249,20 +249,29 @@ let is_direct_path_from_let_to_expr let_id target_expr source_expr =
 
 
 (* When given a prim and a list of ids,
-   returns a tuple of three lists (pa, paa, npa) where
-   - pa = the set of ids which are of the given prim type
-   - paa = the args of the above ids
-   - npa = the set of ids which are not of the given prim type *)
-(* extract_prim_args :: string -> id list -> (id list * id list list * id list) *)
-let rec extract_prim_args prim = function
-  | [] -> ([], [], [])
-  | arg :: args ->
-      let (pa, paa, npa) = extract_prim_args prim args in
-      (match arg with
-      | (id, type_c, Prim (prim2, prim_args)) when prim2 = prim ->
-          (arg :: pa, prim_args :: paa, npa)
-      | _ ->
-          (pa, paa, arg :: npa))
+   returns a tuple of two lists:
+   - pa = subset of ids which of the given prim
+   - npa = everything else *)
+(* partition_by_prim :: string -> id list -> (id list * id list) *)
+let rec partition_by_prim prim ids =
+  let is_prim_app = function
+    | (_, _, Prim (prim2, _)) -> prim2 = prim
+    | _ -> false
+
+  in partition is_prim_app ids
+
+
+
+(* When given a list of ids,
+   returns a list of the args to prims *)
+(* extract_prim_args :: id list -> id list list *)
+let rec extract_prim_args ids =
+  let extract id prim_argss =
+    (match id with
+    | (_, _, Prim (_, prim_args)) -> prim_args :: prim_argss
+    | _ -> prim_argss)
+
+  in fold_right extract ids []
       
 
 
@@ -642,9 +651,11 @@ let merge_samples prog =
   let rec merge_samples_expr = function
     | Let (let_id, Prim ("plus", args), expr) ->
         let (c, expr) = merge_samples_expr expr in
-        let (normal_args, normal_args_args, non_normal_args) = extract_prim_args "normal" args in
+
+        let (normal_args, non_normal_args) = partition_by_prim "normal" args in
         if (  length normal_args >= 2
            && fold_right (&&) (map id_used_once normal_args) true) then
+          let normal_args_args = extract_prim_args normal_args in
           let id_1 = (new_id (), NumType, Unknown) in
           let id_2 = (new_id (), NumType, Unknown) in
           let id_3 = (new_id (), NumType, Unknown) in
@@ -654,6 +665,20 @@ let merge_samples prog =
           Let (id_3, Prim ("normal", [id_1; id_2]),
           Let (let_id, Prim ("plus", id_3 :: non_normal_args),
             expr)))))
+
+        else
+        let (poisson_args, non_poisson_args) = partition_by_prim "poisson" args in
+        if (  length poisson_args >= 2
+           && fold_right (&&) (map id_used_once poisson_args) true) then
+          let poisson_args_args = extract_prim_args poisson_args in
+          let id_1 = (new_id (), NumType, Unknown) in
+          let id_2 = (new_id (), NumType, Unknown) in
+          let id_3 = (new_id (), NumType, Unknown) in
+          (true,
+          Let (id_1, Prim ("plus", map hd poisson_args_args),
+          Let (id_3, Prim ("poisson", [id_1]),
+          Let (let_id, Prim ("plus", id_3 :: non_poisson_args),
+            expr))))
 
         else
           (c, Let (let_id, Prim ("plus", args), expr))

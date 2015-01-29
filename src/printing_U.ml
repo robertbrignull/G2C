@@ -32,7 +32,7 @@ let get_op_symbol = function
   | "geq" -> ">="
   | x -> x
   
-let print_prim prim = prim
+let print_prim prim = get_op_symbol prim
 
 let print_def (id, type_c) =
   (print_id id) ^ " : " ^ (print_type type_c)
