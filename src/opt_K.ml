@@ -117,10 +117,10 @@ let rec is_free_in_expr target = function
       || is_free_in_expr target else_expr
 
   | App (expr, args) ->
-      fold_left (||) false (map (is_free_in_id target) (expr :: args))
+      fold_right (||) (map (is_free_in_id target) (expr :: args)) false
 
   | Observe (prim, args, value, next) ->
-         fold_left (||) false (map (is_free_in_id target) (value :: args))
+         fold_right (||) (map (is_free_in_id target) (value :: args)) false
       || is_free_in_expr target next
 
   | Predict (label, id, next) ->
@@ -135,10 +135,10 @@ and is_free_in_value target = function
   | Lambda (args, expr) -> is_free_in_expr target expr
 
   | Prim (prim, args) ->
-      fold_left (||) false (map (is_free_in_id target) args)
+      fold_right (||) (map (is_free_in_id target) args) false
 
   | TypedPrim (prim, type_c, args) ->
-      fold_left (||) false (map (is_free_in_id target) args)
+      fold_right (||) (map (is_free_in_id target) args) false
 
   | Mem id -> is_free_in_id target id
 
@@ -198,13 +198,36 @@ let rec is_const (_, _, value) =
 
 
 
+(* extract_nums :: args -> (float list * args) *)
 let rec extract_nums = function
-  | [] -> Some []
-  | (Num x) :: args ->
-      (match extract_nums args with
-      | Some nums -> Some (x :: nums)
-      | None -> None)
-  | _ -> None
+  | [] -> ([], [])
+  | (_, _, Num x) :: args ->
+      let (nums, non_num_args) = extract_nums args in
+      (x :: nums, non_num_args)
+  | arg :: args ->
+      let (nums, non_num_args) = extract_nums args in
+      (nums, arg :: non_num_args)
+
+
+
+(* extract_bools :: args -> (bool list * args) *)
+let rec extract_bools = function
+  | [] -> ([], [])
+  | (_, _, Bool b) :: args ->
+      let (bools, non_bool_args) = extract_bools args in
+      (b :: bools, non_bool_args)
+  | arg :: args ->
+      let (bools, non_bool_args) = extract_bools args in
+      (bools, arg :: non_bool_args)
+
+
+
+(* evaluate_pairwise :: ('a -> 'a -> bool) -> 'a list -> bool -> bool *)
+let rec evaluate_pairwise f xs e =
+  match xs with
+  | x :: y :: xs ->
+      (f x y) && (evaluate_pairwise f (y :: xs) e)
+  | _ -> e
 
 
 
@@ -543,24 +566,31 @@ let move_let_after let_id targets prog =
 
 
 let local prog =
+  (* id_used_once :: id -> bool *)
+  let id_used_once id =
+    length (find_uses_expr (id_name id) prog) = 1
+
+  in
+
+  (* local_expr :: expr -> (bool * expr) *)
   let rec local_expr = function
     (* If an id is assigned to another id, remove the second id
        and replace by the first id throughout the code *)
-    | Let (id_1, Id id_2, expr) -> begin
+    | Let (id_1, Id id_2, expr) ->
         (true, replace_id_expr id_1 id_2 expr)
-      end
 
     (* Remove lets where the value is never used *)
-    | Let (id, value, expr) when not (is_free_in_expr id expr) -> begin
+    | Let (id, value, expr) when not (is_free_in_expr id expr) ->
         (true, expr)
-      end
+
+    (* Perform optimisations on values *)
+    | Let (id, value, expr) ->
+        let (c, expr) = local_expr expr in
+        (match local_value value with
+        | Some let_gen -> (true, let_gen id expr)
+        | None -> (c, Let (id, value, expr)))
 
     (* End of optimisations, just recurse *)
-    | Let (id, value, expr) ->
-        let (c1, value) = local_value value in
-        let (c2, expr) = local_expr expr in
-        (c1 || c2, Let (id, value, expr))
-
     | If (test, then_expr, else_expr) ->
         let (c1, then_expr) = local_expr then_expr in
         let (c2, else_expr) = local_expr else_expr in
@@ -576,66 +606,184 @@ let local prog =
 
     | x -> (false, x)
 
+  (* local_value :: value -> (value * (expr -> expr)) option *)
   and local_value = function
     (* Remove trivial continuations that are equivalent
        to some other named function *)
     | Lambda ([l_arg], App (f, [f_arg]))
       when l_arg = f_arg ->
-        (true, Id f)
+        Some (fun let_id next ->
+          Let (let_id, Id f, next))
 
     (* Do some constant calculations *)
     | Prim ("plus", [arg]) ->
-        (true, Id arg)
+        Some (fun let_id next ->
+          Let (let_id, Id arg, next))
+
+    | Prim ("minus", [(_, _, Num x)]) ->
+        Some (fun let_id next ->
+          Let (let_id, Num (0. -. x), next))
 
     | Prim ("times", [arg]) ->
-        (true, Id arg)
+        Some (fun let_id next ->
+          Let (let_id, Id arg, next))
+
+    | Prim ("divide", [(_, _, Num x)]) ->
+        Some (fun let_id next ->
+          Let (let_id, Num (1. /. x), next))
 
     | Prim ("plus", args) ->
-        let values_changed = map local_value (map id_value args) in
-        let values = map snd values_changed in
-        let changed = fold_right (||) (map fst values_changed) false in
-        (match extract_nums values with
-        | Some nums -> (true, Num (fold_right (+.) nums 0.))
-        | None -> (changed, Prim ("plus", args)))
+        let (nums, non_num_args) = extract_nums args in
+        if length nums > 1 then
+          let id_1 = (new_id (), NumType, Unknown) in
+          Some (fun let_id next ->
+            Let (id_1, Num (fold_right (+.) nums 0.),
+            Let (let_id, Prim ("plus", id_1 :: non_num_args),
+            next)))
+
+        else
+          None
 
     | Prim ("minus", args) ->
-        let values_changed = map local_value (map id_value args) in
-        let values = map snd values_changed in
-        let changed = fold_right (||) (map fst values_changed) false in
-        (match extract_nums values with
-        | Some nums ->
-            if length nums = 1 then
-              (true, Num (0. -. hd nums))
-            else
-              (true, Num (hd nums -. fold_right (+.) (tl nums) 0.))
-        | None -> (changed, Prim ("minus", args)))
+        let (nums, non_num_args) = extract_nums args in
+        if length non_num_args = 0 then
+          Some (fun let_id next ->
+            Let (let_id, Num (fold_left (-.) (hd nums) (tl nums)),
+            next))
+        else if length nums > 1 then
+          let id_1 = (new_id (), NumType, Unknown) in
+          (match hd args with
+          | (_, _, Num x) when x = hd nums ->
+              Some (fun let_id next ->
+                Let (id_1, Num (fold_left (-.) (hd nums) (tl nums)),
+                Let (let_id, Prim ("minus", id_1 :: non_num_args),
+                next)))
+          | _ ->
+              Some (fun let_id next ->
+                Let (id_1, Num (fold_right (+.) nums 0.),
+                Let (let_id, Prim ("minus", append non_num_args [id_1]),
+                next))))
+        else None
 
     | Prim ("times", args) ->
-        let values_changed = map local_value (map id_value args) in
-        let values = map snd values_changed in
-        let changed = fold_right (||) (map fst values_changed) false in
-        (match extract_nums values with
-        | Some nums -> (true, Num (fold_right ( *. ) nums 1.))
-        | None -> (changed, Prim ("times", args)))
+        let (nums, non_num_args) = extract_nums args in
+        if length nums > 1 then
+          let id_1 = (new_id (), NumType, Unknown) in
+          Some (fun let_id next ->
+            Let (id_1, Num (fold_right ( *. ) nums 1.),
+            Let (let_id, Prim ("times", id_1 :: non_num_args),
+            next)))
+        else None
 
     | Prim ("divide", args) ->
-        let values_changed = map local_value (map id_value args) in
-        let values = map snd values_changed in
-        let changed = fold_right (||) (map fst values_changed) false in
-        (match extract_nums values with
-        | Some nums ->
-            if length nums = 1 then
-              (true, Num (1. /. hd nums))
-            else
-              (true, Num (hd nums /. fold_right ( *. ) (tl nums) 1.))
-        | None -> (changed, Prim ("divide", args)))
+        let (nums, non_num_args) = extract_nums args in
+        if length non_num_args = 0 then
+          Some (fun let_id next ->
+            Let (let_id, Num (fold_left (/.) (hd nums) (tl nums)),
+            next))
+        else if length nums > 1 then
+          let id_1 = (new_id (), NumType, Unknown) in
+          (match hd args with
+          | (_, _, Num x) when x = hd nums ->
+              Some (fun let_id next ->
+                Let (id_1, Num (fold_left (/.) (hd nums) (tl nums)),
+                Let (let_id, Prim ("divide", id_1 :: non_num_args),
+                next)))
+          | _ ->
+              Some (fun let_id next ->
+                Let (id_1, Num (fold_right ( *. ) nums 1.),
+                Let (let_id, Prim ("divide", append non_num_args [id_1]),
+                next))))
+        else None
+
+    | Prim ("eq", args) ->
+        let (nums, non_num_args) = extract_nums args in
+        if length non_num_args = 0 then
+          let x = hd nums in
+          Some (fun let_id next ->
+            Let (let_id, Bool (fold_right (&&) (map (eq x) nums) true),
+            next))
+        else
+          let (bools, non_bool_args) = extract_bools args in
+          if length non_bool_args = 0 then
+            let x = hd bools in
+            Some (fun let_id next ->
+              Let (let_id, Bool (fold_right (&&) (map (eq x) bools) true),
+              next))
+          else None
+
+    | Prim ("neq", args) ->
+        let (nums, non_num_args) = extract_nums args in
+        if length non_num_args = 0 then
+          Some (fun let_id next ->
+            Let (let_id, Bool (fold_right (&&) (map (fun x -> length (map (eq x) nums) = 1) nums) true),
+            next))
+        else
+          let (bools, non_bool_args) = extract_bools args in
+          if length non_bool_args = 0 then
+            Some (fun let_id next ->
+              Let (let_id, Bool (fold_right (&&) (map (fun x -> length (map (eq x) bools) = 1) bools) true),
+              next))
+          else None
+
+    | Prim ("lt", args) ->
+        let (nums, non_num_args) = extract_nums args in
+        if length non_num_args = 0 then
+          Some (fun let_id next ->
+            Let (let_id, Bool (evaluate_pairwise (<) nums true), next))
+        else None
+
+    | Prim ("gt", args) ->
+        let (nums, non_num_args) = extract_nums args in
+        if length non_num_args = 0 then
+          Some (fun let_id next ->
+            Let (let_id, Bool (evaluate_pairwise (>) nums true), next))
+        else None
+
+    | Prim ("leq", args) ->
+        let (nums, non_num_args) = extract_nums args in
+        if length non_num_args = 0 then
+          Some (fun let_id next ->
+            Let (let_id, Bool (evaluate_pairwise (<=) nums true), next))
+        else None
+
+    | Prim ("geq", args) ->
+        let (nums, non_num_args) = extract_nums args in
+        if length non_num_args = 0 then
+          Some (fun let_id next ->
+            Let (let_id, Bool (evaluate_pairwise (>=) nums true), next))
+        else None
+
+    | Prim ("and", args) ->
+        let (bools, non_bool_args) = extract_bools args in
+        if length non_bool_args = 0 then
+          Some (fun let_id next ->
+            Let (let_id, Bool (fold_right (&&) bools true), next))
+        else None
+
+    | Prim ("or", args) ->
+        let (bools, non_bool_args) = extract_bools args in
+        if length non_bool_args = 0 then
+          Some (fun let_id next ->
+            Let (let_id, Bool (fold_right (||) bools false), next))
+        else None
+
+    | Prim ("not", args) ->
+        let (bools, non_bool_args) = extract_bools args in
+        if length non_bool_args = 0 then
+          Some (fun let_id next ->
+            Let (let_id, Bool (not (hd bools)), next))
+        else None
 
     (* End of optimisations, just recurse *)
     | Lambda (args, expr) ->
         let (c, expr) = local_expr expr in
-        (c, Lambda (args, expr))
+        if c then
+          Some (fun let_id next ->
+            Let (let_id, Lambda (args, expr), next))
+        else None
         
-    | x -> (false, x)
+    | x -> None
 
   in
   let (c, prog) = local_expr prog in
@@ -863,9 +1011,8 @@ let rec apply_rules rules_left all_rules prog =
   | [] -> prog
   | rule :: rules_left ->
       let (changed, prog) = rule prog in
-      if changed then begin
+      if changed then
         apply_rules all_rules all_rules prog
-      end
       else
         apply_rules rules_left all_rules prog
 

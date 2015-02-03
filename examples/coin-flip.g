@@ -1,4 +1,6 @@
-[assume p (beta 1 1)]
+[assume a (poisson 2)]
+
+[assume p (beta a 1)]
 
 [observe (flip p) true]
 [observe (flip p) true]
