@@ -656,14 +656,16 @@ let merge_samples prog =
         if (  length normal_args >= 2
            && fold_right (&&) (map id_used_once normal_args) true) then
           let normal_args_args = extract_prim_args normal_args in
-          let id_1 = (new_id (), NumType, Unknown) in
-          let id_2 = (new_id (), NumType, Unknown) in
-          let id_3 = (new_id (), NumType, Unknown) in
+          let ms = map hd normal_args_args in
+          let bs = map hd (map tl normal_args_args) in
+          let nm = (new_id (), NumType, Unknown) in
+          let nb = (new_id (), NumType, Unknown) in
+          let nv = (new_id (), NumType, Unknown) in
           (true,
-          Let (id_1, Prim ("plus", map hd normal_args_args),
-          Let (id_2, Prim ("plus", map hd (map tl normal_args_args)),
-          Let (id_3, Prim ("normal", [id_1; id_2]),
-          Let (let_id, Prim ("plus", id_3 :: non_normal_args),
+          Let (nm, Prim ("plus", ms),
+          Let (nb, Prim ("plus", bs),
+          Let (nv, Prim ("normal", [nm; nb]),
+          Let (let_id, Prim ("plus", nv :: non_normal_args),
             expr)))))
 
         else
@@ -671,13 +673,13 @@ let merge_samples prog =
         if (  length poisson_args >= 2
            && fold_right (&&) (map id_used_once poisson_args) true) then
           let poisson_args_args = extract_prim_args poisson_args in
-          let id_1 = (new_id (), NumType, Unknown) in
-          let id_2 = (new_id (), NumType, Unknown) in
-          let id_3 = (new_id (), NumType, Unknown) in
+          let ls = map hd poisson_args_args in
+          let nl = (new_id (), NumType, Unknown) in
+          let nv = (new_id (), NumType, Unknown) in
           (true,
-          Let (id_1, Prim ("plus", map hd poisson_args_args),
-          Let (id_3, Prim ("poisson", [id_1]),
-          Let (let_id, Prim ("plus", id_3 :: non_poisson_args),
+          Let (nl, Prim ("plus", ls),
+          Let (nv, Prim ("poisson", [nl]),
+          Let (let_id, Prim ("plus", nv :: non_poisson_args),
             expr))))
 
         else
