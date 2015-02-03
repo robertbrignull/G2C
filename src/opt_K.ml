@@ -718,78 +718,116 @@ let commute_sample_observe prog =
         if c then (c, prog)
         else commute_sample_observe_expr else_expr
 
-    | Observe (prim, args, value, next) ->
+    | Observe ("normal", [m2; b2], value, next) ->
         (try
-          (match prim, args with
-          | "normal", [m2; b2] ->
-              (match is_linear_of_prim "normal" m2 prog with
-              | Some (prim_id, m1, b1, coeff, const, dependent_ids, gen_values) ->
-                  if    is_direct_path_from_let_to_expr prim_id (Observe (prim, args, value, next)) prog
-                     && is_determined m1
-                     && is_determined b1
-                     && is_determined b2
-                     && is_determined value
-                  then
-                    let ids_used =
-                      concat [dependent_ids;
-                              list_ids_used b2;
-                              list_ids_used value] in
-                    let prog = move_let_after prim_id ids_used prog in
-                    let nm1 = (new_id (), NumType, Unknown) in
-                    let nb1 = (new_id (), NumType, Unknown) in
-                    let nm2 = (new_id (), NumType, Unknown) in
-                    let nb2 = (new_id (), NumType, Unknown) in
-                    let gend_b2 = (new_id (), NumType, Unknown) in
-                    let gend_value = (new_id (), NumType, Unknown) in
-                    let id1 = (new_id (), NumType, Unknown) in
-                    let id2 = (new_id (), NumType, Unknown) in
-                    let id3 = (new_id (), NumType, Unknown) in
-                    let id4 = (new_id (), NumType, Unknown) in
-                    let id5 = (new_id (), NumType, Unknown) in
-                    let id6 = (new_id (), NumType, Unknown) in
-                    let id7 = (new_id (), NumType, Unknown) in
-                    let id8 = (new_id (), NumType, Unknown) in
-                    let id9 = (new_id (), NumType, Unknown) in
-                    let id10 = (new_id (), NumType, Unknown) in
-                    let id11 = (new_id (), NumType, Unknown) in
-                    let new_let next =
-                      gen_values
-                      (gen_const_let gend_b2 (id_value b2)
-                      (gen_const_let gend_value (id_value value)
-                      (Let (id1, Prim ("divide", [b1]),
-                      Let (id2, Prim ("times", [coeff; coeff]),
-                      Let (id3, Prim ("divide", [id2; gend_b2]),
-                      Let (id4, Prim ("plus", [id1; id3]),
-                      Let (nb1, Prim ("divide", [id4]),
-                      Let (id5, Prim ("divide", [m1; b1]),
-                      Let (id6, Prim ("divide", [coeff; gend_b2]),
-                      Let (id7, Prim ("minus", [gend_value; const]),
-                      Let (id8, Prim ("times", [id6; id7]),
-                      Let (id9, Prim ("plus", [id5; id8]),
-                      Let (nm1, Prim ("times", [nb1; id9]),
-                      Let ((prim_id, NumType, Unknown),
-                           Prim ("normal", [nm1; nb1]),
-                           next)))))))))))))))
-                    in
-                    let new_observe next =
-                      Let (id10, Prim ("times", [id2; b1]),
-                      Let (nb2, Prim ("plus", [gend_b2; id10]),
-                      Let (id11, Prim ("times", [coeff; m1]),
-                      Let (nm2, Prim ("plus", [id11; const]),
-                      Observe ("normal",
-                               [nm2; nb2],
-                               gend_value,
-                               next)))))
-                    in
-                    let prog = replace_let prim_id new_let prog in
-                    let prog = replace_observe (prim, args, value) new_observe prog in
-                    let prog = rebuild_values prog in
-                    (true, prog)
+          (match is_linear_of_prim "normal" m2 prog with
+          | Some (prim_id, m1, b1, coeff, const, dependent_ids, gen_values) ->
+              if    is_direct_path_from_let_to_expr prim_id (Observe ("normal", [m2; b2], value, next)) prog
+                 && is_determined m1
+                 && is_determined b1
+                 && is_determined b2
+                 && is_determined value
+              then
+                let ids_used =
+                  concat [dependent_ids;
+                          list_ids_used b2;
+                          list_ids_used value] in
+                let prog = move_let_after prim_id ids_used prog in
+                let nm1 = (new_id (), NumType, Unknown) in
+                let nb1 = (new_id (), NumType, Unknown) in
+                let nm2 = (new_id (), NumType, Unknown) in
+                let nb2 = (new_id (), NumType, Unknown) in
+                let gend_b2 = (new_id (), NumType, Unknown) in
+                let gend_value = (new_id (), NumType, Unknown) in
+                let id1 = (new_id (), NumType, Unknown) in
+                let id2 = (new_id (), NumType, Unknown) in
+                let id3 = (new_id (), NumType, Unknown) in
+                let id4 = (new_id (), NumType, Unknown) in
+                let id5 = (new_id (), NumType, Unknown) in
+                let id6 = (new_id (), NumType, Unknown) in
+                let id7 = (new_id (), NumType, Unknown) in
+                let id8 = (new_id (), NumType, Unknown) in
+                let id9 = (new_id (), NumType, Unknown) in
+                let id10 = (new_id (), NumType, Unknown) in
+                let id11 = (new_id (), NumType, Unknown) in
+                let new_let next =
+                  gen_values
+                  (gen_const_let gend_b2 (id_value b2)
+                  (gen_const_let gend_value (id_value value)
+                  (Let (id1, Prim ("divide", [b1]),
+                  Let (id2, Prim ("times", [coeff; coeff]),
+                  Let (id3, Prim ("divide", [id2; gend_b2]),
+                  Let (id4, Prim ("plus", [id1; id3]),
+                  Let (nb1, Prim ("divide", [id4]),
+                  Let (id5, Prim ("divide", [m1; b1]),
+                  Let (id6, Prim ("divide", [coeff; gend_b2]),
+                  Let (id7, Prim ("minus", [gend_value; const]),
+                  Let (id8, Prim ("times", [id6; id7]),
+                  Let (id9, Prim ("plus", [id5; id8]),
+                  Let (nm1, Prim ("times", [nb1; id9]),
+                  Let ((prim_id, NumType, Unknown),
+                       Prim ("normal", [nm1; nb1]),
+                       next)))))))))))))))
+                in
+                let new_observe next =
+                  Let (id10, Prim ("times", [id2; b1]),
+                  Let (nb2, Prim ("plus", [gend_b2; id10]),
+                  Let (id11, Prim ("times", [coeff; m1]),
+                  Let (nm2, Prim ("plus", [id11; const]),
+                  Observe ("normal",
+                           [nm2; nb2],
+                           gend_value,
+                           next)))))
+                in
+                let prog = replace_let prim_id new_let prog in
+                let prog = replace_observe ("normal", [m2; b2], value) new_observe prog in
+                let prog = rebuild_values prog in
+                (true, prog)
 
-                  else commute_sample_observe_expr next
-              | None -> commute_sample_observe_expr next)
+              else commute_sample_observe_expr next
+          | None -> commute_sample_observe_expr next)
+        with Not_found -> commute_sample_observe_expr next)
+    
+    | Observe ("flip", [p], value, next) ->
+        (try
+          (match id_value p, id_value value with
+          | Prim ("beta", [a; b]), Bool true ->
+              let na = (new_id (), NumType, Unknown) in
+              let id1 = (new_id (), NumType, Unknown) in
+              let new_let next =
+                Let (id1, Num 1.,
+                Let (na, Prim ("plus", [a; id1]),
+                Let (p,
+                     Prim ("beta", [na; b]),
+                     next)))
+              in
+              let new_observe next = next in
+              let prog = replace_let (id_name p) new_let prog in
+              let prog = replace_observe ("flip", [p], value) new_observe prog in
+              let prog = rebuild_values prog in
+              (true, prog)
+
+          | Prim ("beta", [a; b]), Bool false ->
+              let nb = (new_id (), NumType, Unknown) in
+              let id1 = (new_id (), NumType, Unknown) in
+              let new_let next =
+                Let (id1, Num 1.,
+                Let (nb, Prim ("plus", [b; id1]),
+                Let (p,
+                     Prim ("beta", [a; nb]),
+                     next)))
+              in
+              let new_observe next = next in
+              let prog = replace_let (id_name p) new_let prog in
+              let prog = replace_observe ("flip", [p], value) new_observe prog in
+              let prog = rebuild_values prog in
+              (true, prog)
+
           | _, _ -> commute_sample_observe_expr next)
         with Not_found -> commute_sample_observe_expr next)
+
+    | Observe (prim, args, value, next) ->
+        commute_sample_observe_expr next
 
     | Predict (label, id, next) ->
         commute_sample_observe_expr next

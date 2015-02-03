@@ -2,6 +2,9 @@
 
 [observe (flip p) true]
 [observe (flip p) true]
+[observe (flip p) true]
+[observe (flip p) false]
+[observe (flip p) true]
 [observe (flip p) false]
 
 [predict p]
