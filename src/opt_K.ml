@@ -566,12 +566,6 @@ let move_let_after let_id targets prog =
 
 
 let local prog =
-  (* id_used_once :: id -> bool *)
-  let id_used_once id =
-    length (find_uses_expr (id_name id) prog) = 1
-
-  in
-
   (* local_expr :: expr -> (bool * expr) *)
   let rec local_expr = function
     (* If an id is assigned to another id, remove the second id
@@ -586,8 +580,8 @@ let local prog =
     (* Perform optimisations on values *)
     | Let (id, value, expr) ->
         let (c, expr) = local_expr expr in
-        (match local_value value with
-        | Some let_gen -> (true, let_gen id expr)
+        (match local_value id value with
+        | Some let_gen -> (true, let_gen expr)
         | None -> (c, Let (id, value, expr)))
 
     (* End of optimisations, just recurse *)
@@ -606,60 +600,59 @@ let local prog =
 
     | x -> (false, x)
 
-  (* local_value :: value -> (value * (expr -> expr)) option *)
-  and local_value = function
+  (* local_value :: id -> value -> (value * (expr -> expr)) option *)
+  and local_value let_id = function
     (* Remove trivial continuations that are equivalent
        to some other named function *)
     | Lambda ([l_arg], App (f, [f_arg]))
       when l_arg = f_arg ->
-        Some (fun let_id next ->
+        Some (fun next ->
           Let (let_id, Id f, next))
 
     (* Do some constant calculations *)
     | Prim ("plus", [arg]) ->
-        Some (fun let_id next ->
+        Some (fun next ->
           Let (let_id, Id arg, next))
 
     | Prim ("minus", [(_, _, Num x)]) ->
-        Some (fun let_id next ->
+        Some (fun next ->
           Let (let_id, Num (0. -. x), next))
 
     | Prim ("times", [arg]) ->
-        Some (fun let_id next ->
+        Some (fun next ->
           Let (let_id, Id arg, next))
 
     | Prim ("divide", [(_, _, Num x)]) ->
-        Some (fun let_id next ->
+        Some (fun next ->
           Let (let_id, Num (1. /. x), next))
 
     | Prim ("plus", args) ->
         let (nums, non_num_args) = extract_nums args in
         if length nums > 1 then
           let id_1 = (new_id (), NumType, Unknown) in
-          Some (fun let_id next ->
+          Some (fun next ->
             Let (id_1, Num (fold_right (+.) nums 0.),
             Let (let_id, Prim ("plus", id_1 :: non_num_args),
             next)))
 
-        else
-          None
+        else None
 
     | Prim ("minus", args) ->
         let (nums, non_num_args) = extract_nums args in
         if length non_num_args = 0 then
-          Some (fun let_id next ->
+          Some (fun next ->
             Let (let_id, Num (fold_left (-.) (hd nums) (tl nums)),
             next))
         else if length nums > 1 then
           let id_1 = (new_id (), NumType, Unknown) in
           (match hd args with
           | (_, _, Num x) when x = hd nums ->
-              Some (fun let_id next ->
+              Some (fun next ->
                 Let (id_1, Num (fold_left (-.) (hd nums) (tl nums)),
                 Let (let_id, Prim ("minus", id_1 :: non_num_args),
                 next)))
           | _ ->
-              Some (fun let_id next ->
+              Some (fun next ->
                 Let (id_1, Num (fold_right (+.) nums 0.),
                 Let (let_id, Prim ("minus", append non_num_args [id_1]),
                 next))))
@@ -669,7 +662,7 @@ let local prog =
         let (nums, non_num_args) = extract_nums args in
         if length nums > 1 then
           let id_1 = (new_id (), NumType, Unknown) in
-          Some (fun let_id next ->
+          Some (fun next ->
             Let (id_1, Num (fold_right ( *. ) nums 1.),
             Let (let_id, Prim ("times", id_1 :: non_num_args),
             next)))
@@ -678,19 +671,19 @@ let local prog =
     | Prim ("divide", args) ->
         let (nums, non_num_args) = extract_nums args in
         if length non_num_args = 0 then
-          Some (fun let_id next ->
+          Some (fun next ->
             Let (let_id, Num (fold_left (/.) (hd nums) (tl nums)),
             next))
         else if length nums > 1 then
           let id_1 = (new_id (), NumType, Unknown) in
           (match hd args with
           | (_, _, Num x) when x = hd nums ->
-              Some (fun let_id next ->
+              Some (fun next ->
                 Let (id_1, Num (fold_left (/.) (hd nums) (tl nums)),
                 Let (let_id, Prim ("divide", id_1 :: non_num_args),
                 next)))
           | _ ->
-              Some (fun let_id next ->
+              Some (fun next ->
                 Let (id_1, Num (fold_right ( *. ) nums 1.),
                 Let (let_id, Prim ("divide", append non_num_args [id_1]),
                 next))))
@@ -700,14 +693,14 @@ let local prog =
         let (nums, non_num_args) = extract_nums args in
         if length non_num_args = 0 then
           let x = hd nums in
-          Some (fun let_id next ->
+          Some (fun next ->
             Let (let_id, Bool (fold_right (&&) (map (eq x) nums) true),
             next))
         else
           let (bools, non_bool_args) = extract_bools args in
           if length non_bool_args = 0 then
             let x = hd bools in
-            Some (fun let_id next ->
+            Some (fun next ->
               Let (let_id, Bool (fold_right (&&) (map (eq x) bools) true),
               next))
           else None
@@ -715,13 +708,13 @@ let local prog =
     | Prim ("neq", args) ->
         let (nums, non_num_args) = extract_nums args in
         if length non_num_args = 0 then
-          Some (fun let_id next ->
+          Some (fun next ->
             Let (let_id, Bool (fold_right (&&) (map (fun x -> length (map (eq x) nums) = 1) nums) true),
             next))
         else
           let (bools, non_bool_args) = extract_bools args in
           if length non_bool_args = 0 then
-            Some (fun let_id next ->
+            Some (fun next ->
               Let (let_id, Bool (fold_right (&&) (map (fun x -> length (map (eq x) bools) = 1) bools) true),
               next))
           else None
@@ -729,49 +722,49 @@ let local prog =
     | Prim ("lt", args) ->
         let (nums, non_num_args) = extract_nums args in
         if length non_num_args = 0 then
-          Some (fun let_id next ->
+          Some (fun next ->
             Let (let_id, Bool (evaluate_pairwise (<) nums true), next))
         else None
 
     | Prim ("gt", args) ->
         let (nums, non_num_args) = extract_nums args in
         if length non_num_args = 0 then
-          Some (fun let_id next ->
+          Some (fun next ->
             Let (let_id, Bool (evaluate_pairwise (>) nums true), next))
         else None
 
     | Prim ("leq", args) ->
         let (nums, non_num_args) = extract_nums args in
         if length non_num_args = 0 then
-          Some (fun let_id next ->
+          Some (fun next ->
             Let (let_id, Bool (evaluate_pairwise (<=) nums true), next))
         else None
 
     | Prim ("geq", args) ->
         let (nums, non_num_args) = extract_nums args in
         if length non_num_args = 0 then
-          Some (fun let_id next ->
+          Some (fun next ->
             Let (let_id, Bool (evaluate_pairwise (>=) nums true), next))
         else None
 
     | Prim ("and", args) ->
         let (bools, non_bool_args) = extract_bools args in
         if length non_bool_args = 0 then
-          Some (fun let_id next ->
+          Some (fun next ->
             Let (let_id, Bool (fold_right (&&) bools true), next))
         else None
 
     | Prim ("or", args) ->
         let (bools, non_bool_args) = extract_bools args in
         if length non_bool_args = 0 then
-          Some (fun let_id next ->
+          Some (fun next ->
             Let (let_id, Bool (fold_right (||) bools false), next))
         else None
 
     | Prim ("not", args) ->
         let (bools, non_bool_args) = extract_bools args in
         if length non_bool_args = 0 then
-          Some (fun let_id next ->
+          Some (fun next ->
             Let (let_id, Bool (not (hd bools)), next))
         else None
 
@@ -779,7 +772,7 @@ let local prog =
     | Lambda (args, expr) ->
         let (c, expr) = local_expr expr in
         if c then
-          Some (fun let_id next ->
+          Some (fun next ->
             Let (let_id, Lambda (args, expr), next))
         else None
         
@@ -788,6 +781,100 @@ let local prog =
   in
   let (c, prog) = local_expr prog in
   (c, rebuild_values prog)
+
+
+
+let merge_arithmetic prog =
+  (* id_used_once :: id -> bool *)
+  let id_used_once id =
+    length (find_uses_expr (id_name id) prog) = 1
+  in
+
+  (* merge_arithmetic_expr :: expr -> (bool * expr) *)
+  let rec merge_arithmetic_expr = function
+    | Let (id, value, expr) ->
+        (match merge_arithmetic_value id value with
+        | Some let_gen -> (true, replace_let (id_name id) let_gen prog)
+        | None -> merge_arithmetic_expr expr)
+
+    | If (test, then_expr, else_expr) ->
+        let (c1, prog1) = merge_arithmetic_expr then_expr in
+        if c1 then (c1, prog1)
+        else merge_arithmetic_expr else_expr
+
+    | Observe (prim, args, value, next) ->
+        merge_arithmetic_expr next
+
+    | Predict (label, id, next) ->
+        merge_arithmetic_expr next
+
+    | _ -> (false, prog)
+
+  (* merge_arithmetic_value :: id -> value -> (value * (expr -> expr)) option *)
+  and merge_arithmetic_value let_id = function
+    | Prim ("plus", args) ->
+        let (plus_args, non_plus_args) = partition_by_prim "plus" args in
+        let (mergeable_args, non_mergeable_args) = partition id_used_once plus_args in
+        if length mergeable_args > 0 then
+          let plus_args_args = extract_prim_args mergeable_args in
+          let new_args = concat [concat plus_args_args; non_mergeable_args; non_plus_args] in
+          Some (fun next ->
+            Let (let_id, Prim ("plus", new_args),
+            next))
+        else None
+
+    | Prim ("minus", args) ->
+        (match hd args with
+        | (id, _, Prim ("minus", minus_args)) when id_used_once (hd args) ->
+            let new_args = append minus_args (tl args) in
+            Some (fun next ->
+              Let (let_id, Prim ("minus", new_args),
+              next))
+        | _ ->
+            let (plus_args, non_plus_args) = partition_by_prim "plus" (tl args) in
+            let (mergeable_args, non_mergeable_args) = partition id_used_once plus_args in
+            if length mergeable_args > 0 then begin
+              let plus_args_args = extract_prim_args mergeable_args in
+              let new_args = concat [[hd args]; non_mergeable_args; non_plus_args; concat plus_args_args] in
+              Some (fun next ->
+                Let (let_id, Prim ("minus", new_args),
+                next))
+            end
+            else None)
+
+    | Prim ("times", args) ->
+        let (times_args, non_times_args) = partition_by_prim "times" args in
+        let (mergeable_args, non_mergeable_args) = partition id_used_once times_args in
+        if length mergeable_args > 0 then
+          let times_args_args = extract_prim_args mergeable_args in
+          let new_args = concat [concat times_args_args; non_mergeable_args; non_times_args] in
+          Some (fun next ->
+            Let (let_id, Prim ("times", new_args),
+            next))
+        else None
+
+    | Prim ("divide", args) ->
+        (match hd args with
+        | (id, _, Prim ("divide", divide_args)) when id_used_once (hd args) ->
+            let new_args = append divide_args (tl args) in
+            Some (fun next ->
+              Let (let_id, Prim ("divide", new_args),
+              next))
+        | _ ->
+            let (times_args, non_times_args) = partition_by_prim "times" (tl args) in
+            let (mergeable_args, non_mergeable_args) = partition id_used_once times_args in
+            if length mergeable_args > 0 then begin
+              let times_args_args = extract_prim_args mergeable_args in
+              let new_args = concat [[hd args]; non_mergeable_args; non_times_args; concat times_args_args] in
+              Some (fun next ->
+                Let (let_id, Prim ("divide", new_args),
+                next))
+            end
+            else None)
+
+    | _ -> None
+
+  in merge_arithmetic_expr prog
 
 
 
@@ -1021,7 +1108,7 @@ let optimise_prime rules prog = apply_rules rules rules prog
 let optimise level prog =
   let rules =
     if level = 0 then [ ]
-    else if level = 1 then [ local ]
-    else [ local; merge_samples; commute_sample_observe; remove_const_observe ]
+    else if level = 1 then [ local; merge_arithmetic ]
+    else [ local; merge_arithmetic; merge_samples; commute_sample_observe; remove_const_observe ]
   in
   transform_K_Prime (optimise_prime rules (transform_K prog))
