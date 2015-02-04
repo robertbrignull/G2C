@@ -66,6 +66,7 @@ and is_probabilistic_prim = function
   | "gamma" -> true
   | "normal" -> true
   | "poisson" -> true
+  | "exponential" -> true
   | "uniform-continuous" -> true
   | "uniform-discrete" -> true
   | "discrete" -> true

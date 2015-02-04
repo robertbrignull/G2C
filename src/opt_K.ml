@@ -338,6 +338,24 @@ let rec replace_let src_id new_let = function
 
 
 
+(* find_observe_values :: (string * args) -> expr -> id list *)
+let rec find_observe_values target_observe = function
+  | Let (id, value, expr) ->
+      find_observe_values target_observe expr
+
+  | Observe (prim, args, value, next) ->
+      if (prim, args) = target_observe then
+        (id_value value) :: find_observe_values target_observe next
+      else
+        find_observe_values target_observe next
+
+  | Predict (label, id, next) ->
+      find_observe_values target_observe next
+
+  | _ -> []
+
+
+
 (* replace_observe :: (string * args * id) -> (expr -> expr) -> expr -> expr *)
 let rec replace_observe src_observe new_observe = function
   | Let (id, value, expr) ->
@@ -351,6 +369,29 @@ let rec replace_observe src_observe new_observe = function
 
   | Predict (label, id, next) ->
       Predict (label, id, replace_observe src_observe new_observe next)
+
+  | x -> x
+
+
+
+(* remove_observes :: (string * args * id) -> prog -> prog *)
+let rec remove_observes target_observe = function
+  | Let (id, value, expr) ->
+      Let (id, value, remove_observes target_observe expr)
+
+  | If (test, then_expr, else_expr) ->
+      If (test,
+          remove_observes target_observe then_expr,
+          remove_observes target_observe else_expr)
+
+  | Observe (prim, args, value, next) ->
+      if (prim, args, id_value value) = target_observe then
+        remove_observes target_observe next
+      else
+        Observe (prim, args, value, remove_observes target_observe next)
+
+  | Predict (label, id, next) ->
+      Predict (label, id, remove_observes target_observe next)
 
   | x -> x
 
@@ -945,14 +986,36 @@ let merge_samples prog =
 
 let commute_sample_observe prog =
   let rec commute_sample_observe_expr = function
-    | Let (id, value, expr) ->
-        commute_sample_observe_expr expr
+    (* beta sample, multiple flip observes *)
+    | Let (let_id, Prim ("beta", [a; b]), expr) ->
+        if is_const a && is_const b then
+          let observe_values = find_observe_values ("flip", [let_id]) expr in
+          let (mergeable_values, non_mergeable_values) = partition (function Bool b -> true | _ -> false) observe_values in
+          if length mergeable_values > 0 then
+            let num_true = length (filter (function Bool b -> b | _ -> false) mergeable_values) in
+            let num_false = length mergeable_values - num_true in
+            let na = (new_id (), NumType, Unknown) in
+            let nb = (new_id (), NumType, Unknown) in
+            let id1 = (new_id (), NumType, Unknown) in
+            let id2 = (new_id (), NumType, Unknown) in
+            let new_let next =
+              Let (id1, Num (float_of_int num_true),
+              Let (id2, Num (float_of_int num_false),
+              Let (na, Prim ("plus", [a; id1]),
+              Let (nb, Prim ("plus", [b; id2]),
+              Let (let_id, Prim ("beta", [na; nb]),
+                   next)))))
+            in
+            let prog = replace_let (id_name let_id) new_let prog in
+            let prog = remove_observes ("flip", [let_id], Bool true) prog in
+            let prog = remove_observes ("flip", [let_id], Bool false) prog in
+            let prog = rebuild_values prog in
+            (true, prog)
 
-    | If (test, then_expr, else_expr) ->
-        let (c, prog) = commute_sample_observe_expr then_expr in
-        if c then (c, prog)
-        else commute_sample_observe_expr else_expr
+          else commute_sample_observe_expr expr
+        else commute_sample_observe_expr expr
 
+    (* normal sample, normal observe *)
     | Observe ("normal", [m2; b2], value, next) ->
         (try
           (match is_linear_of_prim "normal" m2 prog with
@@ -1022,44 +1085,15 @@ let commute_sample_observe prog =
               else commute_sample_observe_expr next
           | None -> commute_sample_observe_expr next)
         with Not_found -> commute_sample_observe_expr next)
-    
-    | Observe ("flip", [p], value, next) ->
-        (try
-          (match id_value p, id_value value with
-          | Prim ("beta", [a; b]), Bool true ->
-              let na = (new_id (), NumType, Unknown) in
-              let id1 = (new_id (), NumType, Unknown) in
-              let new_let next =
-                Let (id1, Num 1.,
-                Let (na, Prim ("plus", [a; id1]),
-                Let (p,
-                     Prim ("beta", [na; b]),
-                     next)))
-              in
-              let new_observe next = next in
-              let prog = replace_let (id_name p) new_let prog in
-              let prog = replace_observe ("flip", [p], value) new_observe prog in
-              let prog = rebuild_values prog in
-              (true, prog)
 
-          | Prim ("beta", [a; b]), Bool false ->
-              let nb = (new_id (), NumType, Unknown) in
-              let id1 = (new_id (), NumType, Unknown) in
-              let new_let next =
-                Let (id1, Num 1.,
-                Let (nb, Prim ("plus", [b; id1]),
-                Let (p,
-                     Prim ("beta", [a; nb]),
-                     next)))
-              in
-              let new_observe next = next in
-              let prog = replace_let (id_name p) new_let prog in
-              let prog = replace_observe ("flip", [p], value) new_observe prog in
-              let prog = rebuild_values prog in
-              (true, prog)
+    (* now just recurse *)
+    | Let (id, value, expr) ->
+        commute_sample_observe_expr expr
 
-          | _, _ -> commute_sample_observe_expr next)
-        with Not_found -> commute_sample_observe_expr next)
+    | If (test, then_expr, else_expr) ->
+        let (c, prog) = commute_sample_observe_expr then_expr in
+        if c then (c, prog)
+        else commute_sample_observe_expr else_expr
 
     | Observe (prim, args, value, next) ->
         commute_sample_observe_expr next
