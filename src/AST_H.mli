@@ -24,6 +24,7 @@ and expr =
   | If of id * expr * expr
   | App of id * args
   | Observe of string * args * id * expr
+  | UnvaluedObserve of string * args * expr
   | Predict of string * id * expr
   | Halt
 

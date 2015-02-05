@@ -25,6 +25,7 @@ and expr =
   | If of id * expr * expr
   | App of id * args
   | Observe of string * args * id * expr
+  | UnvaluedObserve of string * args * expr
   | Predict of string * id * expr
   | Halt
 
@@ -110,6 +111,11 @@ let transform_K prog =
                  transform_K_id env value,
                  transform_K_expr env next)
 
+   | K.UnvaluedObserve (label, args, next) ->
+        UnvaluedObserve (label,
+                 List.map (transform_K_id env) args,
+                 transform_K_expr env next)
+
    | K.Predict (label, value, next) ->
         Predict (label,
                  transform_K_id env value,
@@ -186,6 +192,11 @@ let rebuild_values prog =
                  rebuild_values_id env value,
                  rebuild_values_expr env next)
 
+   | UnvaluedObserve (label, args, next) ->
+        UnvaluedObserve (label,
+                 List.map (rebuild_values_id env) args,
+                 rebuild_values_expr env next)
+
    | Predict (label, value, next) ->
         Predict (label,
                  rebuild_values_id env value,
@@ -249,6 +260,11 @@ let rec transform_K_Prime prog =
          K.Observe (label,
                     List.map transform_K_Prime_id args,
                     transform_K_Prime_id value,
+                    transform_K_Prime_expr next)
+
+    | UnvaluedObserve (label, args, next) ->
+         K.UnvaluedObserve (label,
+                    List.map transform_K_Prime_id args,
                     transform_K_Prime_expr next)
 
     | Predict (label, value, next) ->

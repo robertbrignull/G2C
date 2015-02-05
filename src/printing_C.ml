@@ -184,11 +184,11 @@ and print_typed_prim_app prim type_c args =
    add on '_lnp'.
    For some however (eg: discrete, categorical) we must convert
    the list to an array first using a wrapper. *)
-(* print_prim_observe :: string -> args -> id -> string *)
-and print_prim_observe prim args value =
+(* print_prim_observe :: string -> args -> string *)
+and print_prim_observe prim args =
   match prim with
-  | "discrete" -> print_func_app ("discrete_lnp_wrapper") (value :: args)
-  | prim -> print_func_app (prim ^ "_lnp") (value :: args)
+  | "discrete" -> print_func_app ("discrete_lnp_wrapper") args
+  | prim -> print_func_app (prim ^ "_lnp") args
 
 (* Print any value *)
 (* print_value :: value -> string *)
@@ -279,7 +279,13 @@ and print_stmt i = function
   | Observe (prim, args, value) ->
       (indent i) ^
       "observe(" ^
-      (print_prim_observe prim args value) ^
+      (print_prim_observe prim (value :: args)) ^
+      ");\n"
+
+  | UnvaluedObserve (prim, args) ->
+      (indent i) ^
+      "observe(" ^
+      (print_prim_observe prim args) ^
       ");\n"
 
   | Predict (label, (id, type_c)) ->
@@ -417,6 +423,7 @@ let rec uses_prim_stmt prim = function
   | Assign (_, TypedPrim (prim2, _, _)) when prim = prim2 -> true
   | If (_, then_stmt, else_stmt) -> uses_prim_stmt prim then_stmt || uses_prim_stmt prim else_stmt
   | Observe (prim2, _, _) when prim = prim2 -> true
+  | UnvaluedObserve (prim2, _) when prim = prim2 -> true
   | _ -> false
 
 (* Returns true iff the proc uses the given prim somewhere *)
@@ -457,6 +464,7 @@ let pretty_print_prog prog =
     if uses_lists prog then [read_file "src/c_headers/lists.c"] else [];
     if uses_prim "discrete" prog then [read_file "src/c_headers/discrete.c"] else [];
     if uses_prim "categorical" prog then [read_file "src/c_headers/categorical.c"] else [];
+    if uses_prim "beta_geometric" prog then [read_file "src/c_headers/beta_geometric.c"] else [];
     List.map print_bundle_decl bundle_structs;
     List.map print_data_decl data_structs;
     List.map print_proc_decl procs;

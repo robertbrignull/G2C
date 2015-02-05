@@ -28,7 +28,8 @@ and expr =
   | Let of id * value * expr              (* id, value, expr *)
   | If of id * expr * expr                (* test, then_expr, else_expr *)
   | App of id * args                      (* function_id, args *)
-  | Observe of string * args * id * expr  (* label, args, value, next_expr *)
+  | Observe of string * args * id * expr  (* prim, args, value, next_expr *)
+  | UnvaluedObserve of string * args * expr  (* prim, args, next_expr *)
   | Predict of string * id * expr         (* label, value, next_expr *)
   | Halt
 

@@ -80,6 +80,12 @@ let find_free_vars env expr =
           find_free_vars_expr env next
         ]
 
+    | K.UnvaluedObserve (prim, args, next) ->
+        concat [
+          concat (map (find_free_vars_id env) args);
+          find_free_vars_expr env next
+        ]
+
     | K.Predict (label, id, next) ->
         concat [
           find_free_vars_id env id;
@@ -124,6 +130,11 @@ let replace_id source target expr =
                    map replace_id_id args,
                    replace_id_id value,
                    replace_id_expr next)
+
+    | K.UnvaluedObserve (label, args, next) ->
+        K.UnvaluedObserve (label,
+                           map replace_id_id args,
+                           replace_id_expr next)
 
     | K.Predict (label, value, next) ->
         K.Predict (label,
@@ -217,6 +228,11 @@ and transform_expr = function
       let value = transform_id value in
       let (procs, next) = transform_expr next in
       (procs, H.Observe (prim, args, value, next))
+
+  | K.UnvaluedObserve (prim, args, next) ->
+      let args = map transform_id args in
+      let (procs, next) = transform_expr next in
+      (procs, H.UnvaluedObserve (prim, args, next))
 
   | K.Predict (label, id, next) ->
       let id = transform_id id in

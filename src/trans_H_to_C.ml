@@ -203,6 +203,13 @@ and transform_expr env current_proc_id = function
         transform_expr env current_proc_id next
       ]
 
+  | H.UnvaluedObserve (prim, args, next) ->
+      let args = List.map (transform_id env) args in
+      C.Seq [
+        C.UnvaluedObserve (prim, args);
+        transform_expr env current_proc_id next
+      ]
+
   | H.Predict (label, id, next) ->
       C.Seq [
         C.Predict (label, transform_id env id);

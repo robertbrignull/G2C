@@ -100,6 +100,16 @@ and print_expr i = function
       (indent i) ^
       (print_expr i next)
 
+  | UnvaluedObserve (prim, args, next) ->
+      "unvalued observe " ^
+      (indent (i + 2)) ^
+      prim ^
+      "(" ^
+      (map_and_concat print_id ", " args) ^
+      ")" ^
+      (indent i) ^
+      (print_expr i next)
+
   | Predict (label, id, next) ->
       "predict " ^
       (indent (i + 2)) ^

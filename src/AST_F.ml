@@ -25,7 +25,7 @@ and expr = expr_guts * type_c
 
 and stmt_guts =
   | Assume of id * expr                         (* id, value *)
-  | Observe of string * expr list * expr        (* label, args, value *)
+  | Observe of string * expr list * expr        (* prim, args, value *)
   | Predict of string * expr                    (* label, value *)
 
 and stmt = stmt_guts * type_c

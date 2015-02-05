@@ -30,6 +30,7 @@ and stmt =
   | PackMemBundle of id * id * id
   | UnpackBundleItem of id * id
   | Observe of string * args * id
+  | UnvaluedObserve of string * args
   | Predict of string * id
   | Halt
 

@@ -1,6 +1,9 @@
 ; should become (beta 5 16)
 
-[assume x (beta 2 3)]
+[assume a (+ (poisson 2) 1)]
+[assume b (+ (poisson 3) 1)]
+
+[assume x (beta a b)]
 
 [observe (geometric x) 3]
 [observe (geometric x) 8]
