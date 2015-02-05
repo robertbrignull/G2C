@@ -20,7 +20,9 @@ EXAMPLES =\
   examples/fib\
   examples/observe-removal-test-1\
   examples/observe-removal-test-2\
-  examples/gaussian-sum
+  examples/observe-removal-test-3\
+  examples/observe-removal-test-4\
+  examples/distribution-sum-merge
   
 
 
