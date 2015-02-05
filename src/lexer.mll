@@ -46,6 +46,7 @@ let kwtable =
       ("exponential", PRIM "exponential"); ("flip", PRIM "flip");
       ("gamma", PRIM "gamma"); ("invgamma", PRIM "invgamma");
       ("normal", PRIM "normal"); ("poisson", PRIM "poisson");
+      ("geometric", PRIM "geometric");
       ("uniform-continuous", PRIM "uniform-continuous");
       ("uniform-discrete", PRIM "uniform-discrete");
       ("discrete", PRIM "discrete");

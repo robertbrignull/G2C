@@ -123,6 +123,7 @@ let get_prim_type prim arg_types =
     | "gamma" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
     | "normal" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
     | "poisson" -> F.FunctionType ([F.NumType], F.NumType)
+    | "geometric" -> F.FunctionType([F.NumType], F.NumType)
     | "exponential" -> F.FunctionType ([F.NumType], F.NumType)
     | "uniform-continuous" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)
     | "uniform-discrete" -> F.FunctionType ([F.NumType; F.NumType], F.NumType)

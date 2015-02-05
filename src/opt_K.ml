@@ -1015,6 +1015,37 @@ let commute_sample_observe prog =
           else commute_sample_observe_expr expr
         else commute_sample_observe_expr expr
 
+    (* beta sample, geometric observation *)
+    | Observe ("geometric", [p], value, next) ->
+        (try
+          (match find_let (id_name p) prog with
+          | Let (_, Prim ("beta", [a; b]), _) ->
+              if    is_direct_path_from_let_to_expr (id_name p) (Observe ("geometric", [p], value, next)) prog
+                 && is_determined value
+              then
+                let ids_used = list_ids_used value in
+                let prog = move_let_after (id_name p) ids_used prog in
+                let na = (new_id (), NumType, Unknown) in
+                let nb = (new_id (), NumType, Unknown) in
+                let id1 = (new_id (), NumType, Unknown) in
+                let id2 = (new_id (), NumType, Unknown) in
+                let new_let next =
+                  Let (id1, Num 1.,
+                  Let (id2, Prim ("minus", [value; id1]),
+                  Let (na, Prim ("plus", [a; id1]),
+                  Let (nb, Prim ("plus", [b; id2]),
+                  Let (p, Prim ("beta", [na; nb]),
+                    next)))))
+                in
+                let prog = replace_let (id_name p) new_let prog in
+                let prog = remove_observes ("geometric", [p], (id_value value)) prog in
+                let prog = rebuild_values prog in
+                (true, prog)
+
+              else commute_sample_observe_expr next
+          | _ -> commute_sample_observe_expr next)
+        with Not_found -> commute_sample_observe_expr next)
+
     (* normal sample, normal observe *)
     | Observe ("normal", [m2; b2], value, next) ->
         (try
