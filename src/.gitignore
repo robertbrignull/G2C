@@ -1,0 +1,11 @@
+/lexer.ml
+/parser.ml
+/parser.mli
+
+*.cma
+*.cmx
+*.cmo
+*.cmi
+*.cmt
+*.cmti
+*.o

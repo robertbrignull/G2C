@@ -1,16 +1,1 @@
 /g2c
-
-/src/lexer.ml
-/src/parser.ml
-/src/parser.mli
-
-/examples/*
-!/examples/*.g
-
-*.cma
-*.cmx
-*.cmo
-*.cmi
-*.cmt
-*.cmti
-*.o
