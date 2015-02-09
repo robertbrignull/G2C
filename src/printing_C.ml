@@ -464,6 +464,7 @@ let pretty_print_prog prog =
     if uses_lists prog then [read_file "src/c_headers/lists.c"] else [];
     if uses_prim "discrete" prog then [read_file "src/c_headers/discrete.c"] else [];
     if uses_prim "categorical" prog then [read_file "src/c_headers/categorical.c"] else [];
+    if uses_prim "beta_flip" prog then [read_file "src/c_headers/beta_flip.c"] else [];
     if uses_prim "beta_geometric" prog then [read_file "src/c_headers/beta_geometric.c"] else [];
     List.map print_bundle_decl bundle_structs;
     List.map print_data_decl data_structs;

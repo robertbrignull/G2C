@@ -1056,30 +1056,34 @@ let commute_sample_observe prog =
     | Let (p, Prim ("beta", [a; b]), expr) ->
         (* multiple flip observes *)
         let try_flip_observes () =
-          if is_const a && is_const b then
-            let observed_ids = find_observed_ids "flip" [p] expr in
-            let (mergeable_ids, non_mergeable_ids) = partition is_const observed_ids in
-            if length mergeable_ids > 0 then
-              let num_true = length (filter (function (_, _, Bool b) -> b | _ -> false) mergeable_ids) in
-              let num_false = length mergeable_ids - num_true in
-              let na = (new_id (), NumType, Unknown) in
-              let nb = (new_id (), NumType, Unknown) in
-              let id1 = (new_id (), NumType, Unknown) in
-              let id2 = (new_id (), NumType, Unknown) in
-              let new_let next =
-                Let (id1, Num (float_of_int num_true),
-                Let (id2, Num (float_of_int num_false),
-                Let (na, Prim ("plus", [a; id1]),
-                Let (nb, Prim ("plus", [b; id2]),
-                Let (p, Prim ("beta", [na; nb]),
-                     next)))))
-              in
-              let prog = replace_let (id_name p) new_let prog in
-              let prog = remove_observes "flip" [p] mergeable_ids prog in
-              let prog = rebuild_values prog in
-              (true, prog)
+          let observed_ids = find_observed_ids "flip" [p] expr in
+          let (mergeable_ids, non_mergeable_ids) = partition is_const observed_ids in
+          if length mergeable_ids > 0 then
+            let num_true = length (filter (function (_, _, Bool b) -> b | _ -> false) mergeable_ids) in
+            let num_false = length mergeable_ids - num_true in
+            let na = (new_id (), NumType, Unknown) in
+            let nb = (new_id (), NumType, Unknown) in
+            let num_observes = (new_id (), NumType, Unknown) in
+            let num_true_id = (new_id (), NumType, Unknown) in
+            let num_false_id = (new_id (), NumType, Unknown) in
+            let new_let next =
+              Let (num_observes, Num (float_of_int (length mergeable_ids)),
+              Let (num_true_id, Num (float_of_int num_true),
+              Let (num_false_id, Num (float_of_int num_false),
+              Let (na, Prim ("plus", [a; num_true_id]),
+              Let (nb, Prim ("plus", [b; num_false_id]),
+              Let (p, Prim ("beta", [na; nb]),
+                   next))))))
+            in
+            let new_observe next =
+              UnvaluedObserve ("beta_flip", [na; nb; num_observes; num_true_id], next)
+            in
+            let prog = replace_let (id_name p) new_let prog in
+            let prog = replace_observe ("flip", [p], hd observed_ids) new_observe prog in
+            let prog = remove_observes "flip" [p] mergeable_ids prog in
+            let prog = rebuild_values prog in
+            (true, prog)
 
-            else (false, prog)
           else (false, prog)
 
         in

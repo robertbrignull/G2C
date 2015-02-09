@@ -1,5 +1,3 @@
-; should become (beta 5 16)
-
 [assume a (+ (poisson 2) 1)]
 [assume b (+ (poisson 3) 1)]
 

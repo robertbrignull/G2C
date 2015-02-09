@@ -1,7 +1,7 @@
 all: g2c
 
 G2C = exceptions.cmo AST_U.ml AST_F.ml AST_K.ml AST_K_Prime.ml AST_H.ml AST_C.ml common.cmo printing_U.cmo printing_F.cmo printing_K.cmo printing_H.cmo printing_C.cmo lexer.cmo parser.cmo trans_infer_types.cmo trans_F_to_K.cmo trans_K_to_H.cmo trans_H_to_C.cmo opt_unique_ids.cmo opt_K.cmo main.cmo
-g2c: $(G2C)
+g2c: $(G2C) c_headers/*.c
 	ocamlc -o ../g2c $(G2C)
 
 parser.mli parser.ml: parser.mly
@@ -72,6 +72,6 @@ printing_K.cmx: AST_K.cmi common.cmi printing_K.cmi
 printing_H.cmi: AST_H.cmi common.cmi
 printing_H.cmo: AST_H.cmi common.cmi printing_H.cmi
 printing_H.cmx: AST_H.cmi common.cmi printing_H.cmi
-printing_C.cmi: AST_C.cmi common.cmi c_headers/default.c c_headers/lists.c c_headers/discrete.c c_headers/categorical.c
-printing_C.cmo: AST_C.cmi common.cmi c_headers/default.c c_headers/lists.c c_headers/discrete.c c_headers/categorical.c printing_C.cmi
-printing_C.cmx: AST_C.cmi common.cmi c_headers/default.c c_headers/lists.c c_headers/discrete.c c_headers/categorical.c printing_C.cmi
+printing_C.cmi: AST_C.cmi common.cmi c_headers/*.c
+printing_C.cmo: AST_C.cmi common.cmi c_headers/*.c printing_C.cmi
+printing_C.cmx: AST_C.cmi common.cmi c_headers/*.c printing_C.cmi

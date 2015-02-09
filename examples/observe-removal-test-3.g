@@ -1,6 +1,7 @@
-; should become (beta 5 3)
+[assume a (+ (poisson 2) 1)]
+[assume b (+ (poisson 3) 1)]
 
-[assume p (beta 1 1)]
+[assume p (beta a b)]
 
 [observe (flip p) true]
 [observe (flip p) true]
