@@ -235,6 +235,7 @@ let rec extract_bools = function
 
 
 
+(* evaluates f on each adjacent pair of elements in xs and returns the conjunction *)
 (* evaluate_pairwise :: ('a -> 'a -> bool) -> 'a list -> bool -> bool *)
 let rec evaluate_pairwise f xs e =
   match xs with
@@ -328,6 +329,20 @@ let rec gen_const_let let_id value next =
     | TypedPrim (prim, type_c, args) ->
         gen_const_let_args args (fun args -> Let (let_id, TypedPrim (prim, type_c, args), next))
     | _ -> raise Not_found
+
+
+
+(* Performs a calculation on each id and calls the continuation with the new ids *)
+(* map_prim :: (id -> value) -> type_c -> id list -> (id list -> expr) -> expr *)
+let map_prim f ret_type ids_in cont =
+  let rec map_prim_impl so_far = function
+    | [] -> cont so_far
+    | id :: ids ->
+        let id_1 = (new_id (), ret_type, Unknown) in
+        Let (id_1, f id, map_prim_impl (id_1 :: so_far) ids)
+
+  in
+  map_prim_impl [] ids_in
 
 
 
@@ -878,9 +893,7 @@ let local prog =
         
     | x -> None
 
-  in
-  let (c, prog) = local_expr prog in
-  (c, rebuild_values prog)
+  in local_expr prog
 
 
 
@@ -1050,6 +1063,33 @@ let merge_samples prog =
 
 
 
+let rec remove_const_observe = function
+  | Let (id, value, expr) ->
+      let (c, expr) = remove_const_observe expr in
+      (c, Let (id, value, expr))
+
+  | Observe (prim, args, value, next) ->
+      let (c, next) = remove_const_observe next in
+      if fold_right (&&) (map is_const (value :: args)) true then
+        (true, next)
+      else
+        (c, Observe (prim, args, value, next))
+
+  | UnvaluedObserve (prim, args, next) ->
+      let (c, next) = remove_const_observe next in
+      if fold_right (&&) (map is_const args) true then
+        (true, next)
+      else
+        (c, UnvaluedObserve (prim, args, next))
+
+  | Predict (label, id, next) ->
+      let (c1, next) = remove_const_observe next in
+      (c1, Predict (label, id, next))
+
+  | x -> (false, x)
+
+
+
 let commute_sample_observe prog =
   let rec commute_sample_observe_expr = function
     (* beta sample *)
@@ -1081,7 +1121,6 @@ let commute_sample_observe prog =
             let prog = replace_let (id_name p) new_let prog in
             let prog = replace_observe ("flip", [p], hd observed_ids) new_observe prog in
             let prog = remove_observes "flip" [p] mergeable_ids prog in
-            let prog = rebuild_values prog in
             (true, prog)
 
           else (false, prog)
@@ -1113,7 +1152,6 @@ let commute_sample_observe prog =
             let prog = replace_let (id_name p) new_let prog in
             let prog = replace_observe ("geometric", [p], hd observed_ids) new_observe prog in
             let prog = remove_observes "geometric" [p] observed_ids prog in
-            let prog = rebuild_values prog in
             (true, prog)
 
           else (false, prog)
@@ -1191,7 +1229,6 @@ let commute_sample_observe prog =
                 in
                 let prog = replace_let prim_id new_let prog in
                 let prog = replace_observe ("normal", [m2; b2], value) new_observe prog in
-                let prog = rebuild_values prog in
                 (true, prog)
 
               else commute_sample_observe_expr next
@@ -1222,30 +1259,58 @@ let commute_sample_observe prog =
 
 
 
-let rec remove_const_observe = function
-  | Let (id, value, expr) ->
-      let (c, expr) = remove_const_observe expr in
-      (c, Let (id, value, expr))
+let merge_observes prog =
+  let rec merge_observes_expr = function
+    (* normal observes *)
+    | Observe ("normal", [m; b], value, next)
+      when is_const b ->
+        let vs = find_observed_ids "normal" [m; b] prog in
+        if length vs > 1 then
+          let last_id = last vs in
+          let vs_sum = (new_id (), NumType, Unknown) in
+          let num_vs = (new_id (), NumType, Unknown) in
+          let mean = (new_id (), NumType, Unknown) in
+          let variance_times_n_minus_1 = (new_id (), NumType, Unknown) in
+          let new_observe next =
+            Let (vs_sum, Prim ("plus", vs),
+            Let (num_vs, Num (float_of_int (length vs)),
+            Let (mean, Prim ("divide", [vs_sum; num_vs]),
+            map_prim (fun id -> Prim ("minus", [id; mean])) NumType vs (fun subd_vs ->
+            map_prim (fun id -> Prim ("times", [id; id])) NumType subd_vs (fun sqaured_subd_vs ->
+            Let (variance_times_n_minus_1, Prim ("plus", sqaured_subd_vs),
+            UnvaluedObserve ("merged_normal_observes", [m; b; num_vs; mean; variance_times_n_minus_1], next)))))))
+          in
+          let new_let next =
+            Let (last_id, id_value last_id, new_observe next)
+          in
+          let prog = replace_let (id_name last_id) new_let prog in
+          let prog = remove_observes "normal" [m; b] vs prog in
+          (true, prog)
 
-  | Observe (prim, args, value, next) ->
-      let (c, next) = remove_const_observe next in
-      if fold_right (&&) (map is_const (value :: args)) true then
-        (true, next)
-      else
-        (c, Observe (prim, args, value, next))
+        else
+          merge_observes_expr next
 
-  | UnvaluedObserve (prim, args, next) ->
-      let (c, next) = remove_const_observe next in
-      if fold_right (&&) (map is_const args) true then
-        (true, next)
-      else
-        (c, UnvaluedObserve (prim, args, next))
+    (* now just recurse *)
+    | Let (id, value, expr) ->
+        merge_observes_expr expr
 
-  | Predict (label, id, next) ->
-      let (c1, next) = remove_const_observe next in
-      (c1, Predict (label, id, next))
+    | If (test, then_expr, else_expr) ->
+        let (c, prog) = merge_observes_expr then_expr in
+        if c then (c, prog)
+        else merge_observes_expr else_expr
 
-  | x -> (false, x)
+    | Observe (prim, args, value, next) ->
+        merge_observes_expr next
+
+    | UnvaluedObserve (prim, args, next) ->
+        merge_observes_expr next
+
+    | Predict (label, id, next) ->
+        merge_observes_expr next
+
+    | x -> (false, prog)
+
+  in merge_observes_expr prog
 
 
 
@@ -1255,6 +1320,7 @@ let rec apply_rules rules_left all_rules prog =
   | rule :: rules_left ->
       let (changed, prog) = rule prog in
       if changed then
+        let prog = rebuild_values prog in
         apply_rules all_rules all_rules prog
       else
         apply_rules rules_left all_rules prog
@@ -1265,6 +1331,6 @@ let optimise level prog =
   let rules =
     if level = 0 then [ ]
     else if level = 1 then [ local; merge_arithmetic ]
-    else [ local; merge_arithmetic; merge_samples; commute_sample_observe; remove_const_observe ]
+    else [ local; merge_arithmetic; merge_samples; remove_const_observe; commute_sample_observe; merge_observes ]
   in
   transform_K_Prime (optimise_prime rules (transform_K prog))

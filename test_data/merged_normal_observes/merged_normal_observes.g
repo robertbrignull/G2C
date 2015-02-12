@@ -1,0 +1,15 @@
+[assume m (poisson 40)]
+[assume b 20]
+
+[observe (normal m b) 36]
+[observe (normal m b) 32]
+[observe (normal m b) 34]
+[observe (normal m b) 33]
+[observe (normal m b) 33]
+[observe (normal m b) 30]
+[observe (normal m b) 32]
+[observe (normal m b) 36]
+[observe (normal m b) 33]
+[observe (normal m b) 31]
+
+[predict m]

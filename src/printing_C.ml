@@ -438,10 +438,9 @@ let uses_prim prim (bundle_structs, data_structs, procs, main) =
      List.fold_right (||) (List.map (fun proc -> uses_prim_proc prim proc) procs) false
   || uses_prim_stmt prim main
 
-(* Returns true iff the statement uses lists somewhere *)
-(* uses_lists :: prog -> bool *)
-let uses_lists prog =
-  let prims = ["cons"; "rest"; "empty"; "count"; "fist"; "second"; "nth"] in
+(* Returns true iff the statement uses any of the given prims somewhere *)
+(* uses_lists :: string list -> prog -> bool *)
+let uses_prims prims prog =
   List.fold_right (||) (List.map (fun prim -> uses_prim prim prog) prims) false
 
 (* Reads an entire file and outputs it as a string *)
@@ -454,18 +453,30 @@ let read_file f =
   close_in ic;
   (s)
 
+(* The relationship of prims used to c header files *)
+(* prims_2_header :: (string list * string) list *)
+let prims_2_header = [
+  (["signum"], "signum");
+  (["cons"; "rest"; "empty"; "count"; "fist"; "second"; "nth"], "lists");
+  (["discrete"], "discrete");
+  (["categorical"], "categorical");
+  (["beta_flip"], "beta_flip");
+  (["beta_geometric"], "beta_geometric");
+  (["merged_normal_observes"], "merged_normal_observes")
+]
+
+(* Loads a single C header file if needed *)
+(* load_C_header :: prog -> (string list * string) -> string list *)
+let load_C_header prog (prims, header) =
+  if uses_prims prims prog then [read_file ("src/c_headers/" ^ header ^ ".c")] else []
+
 (* Pretty prints an entire program *)
-(* pretty_print_prog :: prog -> bool *)
+(* pretty_print_prog :: prog -> string *)
 let pretty_print_prog prog =
   let (bundle_structs, data_structs, procs, main) = prog in
   String.concat "\n" (List.concat [
     [read_file "src/c_headers/default.c"];
-    if uses_prim "signum" prog then [read_file "src/c_headers/signum.c"] else [];
-    if uses_lists prog then [read_file "src/c_headers/lists.c"] else [];
-    if uses_prim "discrete" prog then [read_file "src/c_headers/discrete.c"] else [];
-    if uses_prim "categorical" prog then [read_file "src/c_headers/categorical.c"] else [];
-    if uses_prim "beta_flip" prog then [read_file "src/c_headers/beta_flip.c"] else [];
-    if uses_prim "beta_geometric" prog then [read_file "src/c_headers/beta_geometric.c"] else [];
+    List.concat (List.map (load_C_header prog) prims_2_header);
     List.map print_bundle_decl bundle_structs;
     List.map print_data_decl data_structs;
     List.map print_proc_decl procs;
