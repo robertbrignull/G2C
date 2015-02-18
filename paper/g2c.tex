@@ -5,6 +5,14 @@
 \usepackage{amssymb}
 \usepackage{amsthm}
 
+\newcommand{\optimization}[2]{
+	\[
+		\begin{array}{rcl}
+			#1 & \Rightarrow & #2
+		\end{array}
+	\]
+}
+
 \title{G2C: an optimizing transcompiler for probabilistic programming languages}
 \author{Robert Brignull}
 \date{ }
@@ -179,21 +187,147 @@ One important point is we don't need to worry about memory management at all, wh
 
 \section{Optimizations}
 
-All optimizations are performed immediately after CPS transformation.
+Although just having a compiler from a high level probabilistic language into a lower lever one such as Prob-C would be a good enough project in itself, there is potential for massive increases in both performance and the quality of samples though a combination of a few simple optimizations.
+
+All the optimizations described here are performed immediately after CPS transformation. In this stage the syntax is in a good balance of simple and expressive, for example all expressions have been split up so we only calculate one primitive or application at a time, but lambdas are still in-line and so we don't have to worry about variable scope as much. It is however still often useful to know the full history of a variable, that is exactly how it was calculated rather than just the last step, so we calculate this history before doing any optimizations and rebuild the information after each one.
 
 
 
 \subsection{Non-probabilistic optimizations}
 
-We do some standard non-probabilistic optimizations, including...
+We do some standard non-probabilistic optimizations. None of these are technically necessary for the rest of the optimizations to work and some would be performed by the C compiler anyway. They still make our life a little easier however so that is why they are included here.
 
-Constant expression calculation, including arithmetic and boolean expressions.
 
-Merging multiple arithmetic expressions into one.
 
-Removing let expressions where an id is assigned to another id.
+\subsubsection{Constant expression calculation}
 
-Removing trivial continuations.
+When the arguments to a primitive such as plus or times are all constant, we can easily calculate what the answer should be and set the id equal to that rather than applying a primitive.
+
+For example we could do the following optimization
+
+\optimization{
+	\begin{array}{l}
+		\texttt{let x = prim + 2 5 in} \\
+		\texttt{...}
+	\end{array}
+}{
+	\begin{array}{l}
+		\texttt{let x = 7 in} \\
+		\texttt{...}
+	\end{array}
+}
+
+This can be extended to the case when only some of the arguments are constant, now we can't remove the whole primitive application but we can reduce the number of arguments and hence the complexity of it.
+
+For example we could do the following optimization
+
+\optimization{
+	\begin{array}{l}
+		\texttt{let x = ... in} \\
+		\texttt{let y = prim + x 2 5 in} \\
+		\texttt{...}
+	\end{array}
+}{
+	\begin{array}{l}
+		\texttt{let x = ... in} \\
+		\texttt{let y = prim + x 7 in} \\
+		\texttt{...}
+	\end{array}
+}
+
+We can optimize all of the following when at least some of the arguments are constant:
+\begin{center}
+	\texttt{+}, \texttt{-}, \texttt{*}, \texttt{/}, \texttt{eq}, \texttt{neq}, \texttt{<}, \texttt{>}, \texttt{<=}, \texttt{>=}, \texttt{and}, \texttt{or}, \texttt{not}
+\end{center}
+
+This sort of optimization would definitely be performed by any half decent C compiler, so we are not actually improving the performance of the final compiled program by doing this. The reason for doing it is it reduces the size and complexity of the generated Prob-C code greatly, therefore making other stages of compilation faster and easier and also making it easier for a human to scan and understand the outputted Prob-C code.
+
+
+
+\subsubsection{Merging multiple arithmetic expressions}
+
+Another thing we can do with arithmetic expressions is to merge ones of the same sort together.
+
+For example we could do the following optimization
+
+\optimization{
+	\begin{array}{l}
+		\texttt{let x = ... in} \\
+		\texttt{let y = prim + x 5 in} \\
+		\texttt{let z = prim + y 8 in} \\
+		\texttt{let w = prim + z -4 in} \\
+		\texttt{...}
+	\end{array}
+}{
+	\begin{array}{l}
+		\texttt{let x = ... in} \\
+		\texttt{let w = prim + x 9 in} \\
+		\texttt{...}
+	\end{array}
+}
+
+This is a case that comes up in compiled programs surprisingly often, especially after other optimizations, so by optimizing it away we reduce the final complexity of the Prob-C.
+
+Again this optimization would likely be performed by the C compiler anyway so the final compiled program is unchanged.
+
+
+
+\subsubsection{Removing let expressions where the id is not used}
+
+A very simple optimization is to remove any let expression where the variable being assigned to is never used later on in the program.
+
+This optimization doesn't do much on its own, as the user is unlikely to have written a program that doesn't use one of its variables, but almost all of the other optimizations we do here will leave orphaned variables that this process will clean up.
+
+This is an optimization that a C compiler potentially would not perform. This is because C is a language with side effects so just because a variable is never used does not mean that the process of calculating it did not change program state. In our language however variables are immutable and there is no state so it is safe to remove the unused variable.
+
+
+
+\subsubsection{Removing let expressions where an id is assigned to another id}
+
+Another very simple optimization is to remove a variable when it is assigned to the value of another variable. We then change all references to the removed variable in the rest of the program to the variable it was assigned to.
+
+For example we could do the following optimization
+
+\optimization{
+	\begin{array}{l}
+		\texttt{let x = ... in} \\
+		\texttt{let y = x in} \\
+		\texttt{let z = prim + y 1 in}\\
+		\texttt{...}
+	\end{array}
+}{
+	\begin{array}{l}
+		\texttt{let x = ... in} \\
+		\texttt{let z = prim + x 1 in}\\
+		\texttt{...}
+	\end{array}
+}
+
+This optimization is admittedly rather inconsequential, but we include it anyway.
+
+
+
+\subsubsection{Removing trivial continuations}
+
+The final non-probabilistic optimization we do it to remove trivial functions which are equivalent to another function. The place where this happens a lot is continuations generated from the translation into CPS.
+
+For example we could do the following optimization
+
+\optimization{
+	\begin{array}{l}
+		\texttt{let f = lambda x y z -> g x y z in} \\
+		\texttt{...}
+	\end{array}
+}{
+	\begin{array}{l}
+		\texttt{let f = g in} \\
+		\texttt{...}
+	\end{array}
+}
+
+This will then of course be removed on the next pass as it is an id assigned to another id.
+
+This optimization could be moderately important for performance. Although a decent C compiler will inline a small function such as the above and hence remove the extra application, after the other transformations that G2C performs it will not be simple, so removing it at this stage will greatly simplify later stages of compilation.
 
 
 
