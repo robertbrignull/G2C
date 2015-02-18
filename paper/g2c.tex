@@ -197,7 +197,7 @@ Removing trivial continuations.
 
 
 
-\subsection{Merging samples}
+\subsection{Merging of samples}
 
 If we have the situation
 
@@ -218,7 +218,51 @@ Similar things can be done with other distributions.
 
 
 
+\subsection{Merging of observe statements}
+
+\subsubsection{Merging observes of the same distribution}
+
+If we have the situation
+
+\[
+	\begin{array}{l}
+		\lbrack \mathsf{observe}\ (\mathsf{normal}\ m_1\ b_1)\ x_1 \rbrack \\
+		\dots \\
+		\lbrack \mathsf{observe}\ (\mathsf{normal}\ m_n\ b_n)\ x_n \rbrack
+	\end{array}
+\]
+
+then it is equivalent to an observe that only relies on the sample mean and variance of the \(x_i\)s.
+
+Note the resulting observe will not follow a normal distribution.
+
+
+
+\subsubsection{Merging any consecutive observes}
+
+The way that Prob-C observes work is that you call the observe function with the log of the probability of the event happening.
+
+Also note that the distributions used for each observe are independent of each other.
+
+Therefore the following
+
+\[
+	\begin{array}{l}
+		\mathsf{observe}(\mathsf{dist}_1(args_1 ...)); \\
+		\dots \\
+		\mathsf{observe}(\mathsf{dist}_n(args_n ...));
+	\end{array}
+\]
+
+is equivalent to
+
+\[\mathsf{observe}(\sum_{i=1}^n\mathsf{dist}_i(args_i ...));\]
+
+
+
 \subsection{Removal of observe statements}
+
+\subsection{Commuting samples and observe statements}
 
 Here we start doing some actual probability in an attempt to swap sample and observe statements and hopefully remove the observe completely.
 
@@ -238,5 +282,13 @@ then it can be simplified to
 \[\lbrack \mathsf{assume}\ p\ (\mathsf{beta}\ (+\ a\ 1)\ b) \rbrack\]
 
 This is the easy case where \(a\) and \(b\) are constants, if they are not then the observe remains, but we might reduce 100 observes to just one so it will hopefully improve performance and definitely improve the quality of the samples generated.
+
+
+
+\subsection{Removal of constant observe statements}
+
+When the arguments to an observe statement are all constant, then that observe can have no influence on the posterior distribution as all particles will observe the same value.
+
+It is therefore safe to remove these constant observes.
 
 \end{document}
