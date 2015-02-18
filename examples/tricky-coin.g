@@ -8,4 +8,4 @@
 [observe (flip theta) true]
 
 [predict is-tricky]
-[predict theta]
+;[predict theta]

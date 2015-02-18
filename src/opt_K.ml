@@ -20,12 +20,16 @@ let rec find_uses_expr target = function
   | App (expr, args) ->
       concat (map (find_uses_id target) (expr :: args))
 
-  | Observe (prim, args, value, next) ->
+  | SingleValuedObserve (prim, args, value, next) ->
       concat [concat (map (find_uses_id target) (value :: args));
               find_uses_expr target next]
 
-  | UnvaluedObserve (prim, args, next) ->
+  | SingleUnvaluedObserve (prim, args, next) ->
       concat [concat (map (find_uses_id target) args);
+              find_uses_expr target next]
+
+  | MultiObserve (observables, next) ->
+      concat [concat (map (find_uses_observable target) observables);
               find_uses_expr target next]
 
   | Predict (label, id, next) ->
@@ -33,6 +37,14 @@ let rec find_uses_expr target = function
               find_uses_expr target next]
 
   | Halt -> []
+
+(* find_uses_observable :: string -> observable -> id list *)
+and find_uses_observable target = function
+  | ValuedObserve (prim, args, value) ->
+      concat (map (find_uses_id target) (value :: args))
+
+  | UnvaluedObserve (prim, args) ->
+      concat (map (find_uses_id target) args)
 
 (* find_uses_value :: string -> value -> id list *)
 and find_uses_value target = function
@@ -73,16 +85,23 @@ let rec replace_id_expr source target = function
       App (replace_id_id source target expr,
            map (replace_id_id source target) args)
 
-  | Observe (prim, args, value, next) ->
-      Observe (prim,
-               map (replace_id_id source target) args,
-               replace_id_id source target value,
-               replace_id_expr source target next)
+  | SingleValuedObserve (prim, args, value, next) ->
+      SingleValuedObserve (
+        prim,
+        map (replace_id_id source target) args,
+        replace_id_id source target value,
+        replace_id_expr source target next)
 
-  | UnvaluedObserve (prim, args, next) ->
-      UnvaluedObserve (prim,
-                       map (replace_id_id source target) args,
-                       replace_id_expr source target next)
+  | SingleUnvaluedObserve (prim, args, next) ->
+      SingleUnvaluedObserve (
+        prim,
+        map (replace_id_id source target) args,
+        replace_id_expr source target next)
+
+  | MultiObserve (observables, next) ->
+      MultiObserve (
+        map (replace_id_observable source target) observables,
+        replace_id_expr source target next)
 
   | Predict (label, id, next) ->
       Predict (label,
@@ -90,6 +109,16 @@ let rec replace_id_expr source target = function
                replace_id_expr source target next)
 
   | Halt -> Halt
+
+and replace_id_observable source target = function
+  | ValuedObserve (prim, args, value) ->
+      ValuedObserve (prim,
+                     map (replace_id_id source target) args,
+                     replace_id_id source target value)
+
+  | UnvaluedObserve (prim, args) ->
+      UnvaluedObserve (prim,
+                       map (replace_id_id source target) args)
 
 and replace_id_value source target = function
   | Id id -> Id (replace_id_id source target id)
@@ -128,12 +157,16 @@ let rec is_free_in_expr target = function
   | App (expr, args) ->
       fold_right (||) (map (is_free_in_id target) (expr :: args)) false
 
-  | Observe (prim, args, value, next) ->
+  | SingleValuedObserve (prim, args, value, next) ->
          fold_right (||) (map (is_free_in_id target) (value :: args)) false
       || is_free_in_expr target next
 
-  | UnvaluedObserve (prim, args, next) ->
+  | SingleUnvaluedObserve (prim, args, next) ->
          fold_right (||) (map (is_free_in_id target) args) false
+      || is_free_in_expr target next
+
+  | MultiObserve (observables, next) ->
+         fold_right (||) (map (is_free_in_observable target) observables) false
       || is_free_in_expr target next
 
   | Predict (label, id, next) ->
@@ -141,6 +174,13 @@ let rec is_free_in_expr target = function
       || is_free_in_expr target next
 
   | Halt -> false
+
+and is_free_in_observable target = function
+  | ValuedObserve (prim, args, value) ->
+      fold_right (||) (map (is_free_in_id target) (value :: args)) false
+
+  | UnvaluedObserve (prim, args) ->
+      fold_right (||) (map (is_free_in_id target) args) false
 
 and is_free_in_value target = function
   | Id id -> is_free_in_id target id
@@ -253,8 +293,9 @@ let rec find_let let_id = function
   | If (test, then_expr, else_expr) ->
       (try find_let let_id then_expr
       with Not_found -> find_let let_id else_expr)
-  | Observe (prim, args, value, next) -> find_let let_id next
-  | UnvaluedObserve (prim, args, next) -> find_let let_id next
+  | SingleValuedObserve (prim, args, value, next) -> find_let let_id next
+  | SingleUnvaluedObserve (prim, args, next) -> find_let let_id next
+  | MultiObserve (observables, next) -> find_let let_id next
   | Predict (label, id, next) -> find_let let_id next
   | _ -> raise Not_found
 
@@ -266,8 +307,9 @@ let rec defined_in let_id = function
   | Let (id, value, expr) -> defined_in let_id expr
   | If (test, then_expr, else_expr) ->
       defined_in let_id then_expr || defined_in let_id else_expr
-  | Observe (prim, args, value, next) -> defined_in let_id next
-  | UnvaluedObserve (prim, args, next) -> defined_in let_id next
+  | SingleValuedObserve (prim, args, value, next) -> defined_in let_id next
+  | SingleUnvaluedObserve (prim, args, next) -> defined_in let_id next
+  | MultiObserve (observables, next) -> defined_in let_id next
   | Predict (label, id, next) -> defined_in let_id next
   | _ -> false
 
@@ -278,8 +320,9 @@ let is_direct_path_from_let_to_expr let_id target_expr source_expr =
   let rec is_direct_path = function
     | x when x = target_expr -> true
     | Let (id, value, expr) -> is_direct_path expr
-    | Observe (prim, args, value, next) -> is_direct_path next
-    | UnvaluedObserve (prim, args, next) -> is_direct_path next
+    | SingleValuedObserve (prim, args, value, next) -> is_direct_path next
+    | SingleUnvaluedObserve (prim, args, next) -> is_direct_path next
+    | MultiObserve (observables, next) -> is_direct_path next
     | Predict (label, id, next) -> is_direct_path next
     | _ -> false
   in
@@ -359,11 +402,14 @@ let rec replace_let src_id new_let = function
           replace_let src_id new_let then_expr,
           replace_let src_id new_let else_expr)
 
-  | Observe (prim, args, value, next) ->
-      Observe (prim, args, value, replace_let src_id new_let next)
+  | SingleValuedObserve (prim, args, value, next) ->
+      SingleValuedObserve (prim, args, value, replace_let src_id new_let next)
 
-  | UnvaluedObserve (prim, args, next) ->
-      UnvaluedObserve (prim, args, replace_let src_id new_let next)
+  | SingleUnvaluedObserve (prim, args, next) ->
+      SingleUnvaluedObserve (prim, args, replace_let src_id new_let next)
+
+  | MultiObserve (observables, next) ->
+      MultiObserve (observables, replace_let src_id new_let next)
 
   | Predict (label, id, next) ->
       Predict (label, id, replace_let src_id new_let next)
@@ -372,21 +418,37 @@ let rec replace_let src_id new_let = function
 
 
 
-(* find_observed_ids :: (string * args) -> expr -> id list *)
+(* find_observed_ids :: string -> args -> expr -> id list *)
 let rec find_observed_ids t_prim t_args = function
   | Let (id, value, expr) ->
       find_observed_ids t_prim t_args expr
 
-  | Observe (prim, args, value, next) ->
+  | SingleValuedObserve (prim, args, value, next) ->
       if prim = t_prim && args = t_args then
         value :: find_observed_ids t_prim t_args next
       else
         find_observed_ids t_prim t_args next
 
+  | SingleUnvaluedObserve (prim, args, next) ->
+      find_observed_ids t_prim t_args next
+
+  | MultiObserve (observables, next) ->
+      concat [
+        concat (map (find_observed_ids_observable t_prim t_args) observables);
+        find_observed_ids t_prim t_args next
+      ]
+
   | Predict (label, id, next) ->
       find_observed_ids t_prim t_args next
 
   | _ -> []
+
+(* find_observed_ids_observable :: (string * args) -> observable -> id list *)
+and find_observed_ids_observable t_prim t_args = function
+  | ValuedObserve (prim, args, value) ->
+      if prim = t_prim && args = t_args then [value] else []
+
+  | UnvaluedObserve (prim, args) -> []
 
 
 
@@ -395,35 +457,20 @@ let rec replace_observe src_observe new_observe = function
   | Let (id, value, expr) ->
       Let (id, value, replace_observe src_observe new_observe expr)
 
-  | Observe (prim, args, value, next) ->
+  | SingleValuedObserve (prim, args, value, next) ->
       if src_observe = (prim, args, value) then
         new_observe next
       else
-        Observe (prim, args, value, replace_observe src_observe new_observe next)
+        SingleValuedObserve (prim, args, value, replace_observe src_observe new_observe next)
+
+  | SingleUnvaluedObserve (prim, args, next) ->
+      SingleUnvaluedObserve (prim, args, replace_observe src_observe new_observe next)
+
+  | MultiObserve (observables, next) ->
+      MultiObserve (observables, replace_observe src_observe new_observe next)
 
   | Predict (label, id, next) ->
       Predict (label, id, replace_observe src_observe new_observe next)
-
-  | x -> x
-
-
-
-(* replace_unvalued_observe :: (string * args * id) -> (expr -> expr) -> expr -> expr *)
-let rec replace_unvalued_observe src_observe new_observe = function
-  | Let (id, value, expr) ->
-      Let (id, value, replace_unvalued_observe src_observe new_observe expr)
-
-  | Observe (prim, args, value, next) ->
-      Observe (prim, args, value, replace_unvalued_observe src_observe new_observe next)
-
-  | UnvaluedObserve (prim, args, next) ->
-      if src_observe = (prim, args) then
-        new_observe next
-      else
-        UnvaluedObserve (prim, args, replace_unvalued_observe src_observe new_observe next)
-
-  | Predict (label, id, next) ->
-      Predict (label, id, replace_unvalued_observe src_observe new_observe next)
 
   | x -> x
 
@@ -439,22 +486,32 @@ let rec remove_observes t_prim t_args t_values = function
           remove_observes t_prim t_args t_values then_expr,
           remove_observes t_prim t_args t_values else_expr)
 
-  | Observe (prim, args, value, next) ->
+  | SingleValuedObserve (prim, args, value, next) ->
       if   prim = t_prim
         && args = t_args
         && contains (eq value) t_values
       then
         remove_observes t_prim t_args t_values next
       else
-        Observe (prim, args, value, remove_observes t_prim t_args t_values next)
+        SingleValuedObserve (prim, args, value, remove_observes t_prim t_args t_values next)
 
-  | UnvaluedObserve (prim, args, next) ->
+  | SingleUnvaluedObserve (prim, args, next) ->
       if   prim = t_prim
         && args = t_args
       then
         remove_observes t_prim t_args t_values next
       else
-        UnvaluedObserve (prim, args, remove_observes t_prim t_args t_values next)
+        SingleUnvaluedObserve (prim, args, remove_observes t_prim t_args t_values next)
+
+  | MultiObserve (observables, next) ->
+      let observable_filter = function
+        | ValuedObserve (prim, args, value) ->
+            not (prim = t_prim && args = t_args && contains (eq value) t_values)
+        | UnvaluedObserve (prim, args) ->
+            not (prim = t_prim && args = t_args)
+      in
+      MultiObserve (filter observable_filter observables,
+                    remove_observes t_prim t_args t_values next)
 
   | Predict (label, id, next) ->
       Predict (label, id, remove_observes t_prim t_args t_values next)
@@ -622,9 +679,11 @@ let move_let_after let_id targets prog =
           Let (id, value, expr)
         else
           find_first_non_dependent_let let_id expr
-    | Observe (label, args, value, next) ->
+    | SingleValuedObserve (prim, args, value, next) ->
         find_first_non_dependent_let let_id next
-    | UnvaluedObserve (label, args, next) ->
+    | SingleUnvaluedObserve (prim, args, next) ->
+        find_first_non_dependent_let let_id next
+    | MultiObserve (observables, next) ->
         find_first_non_dependent_let let_id next
     | Predict (label, value, next) ->
         find_first_non_dependent_let let_id next
@@ -654,10 +713,12 @@ let move_let_after let_id targets prog =
       match move_let_back_one expr with
       | Let (id, value, expr) ->
           Let (id, value, move_let_after_target target expr)
-      | Observe (label, args, value, next) ->
-          Observe (label, args, value, move_let_after_target target next)
-      | UnvaluedObserve (label, args, next) ->
-          UnvaluedObserve (label, args, move_let_after_target target next)
+      | SingleValuedObserve (label, args, value, next) ->
+          SingleValuedObserve (label, args, value, move_let_after_target target next)
+      | SingleUnvaluedObserve (label, args, next) ->
+          SingleUnvaluedObserve (label, args, move_let_after_target target next)
+      | MultiObserve (observables, next) ->
+          MultiObserve (observables, move_let_after_target target next)
       | Predict (label, value, next) ->
           Predict (label, value, move_let_after_target target next)
       | _ -> raise Not_found
@@ -701,13 +762,17 @@ let local prog =
         let (c2, else_expr) = local_expr else_expr in
         (c1 || c2, If (test, then_expr, else_expr))
 
-    | Observe (prim, args, value, next) ->
+    | SingleValuedObserve (prim, args, value, next) ->
         let (c1, next) = local_expr next in
-        (c1, Observe (prim, args, value, next))
+        (c1, SingleValuedObserve (prim, args, value, next))
 
-    | UnvaluedObserve (prim, args, next) ->
+    | SingleUnvaluedObserve (prim, args, next) ->
         let (c1, next) = local_expr next in
-        (c1, UnvaluedObserve (prim, args, next))
+        (c1, SingleUnvaluedObserve (prim, args, next))
+
+    | MultiObserve (observables, next) ->
+        let (c1, next) = local_expr next in
+        (c1, MultiObserve (observables, next))
 
     | Predict (label, id, next) ->
         let (c1, next) = local_expr next in
@@ -915,10 +980,13 @@ let merge_arithmetic prog =
         if c1 then (c1, prog1)
         else merge_arithmetic_expr else_expr
 
-    | Observe (prim, args, value, next) ->
+    | SingleValuedObserve (prim, args, value, next) ->
         merge_arithmetic_expr next
 
-    | UnvaluedObserve (prim, args, next) ->
+    | SingleUnvaluedObserve (prim, args, next) ->
+        merge_arithmetic_expr next
+
+    | MultiObserve (observables, next) ->
         merge_arithmetic_expr next
 
     | Predict (label, id, next) ->
@@ -1045,13 +1113,17 @@ let merge_samples prog =
         let (c2, else_expr) = merge_samples_expr else_expr in
         (c1 || c2, If (test, then_expr, else_expr))
 
-    | Observe (prim, args, value, next) ->
+    | SingleValuedObserve (prim, args, value, next) ->
         let (c, next) = merge_samples_expr next in
-        (c, Observe (prim, args, value, next))
+        (c, SingleValuedObserve (prim, args, value, next))
 
-    | UnvaluedObserve (prim, args, next) ->
+    | SingleUnvaluedObserve (prim, args, next) ->
         let (c, next) = merge_samples_expr next in
-        (c, UnvaluedObserve (prim, args, next))
+        (c, SingleUnvaluedObserve (prim, args, next))
+
+    | MultiObserve (observables, next) ->
+        let (c, next) = merge_samples_expr next in
+        (c, MultiObserve (observables, next))
 
     | Predict (label, id, next) ->
         let (c, next) = merge_samples_expr next in
@@ -1068,19 +1140,37 @@ let rec remove_const_observe = function
       let (c, expr) = remove_const_observe expr in
       (c, Let (id, value, expr))
 
-  | Observe (prim, args, value, next) ->
+  | SingleValuedObserve (prim, args, value, next) ->
       let (c, next) = remove_const_observe next in
       if fold_right (&&) (map is_const (value :: args)) true then
         (true, next)
       else
-        (c, Observe (prim, args, value, next))
+        (c, SingleValuedObserve (prim, args, value, next))
 
-  | UnvaluedObserve (prim, args, next) ->
+  | SingleUnvaluedObserve (prim, args, next) ->
       let (c, next) = remove_const_observe next in
       if fold_right (&&) (map is_const args) true then
         (true, next)
       else
-        (c, UnvaluedObserve (prim, args, next))
+        (c, SingleUnvaluedObserve (prim, args, next))
+
+  | MultiObserve ([], next) ->
+      let (c, next) = remove_const_observe next in
+      (true, next)
+
+  | MultiObserve (observables, next) ->
+      let observable_filter = function
+        | ValuedObserve (prim, args, value) ->
+            fold_right (&&) (map is_const (value :: args)) true
+        | UnvaluedObserve (prim, args) ->
+            fold_right (&&) (map is_const args) true
+      in
+      let (const_observables, non_const_observables) = partition observable_filter observables in
+      let (c, next) = remove_const_observe next in
+      if length const_observables > 0 then
+        (true, MultiObserve (non_const_observables, next))
+      else
+        (c, MultiObserve (non_const_observables, next))
 
   | Predict (label, id, next) ->
       let (c1, next) = remove_const_observe next in
@@ -1116,7 +1206,7 @@ let commute_sample_observe prog =
                    next))))))
             in
             let new_observe next =
-              UnvaluedObserve ("beta_flip", [na; nb; num_observes; num_true_id], next)
+              SingleUnvaluedObserve ("beta_flip", [na; nb; num_observes; num_true_id], next)
             in
             let prog = replace_let (id_name p) new_let prog in
             let prog = replace_observe ("flip", [p], hd observed_ids) new_observe prog in
@@ -1147,7 +1237,7 @@ let commute_sample_observe prog =
                    next))))))
             in
             let new_observe next =
-              UnvaluedObserve ("beta_geometric", [na; nb; num_values; summed_values], next)
+              SingleUnvaluedObserve ("beta_geometric", [na; nb; num_values; summed_values], next)
             in
             let prog = replace_let (id_name p) new_let prog in
             let prog = replace_observe ("geometric", [p], hd observed_ids) new_observe prog in
@@ -1166,11 +1256,11 @@ let commute_sample_observe prog =
         commute_sample_observe_expr expr
 
     (* normal sample, normal observe *)
-    | Observe ("normal", [m2; b2], value, next) ->
+    | SingleValuedObserve ("normal", [m2; b2], value, next) ->
         (try
           (match is_linear_of_prim "normal" m2 prog with
           | Some (prim_id, m1, b1, coeff, const, dependent_ids, gen_values) ->
-              if    is_direct_path_from_let_to_expr prim_id (Observe ("normal", [m2; b2], value, next)) prog
+              if    is_direct_path_from_let_to_expr prim_id (SingleValuedObserve ("normal", [m2; b2], value, next)) prog
                  && is_determined m1
                  && is_determined b1
                  && is_determined b2
@@ -1222,10 +1312,11 @@ let commute_sample_observe prog =
                   Let (nb2, Prim ("plus", [gend_b2; id10]),
                   Let (id11, Prim ("times", [coeff; m1]),
                   Let (nm2, Prim ("plus", [id11; const]),
-                  Observe ("normal",
-                           [nm2; nb2],
-                           gend_value,
-                           next)))))
+                  SingleValuedObserve (
+                    "normal",
+                    [nm2; nb2],
+                    gend_value,
+                    next)))))
                 in
                 let prog = replace_let prim_id new_let prog in
                 let prog = replace_observe ("normal", [m2; b2], value) new_observe prog in
@@ -1244,10 +1335,13 @@ let commute_sample_observe prog =
         if c then (c, prog)
         else commute_sample_observe_expr else_expr
 
-    | Observe (prim, args, value, next) ->
+    | SingleValuedObserve (prim, args, value, next) ->
         commute_sample_observe_expr next
 
-    | UnvaluedObserve (prim, args, next) ->
+    | SingleUnvaluedObserve (prim, args, next) ->
+        commute_sample_observe_expr next
+
+    | MultiObserve (observables, next) ->
         commute_sample_observe_expr next
 
     | Predict (label, id, next) ->
@@ -1262,7 +1356,7 @@ let commute_sample_observe prog =
 let merge_observes prog =
   let rec merge_observes_expr = function
     (* normal observes *)
-    | Observe ("normal", [m; b], value, next)
+    | SingleValuedObserve ("normal", [m; b], value, next)
       when is_const b ->
         let vs = find_observed_ids "normal" [m; b] prog in
         if length vs > 1 then
@@ -1278,7 +1372,7 @@ let merge_observes prog =
             map_prim (fun id -> Prim ("minus", [id; mean])) NumType vs (fun subd_vs ->
             map_prim (fun id -> Prim ("times", [id; id])) NumType subd_vs (fun sqaured_subd_vs ->
             Let (variance_times_n_minus_1, Prim ("plus", sqaured_subd_vs),
-            UnvaluedObserve ("merged_normal_observes", [m; b; num_vs; mean; variance_times_n_minus_1], next)))))))
+            SingleUnvaluedObserve ("merged_normal_observes", [m; b; num_vs; mean; variance_times_n_minus_1], next)))))))
           in
           let new_let next =
             Let (last_id, id_value last_id, new_observe next)
@@ -1299,10 +1393,13 @@ let merge_observes prog =
         if c then (c, prog)
         else merge_observes_expr else_expr
 
-    | Observe (prim, args, value, next) ->
+    | SingleValuedObserve (prim, args, value, next) ->
         merge_observes_expr next
 
-    | UnvaluedObserve (prim, args, next) ->
+    | SingleUnvaluedObserve (prim, args, next) ->
+        merge_observes_expr next
+
+    | MultiObserve (observables, next) ->
         merge_observes_expr next
 
     | Predict (label, id, next) ->
@@ -1311,6 +1408,151 @@ let merge_observes prog =
     | x -> (false, prog)
 
   in merge_observes_expr prog
+
+
+
+let rec move_observes_back = function
+  | Let (id, Lambda (args, body), expr) ->
+      let (c1, expr) = move_observes_back expr in
+      let (c2, body) = move_observes_back body in
+      (c1 || c2, Let (id, Lambda (args, body), expr))
+
+  | Let (id, value, expr) ->
+      let (c, expr) = move_observes_back expr in
+      (c, Let (id, value, expr))
+
+  | If (test, then_expr, else_expr) ->
+      let (c1, then_expr) = move_observes_back then_expr in
+      let (c2, else_expr) = move_observes_back else_expr in
+      (c1 || c2, If (test, then_expr, else_expr))
+
+  | SingleValuedObserve (prim, args, value, next) ->
+      let (c, next) = move_observes_back next in
+      (match next with
+      | Let (_, Prim (prim_prim, _), _) when is_probabilistic_prim prim_prim ->
+          (c, SingleValuedObserve (prim, args, value, next))
+      | Let (let_id, let_value, let_expr) ->
+          (true, Let (let_id, let_value, SingleValuedObserve (prim, args, value, let_expr)))
+      | App (app_id, app_args) ->
+          (match last app_args with
+          | (_, lambda_type, Lambda (lambda_args, lambda_body)) ->
+              let new_cont = (new_id (), lambda_type, Unknown) in
+              (true,
+               Let (new_cont,
+                    Lambda (lambda_args,
+                            SingleValuedObserve (prim, args, value, lambda_body)),
+                    App (app_id, append (remove_last app_args) [new_cont])))
+          | _ ->
+              (c, SingleValuedObserve (prim, args, value, next)))
+      | _ ->
+          (c, SingleValuedObserve (prim, args, value, next)))
+
+  | SingleUnvaluedObserve (prim, args, next) ->
+      let (c, next) = move_observes_back next in
+      (match next with
+      | Let (_, Prim (prim_prim, _), _) when is_probabilistic_prim prim_prim ->
+          (c, SingleUnvaluedObserve (prim, args, next))
+      | Let (let_id, let_value, let_expr) ->
+          (true, Let (let_id, let_value, SingleUnvaluedObserve (prim, args, let_expr)))
+      | App (app_id, app_args) ->
+          (match last app_args with
+          | (_, lambda_type, Lambda (lambda_args, lambda_body)) ->
+              let new_cont = (new_id (), lambda_type, Unknown) in
+              (true,
+               Let (new_cont,
+                    Lambda (lambda_args,
+                            SingleUnvaluedObserve (prim, args, lambda_body)),
+                    App (app_id, append (remove_last app_args) [new_cont])))
+          | _ ->
+              (c, SingleUnvaluedObserve (prim, args, next)))
+      | _ ->
+          (c, SingleUnvaluedObserve (prim, args, next)))
+
+  | MultiObserve (observables, next) ->
+      let (c, next) = move_observes_back next in
+      (match next with
+      | Let (_, Prim (prim_prim, _), _) when is_probabilistic_prim prim_prim ->
+          (c, MultiObserve (observables, next))
+      | Let (let_id, let_value, let_expr) ->
+          (true, Let (let_id, let_value, MultiObserve (observables, let_expr)))
+      | App (app_id, app_args) ->
+          (match last app_args with
+          | (_, lambda_type, Lambda (lambda_args, lambda_body)) ->
+              let new_cont = (new_id (), lambda_type, Unknown) in
+              (true,
+               Let (new_cont,
+                    Lambda (lambda_args,
+                            MultiObserve (observables, lambda_body)),
+                    App (app_id, append (remove_last app_args) [new_cont])))
+          | _ ->
+              (c, MultiObserve (observables, next)))
+      | _ ->
+          (c, MultiObserve (observables, next)))
+
+  | Predict (label, id, next) ->
+      let (c, next) = move_observes_back next in
+      (c, Predict (label, id, next))
+
+  | x -> (false, x)
+
+
+
+let rec merge_consecutive_observes = function
+  | Let (id, Lambda (args, body), expr) ->
+      let (c1, expr) = merge_consecutive_observes expr in
+      let (c2, body) = merge_consecutive_observes body in
+      (c1 || c2, Let (id, Lambda (args, body), expr))
+
+  | Let (id, value, expr) ->
+      let (c, expr) = merge_consecutive_observes expr in
+      (c, Let (id, value, expr))
+
+  | If (test, then_expr, else_expr) ->
+      let (c1, then_expr) = merge_consecutive_observes then_expr in
+      let (c2, else_expr) = merge_consecutive_observes else_expr in
+      (c1 || c2, If (test, then_expr, else_expr))
+
+  | SingleValuedObserve (prim, args, value, next) ->
+      let (c, next) = merge_consecutive_observes next in
+      (match next with
+      | SingleValuedObserve (prim_2, args_2, value_2, next_2) ->
+          (true, MultiObserve ([ValuedObserve (prim, args, value); ValuedObserve (prim_2, args_2, value_2)], next_2))
+      | SingleUnvaluedObserve (prim_2, args_2, next_2) ->
+          (true, MultiObserve ([ValuedObserve (prim, args, value); UnvaluedObserve (prim_2, args_2)], next_2))
+      | MultiObserve (observables, next_2) ->
+          (true, MultiObserve ((ValuedObserve (prim, args, value)) :: observables, next_2))
+      | _ ->
+          (c, SingleValuedObserve (prim, args, value, next)))
+
+  | SingleUnvaluedObserve (prim, args, next) ->
+      let (c, next) = merge_consecutive_observes next in
+      (match next with
+      | SingleValuedObserve (prim_2, args_2, value_2, next_2) ->
+          (true, MultiObserve ([UnvaluedObserve (prim, args); ValuedObserve (prim_2, args_2, value_2)], next_2))
+      | SingleUnvaluedObserve (prim_2, args_2, next_2) ->
+          (true, MultiObserve ([UnvaluedObserve (prim, args); UnvaluedObserve (prim_2, args_2)], next_2))
+      | MultiObserve (observables, next_2) ->
+          (true, MultiObserve ((UnvaluedObserve (prim, args)) :: observables, next_2))
+      | _ ->
+          (c, SingleUnvaluedObserve (prim, args, next)))
+
+  | MultiObserve (observables, next) ->
+      let (c, next) = merge_consecutive_observes next in
+      (match next with
+      | SingleValuedObserve (prim_2, args_2, value_2, next_2) ->
+          (true, MultiObserve ((ValuedObserve (prim_2, args_2, value_2)) :: observables, next_2))
+      | SingleUnvaluedObserve (prim_2, args_2, next_2) ->
+          (true, MultiObserve ((UnvaluedObserve (prim_2, args_2)) :: observables, next_2))
+      | MultiObserve (observables_2, next_2) ->
+          (true, MultiObserve (append observables_2 observables, next_2))
+      | _ ->
+          (c, MultiObserve (observables, next)))
+
+  | Predict (label, id, next) ->
+      let (c, next) = merge_consecutive_observes next in
+      (c, Predict (label, id, next))
+
+  | x -> (false, x)
 
 
 
@@ -1331,6 +1573,6 @@ let optimise level prog =
   let rules =
     if level = 0 then [ ]
     else if level = 1 then [ local; merge_arithmetic ]
-    else [ local; merge_arithmetic; merge_samples; remove_const_observe; commute_sample_observe; merge_observes ]
+    else [ local; merge_arithmetic; merge_samples; remove_const_observe; commute_sample_observe; merge_observes; move_observes_back; merge_consecutive_observes ]
   in
   transform_K_Prime (optimise_prime rules (transform_K prog))

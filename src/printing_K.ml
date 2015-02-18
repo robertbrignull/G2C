@@ -57,6 +57,20 @@ let rec print_value i = function
       "mem" ^
       (print_id id)
 
+and print_observable i = function
+  | ValuedObserve (prim, args, value) ->
+      prim ^
+      "(" ^
+      (map_and_concat print_id ", " args) ^
+      ") " ^
+      (print_id value)
+
+  | UnvaluedObserve (prim, args) ->
+      prim ^
+      "(" ^
+      (map_and_concat print_id ", " args) ^
+      ")"
+
 and print_expr i = function
   | Let (id, value, expr) ->
       "let " ^
@@ -82,7 +96,7 @@ and print_expr i = function
                       (indent (i + 2))
                       (expr :: args))
 
-  | Observe (prim, args, value, next) ->
+  | SingleValuedObserve (prim, args, value, next) ->
       "observe " ^
       (indent (i + 2)) ^
       prim ^
@@ -94,13 +108,24 @@ and print_expr i = function
       (indent i) ^
       (print_expr i next)
 
-  | UnvaluedObserve (prim, args, next) ->
+  | SingleUnvaluedObserve (prim, args, next) ->
       "unvalued observe " ^
       (indent (i + 2)) ^
       prim ^
       "(" ^
       (map_and_concat print_id ", " args) ^
       ")" ^
+      (indent i) ^
+      (print_expr i next)
+
+  | MultiObserve (observables, next) ->
+      "multi observe" ^
+      (String.concat
+        (indent (i + 2))
+        ("" ::
+          (List.map
+            (print_observable (i + 2))
+            observables))) ^
       (indent i) ^
       (print_expr i next)
 

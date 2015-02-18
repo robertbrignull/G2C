@@ -22,14 +22,17 @@ and value =
   | RecursiveProcInstance of id
   | Prim of string * args
   | TypedPrim of string * type_c * args
-  | Mem of id * id                        (* mem_proc_id, proc_id *)     
+  | Mem of id * id                        (* mem_proc_id, proc_id *)
+
+and observable =
+  | ValuedObserve of string * args * id   (* prim, args, value *)
+  | UnvaluedObserve of string * args      (* prim, args *)
 
 and expr =
   | Let of id * value * expr              (* id, value, expr *)
   | If of id * expr * expr                (* test, then_expr, else_expr *)
   | App of id * args                      (* function_id, args *)
-  | Observe of string * args * id * expr  (* prim, args, value, next_expr *)
-  | UnvaluedObserve of string * args * expr  (* prim, args, next_expr *)
+  | Observe of observable list * expr     (* observables, next_expr *)
   | Predict of string * id * expr         (* label, value, next_expr *)
   | Halt
 

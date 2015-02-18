@@ -17,12 +17,17 @@ and value =
   | TypedPrim of string * type_c * args
   | Mem of id
 
+and observable =
+  | ValuedObserve of string * args * id
+  | UnvaluedObserve of string * args
+
 and expr =
   | Let of id * value * expr
   | If of id * expr * expr
   | App of id * args
-  | Observe of string * args * id * expr
-  | UnvaluedObserve of string * args * expr
+  | SingleValuedObserve of string * args * id * expr
+  | SingleUnvaluedObserve of string * args * expr
+  | MultiObserve of observable list * expr
   | Predict of string * id * expr
   | Halt
 

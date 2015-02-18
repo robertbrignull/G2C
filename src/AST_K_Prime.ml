@@ -20,12 +20,17 @@ and value =
   | TypedPrim of string * type_c * args
   | Mem of id
 
+and observable =
+  | ValuedObserve of string * args * id
+  | UnvaluedObserve of string * args
+
 and expr =
   | Let of id * value * expr
   | If of id * expr * expr
   | App of id * args
-  | Observe of string * args * id * expr
-  | UnvaluedObserve of string * args * expr
+  | SingleValuedObserve of string * args * id * expr
+  | SingleUnvaluedObserve of string * args * expr
+  | MultiObserve of observable list * expr
   | Predict of string * id * expr
   | Halt
 
@@ -87,6 +92,16 @@ let transform_K prog =
 
     | K.Mem id -> Mem (transform_K_id env id)
 
+  and transform_K_observable env = function
+    | K.ValuedObserve (prim, args, value) ->
+        ValuedObserve (prim,
+                       List.map (transform_K_id env) args,
+                       transform_K_id env value)
+
+    | K.UnvaluedObserve (prim, args) ->
+        UnvaluedObserve (prim,
+                         List.map (transform_K_id env) args)
+
   and transform_K_expr env = function
     | K.Let ((id, type_c), value, expr) ->
         let env2 = env_add env id Unknown in
@@ -96,32 +111,36 @@ let transform_K prog =
              value,
              transform_K_expr env3 expr)
 
-   | K.If (test, then_expr, else_expr) ->
+    | K.If (test, then_expr, else_expr) ->
         If (transform_K_id env test,
                transform_K_expr env then_expr,
                transform_K_expr env else_expr)
 
-   | K.App (expr, args) ->
+    | K.App (expr, args) ->
         App (transform_K_id env expr,
              List.map (transform_K_id env) args)
 
-   | K.Observe (label, args, value, next) ->
-        Observe (label,
-                 List.map (transform_K_id env) args,
-                 transform_K_id env value,
-                 transform_K_expr env next)
+    | K.SingleValuedObserve (prim, args, value, next) ->
+        SingleValuedObserve (prim,
+                             List.map (transform_K_id env) args,
+                             transform_K_id env value,
+                             transform_K_expr env next)
 
-   | K.UnvaluedObserve (label, args, next) ->
-        UnvaluedObserve (label,
-                 List.map (transform_K_id env) args,
-                 transform_K_expr env next)
+    | K.SingleUnvaluedObserve (prim, args, next) ->
+        SingleUnvaluedObserve (prim,
+                               List.map (transform_K_id env) args,
+                               transform_K_expr env next)
 
-   | K.Predict (label, value, next) ->
+    | K.MultiObserve (observables, next) ->
+        MultiObserve (List.map (transform_K_observable env) observables,
+                      transform_K_expr env next)
+
+    | K.Predict (label, value, next) ->
         Predict (label,
                  transform_K_id env value,
                  transform_K_expr env next)
 
-   | K.Halt -> Halt
+    | K.Halt -> Halt
 
   in
   transform_K_expr (empty_env ()) prog
@@ -168,6 +187,16 @@ let rebuild_values prog =
 
     | Mem id -> Mem (rebuild_values_id env id)
 
+  and rebuild_values_observable env = function
+    | ValuedObserve (prim, args, value) ->
+        ValuedObserve (prim,
+                       List.map (rebuild_values_id env) args,
+                       rebuild_values_id env value)
+
+    | UnvaluedObserve (prim, args) ->
+        UnvaluedObserve (prim,
+                         List.map (rebuild_values_id env) args)
+
   and rebuild_values_expr env = function
     | Let ((id, type_c, _), value, expr) ->
         let env2 = env_add env id Unknown in
@@ -177,32 +206,36 @@ let rebuild_values prog =
              value,
              rebuild_values_expr env3 expr)
 
-   | If (test, then_expr, else_expr) ->
+    | If (test, then_expr, else_expr) ->
         If (rebuild_values_id env test,
                rebuild_values_expr env then_expr,
                rebuild_values_expr env else_expr)
 
-   | App (expr, args) ->
+    | App (expr, args) ->
         App (rebuild_values_id env expr,
              List.map (rebuild_values_id env) args)
 
-   | Observe (label, args, value, next) ->
-        Observe (label,
-                 List.map (rebuild_values_id env) args,
-                 rebuild_values_id env value,
-                 rebuild_values_expr env next)
+    | SingleValuedObserve (prim, args, value, next) ->
+        SingleValuedObserve (prim,
+                             List.map (rebuild_values_id env) args,
+                             rebuild_values_id env value,
+                             rebuild_values_expr env next)
 
-   | UnvaluedObserve (label, args, next) ->
-        UnvaluedObserve (label,
-                 List.map (rebuild_values_id env) args,
-                 rebuild_values_expr env next)
+    | SingleUnvaluedObserve (prim, args, next) ->
+        SingleUnvaluedObserve (prim,
+                               List.map (rebuild_values_id env) args,
+                               rebuild_values_expr env next)
 
-   | Predict (label, value, next) ->
+    | MultiObserve (observables, next) ->
+        MultiObserve (List.map (rebuild_values_observable env) observables,
+                      rebuild_values_expr env next)
+
+    | Predict (label, value, next) ->
         Predict (label,
                  rebuild_values_id env value,
                  rebuild_values_expr env next)
 
-   | Halt -> Halt
+    | Halt -> Halt
 
   in
   rebuild_values_expr (empty_env ()) prog
@@ -241,6 +274,16 @@ let rec transform_K_Prime prog =
 
     | Mem id -> K.Mem (transform_K_Prime_id id)
 
+  and transform_K_Prime_observable = function
+    | ValuedObserve (prim, args, value) ->
+        K.ValuedObserve (prim,
+                         List.map transform_K_Prime_id args,
+                         transform_K_Prime_id value)
+
+    | UnvaluedObserve (prim, args) ->
+        K.UnvaluedObserve (prim,
+                           List.map transform_K_Prime_id args)
+
   and transform_K_Prime_expr = function
     | Let (id, value, expr) ->
         K.Let (transform_K_Prime_id id,
@@ -256,16 +299,20 @@ let rec transform_K_Prime prog =
         K.App (transform_K_Prime_id expr,
                List.map transform_K_Prime_id args)
 
-    | Observe (label, args, value, next) ->
-         K.Observe (label,
-                    List.map transform_K_Prime_id args,
-                    transform_K_Prime_id value,
-                    transform_K_Prime_expr next)
+    | SingleValuedObserve (prim, args, value, next) ->
+        K.SingleValuedObserve (prim,
+                               List.map transform_K_Prime_id args,
+                               transform_K_Prime_id value,
+                               transform_K_Prime_expr next)
 
-    | UnvaluedObserve (label, args, next) ->
-         K.UnvaluedObserve (label,
-                    List.map transform_K_Prime_id args,
-                    transform_K_Prime_expr next)
+    | SingleUnvaluedObserve (prim, args, next) ->
+        K.SingleUnvaluedObserve (prim,
+                                 List.map transform_K_Prime_id args,
+                                 transform_K_Prime_expr next)
+
+    | MultiObserve (observables, next) ->
+        K.MultiObserve (List.map transform_K_Prime_observable observables,
+                        transform_K_Prime_expr next)
 
     | Predict (label, value, next) ->
          K.Predict (label,

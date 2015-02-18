@@ -199,6 +199,15 @@ and print_value = function
   | Prim (prim, args) -> print_prim_app prim args
   | TypedPrim (prim, type_c, args) -> print_typed_prim_app prim type_c args
 
+(* Prints an observable *)
+(* print_observable :: int -> observable -> string *)
+and print_observable i = function
+  | ValuedObserve (prim, args, value) ->
+      (print_prim_observe prim (value :: args))
+
+  | UnvaluedObserve (prim, args) ->
+      (print_prim_observe prim args)
+
 (* Print any statement *)
 (* print_stmt :: int -> stmt -> string *)
 and print_stmt i = function
@@ -276,16 +285,12 @@ and print_stmt i = function
       (print_id (arg_id, arg_type)) ^ " = " ^
       "((" ^ data_id ^ "*) data)->" ^ arg_id ^ ";\n"
 
-  | Observe (prim, args, value) ->
+  | Observe observables ->
       (indent i) ^
       "observe(" ^
-      (print_prim_observe prim (value :: args)) ^
-      ");\n"
-
-  | UnvaluedObserve (prim, args) ->
-      (indent i) ^
-      "observe(" ^
-      (print_prim_observe prim args) ^
+      (map_and_concat (print_observable i)
+                      ("\n" ^ (indent (i + 6)) ^ "+ ")
+                      observables) ^
       ");\n"
 
   | Predict (label, (id, type_c)) ->
@@ -415,6 +420,12 @@ and print_main stmt =
 (* The next four functions determine whether the program uses various
    features. This is so that only the headers that are needed are included *)
 
+(* Returns true iff the observable uses the given prim somewhere *)
+(* uses_prim_observable :: string -> observable -> bool *)
+let rec uses_prim_observable prim = function
+  | ValuedObserve (prim2, _, _) -> prim = prim2
+  | UnvaluedObserve (prim2, _) -> prim = prim2
+
 (* Returns true iff the statement uses the given prim somewhere *)
 (* uses_prim_stmt :: string -> stmt -> bool *)
 let rec uses_prim_stmt prim = function
@@ -422,8 +433,7 @@ let rec uses_prim_stmt prim = function
   | Assign (_, Prim (prim2, _)) when prim = prim2 -> true
   | Assign (_, TypedPrim (prim2, _, _)) when prim = prim2 -> true
   | If (_, then_stmt, else_stmt) -> uses_prim_stmt prim then_stmt || uses_prim_stmt prim else_stmt
-  | Observe (prim2, _, _) when prim = prim2 -> true
-  | UnvaluedObserve (prim2, _) when prim = prim2 -> true
+  | Observe observables -> List.fold_right (&&) (List.map (uses_prim_observable prim) observables) true
   | _ -> false
 
 (* Returns true iff the proc uses the given prim somewhere *)

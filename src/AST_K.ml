@@ -28,13 +28,18 @@ and value =
   | TypedPrim of string * type_c * args
   | Mem of id
 
+and observable =
+  | ValuedObserve of string * args * id              (* prim, args, value *)
+  | UnvaluedObserve of string * args                 (* prim, args *)
+
 and expr =
-  | Let of id * value * expr              (* id, value, expr *)
-  | If of id * expr * expr                (* test, then_expr, else_expr *)
-  | App of id * args                      (* function_id, args *)
-  | Observe of string * args * id * expr  (* prim, args, value, next_expr *)
-  | UnvaluedObserve of string * args * expr  (* prim, args, next_expr *)
-  | Predict of string * id * expr         (* label, value, next_expr *)
+  | Let of id * value * expr                         (* id, value, expr *)
+  | If of id * expr * expr                           (* test, then_expr, else_expr *)
+  | App of id * args                                 (* function_id, args *)
+  | SingleValuedObserve of string * args * id * expr (* prim, args, value, next_expr *)
+  | SingleUnvaluedObserve of string * args * expr    (* prim, args, next_expr *)
+  | MultiObserve of observable list * expr           (* observables, next_expr *)
+  | Predict of string * id * expr                    (* label, value, next_expr *)
   | Halt
 
 and prog = expr

@@ -177,6 +177,16 @@ and transform_let env let_id = function
         C.PackMemBundle (bundle_id, data_id, proc_id)
       ]
 
+and transform_observable env = function
+  | H.ValuedObserve (prim, args, value) ->
+      let args = List.map (transform_id env) args in
+      let value = transform_id env value in
+      C.ValuedObserve (prim, args, value);
+
+  | H.UnvaluedObserve (prim, args) ->
+      let args = List.map (transform_id env) args in
+      C.UnvaluedObserve (prim, args);
+
 and transform_expr env current_proc_id = function
   | H.Let (id, value, expr) ->
       C.Seq [transform_let env id value;
@@ -195,18 +205,9 @@ and transform_expr env current_proc_id = function
           C.RecursiveApp (proc_id, args)
       | _ -> C.BundleApp (proc_id, args))
 
-  | H.Observe (prim, args, value, next) ->
-      let args = List.map (transform_id env) args in
-      let value = transform_id env value in
+  | H.Observe (observables, next) ->
       C.Seq [
-        C.Observe (prim, args, value);
-        transform_expr env current_proc_id next
-      ]
-
-  | H.UnvaluedObserve (prim, args, next) ->
-      let args = List.map (transform_id env) args in
-      C.Seq [
-        C.UnvaluedObserve (prim, args);
+        C.Observe (List.map (transform_observable env) observables);
         transform_expr env current_proc_id next
       ]
 

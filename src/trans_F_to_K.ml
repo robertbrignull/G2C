@@ -199,7 +199,7 @@ and gen_stmt (stmt_guts, type_c) cont =
   | F.Observe (prim, args, value) ->
       gen_args args (fun arg_ids ->
         gen_expr value (fun value_id ->
-          K.Observe (prim, arg_ids, value_id, cont)))
+          K.SingleValuedObserve (prim, arg_ids, value_id, cont)))
 
   | F.Predict (label, expr) ->
       gen_expr expr (fun expr_id ->

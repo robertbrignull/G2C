@@ -44,6 +44,17 @@ let find_free_vars env expr =
     | K.Mem id ->
         find_free_vars_id env id
 
+  (* find_free_vars_observable :: K.id list -> K.observable -> K.id list *)
+  and find_free_vars_observable env = function
+    | K.ValuedObserve (prim, args, value) ->
+        concat [
+          concat (map (find_free_vars_id env) args);
+          find_free_vars_id env value
+        ]
+
+    | K.UnvaluedObserve (prim, args) ->
+        concat (map (find_free_vars_id env) args)
+
   (* find_free_vars_expr :: K.id list -> K.expr -> K.id list *)
   and find_free_vars_expr env = function
     | K.Let (id, K.Lambda (args, body), expr) ->
@@ -73,16 +84,22 @@ let find_free_vars env expr =
           concat (map (find_free_vars_id env) args)
         ]
 
-    | K.Observe (prim, args, value, next) ->
+    | K.SingleValuedObserve (prim, args, value, next) ->
         concat [
           concat (map (find_free_vars_id env) args);
           find_free_vars_id env value;
           find_free_vars_expr env next
         ]
 
-    | K.UnvaluedObserve (prim, args, next) ->
+    | K.SingleUnvaluedObserve (prim, args, next) ->
         concat [
           concat (map (find_free_vars_id env) args);
+          find_free_vars_expr env next
+        ]
+
+    | K.MultiObserve (observables, next) ->
+        concat [
+          concat (map (find_free_vars_observable env) observables);
           find_free_vars_expr env next
         ]
 
@@ -111,6 +128,17 @@ let replace_id source target expr =
     | K.Mem (mem_id) -> K.Mem (replace_id_id mem_id)
     | x -> x
 
+  (* replace_id_observable :: K.observable -> K.observable *)
+  and replace_id_observable = function
+    | K.ValuedObserve (label, args, value) ->
+        K.ValuedObserve (label,
+                         map replace_id_id args,
+                         replace_id_id value)
+
+    | K.UnvaluedObserve (label, args) ->
+        K.UnvaluedObserve (label,
+                           map replace_id_id args)
+
   (* replace_id_expr :: K.expr -> K.expr *)
   and replace_id_expr = function
     | K.Let (id, value, expr) ->
@@ -125,16 +153,20 @@ let replace_id source target expr =
         K.App (replace_id_id proc,
                map replace_id_id args)
 
-    | K.Observe (label, args, value, next) ->
-        K.Observe (label,
-                   map replace_id_id args,
-                   replace_id_id value,
-                   replace_id_expr next)
+    | K.SingleValuedObserve (label, args, value, next) ->
+        K.SingleValuedObserve (label,
+                               map replace_id_id args,
+                               replace_id_id value,
+                               replace_id_expr next)
 
-    | K.UnvaluedObserve (label, args, next) ->
-        K.UnvaluedObserve (label,
-                           map replace_id_id args,
-                           replace_id_expr next)
+    | K.SingleUnvaluedObserve (label, args, next) ->
+        K.SingleUnvaluedObserve (label,
+                                 map replace_id_id args,
+                                 replace_id_expr next)
+
+    | K.MultiObserve (observables, next) ->
+        K.MultiObserve (map replace_id_observable observables,
+                        replace_id_expr next)
 
     | K.Predict (label, value, next) ->
         K.Predict (label,
@@ -182,6 +214,17 @@ and transform_value = function
       let mem_proc = H.MemProc (mem_id, args) in
       ([mem_proc], H.Mem (mem_id, proc_id))
 
+(* transform_observable :: K.observable -> K.observable *)
+and transform_observable = function
+  | K.ValuedObserve (prim, args, value) ->
+      let args = map transform_id args in
+      let value = transform_id value in
+      H.ValuedObserve (prim, args, value)
+
+  | K.UnvaluedObserve (prim, args) ->
+      let args = map transform_id args in
+      H.UnvaluedObserve (prim, args)
+
 (* transform_value :: K.expr -> (H.proc list * H.expr) *)
 and transform_expr = function
   | K.Let (let_id, K.Lambda (args, body), expr) ->
@@ -223,16 +266,21 @@ and transform_expr = function
       let args = map transform_id args in
       ([], H.App (expr, args))
 
-  | K.Observe (prim, args, value, next) ->
+  | K.SingleValuedObserve (prim, args, value, next) ->
       let args = map transform_id args in
       let value = transform_id value in
       let (procs, next) = transform_expr next in
-      (procs, H.Observe (prim, args, value, next))
+      (procs, H.Observe ([H.ValuedObserve (prim, args, value)], next))
 
-  | K.UnvaluedObserve (prim, args, next) ->
+  | K.SingleUnvaluedObserve (prim, args, next) ->
       let args = map transform_id args in
       let (procs, next) = transform_expr next in
-      (procs, H.UnvaluedObserve (prim, args, next))
+      (procs, H.Observe ([H.UnvaluedObserve (prim, args)], next))
+
+  | K.MultiObserve (observables, next) ->
+      let observables = map transform_observable observables in
+      let (procs, next) = transform_expr next in
+      (procs, H.Observe (observables, next))
 
   | K.Predict (label, id, next) ->
       let id = transform_id id in

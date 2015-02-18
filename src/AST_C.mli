@@ -18,6 +18,10 @@ and value =
   | Prim of string * args
   | TypedPrim of string * type_c * args
 
+and observable =
+  | ValuedObserve of string * args * id
+  | UnvaluedObserve of string * args
+
 and stmt =
   | Seq of stmt list
   | Assign of id * value
@@ -29,8 +33,7 @@ and stmt =
   | PackBundleItem of id * id * id
   | PackMemBundle of id * id * id
   | UnpackBundleItem of id * id
-  | Observe of string * args * id
-  | UnvaluedObserve of string * args
+  | Observe of observable list
   | Predict of string * id
   | Halt
 
