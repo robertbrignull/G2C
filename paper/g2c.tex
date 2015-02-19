@@ -5,6 +5,16 @@
 \usepackage{amssymb}
 \usepackage{amsthm}
 
+\usepackage{graphicx}
+
+\usepackage{mdframed}
+\usepackage{proof}
+
+\renewcommand{\qed}{\hfill\ensuremath{\square}}
+
+\newenvironment{claim}[1]{\par\noindent\underline{Claim:}\space#1}{}
+\newenvironment{claimproof}[1]{\par\noindent\underline{Proof:}\space#1}{\qed}
+
 \newcommand{\optimization}[2]{
 	\[
 		\begin{array}{rcl}
@@ -326,7 +336,6 @@ For example we could do the following optimization
 		\texttt{...}
 	\end{array}
 }
-
 This can be extended to the case when only some of the arguments are constant, now we can't remove the whole primitive application but we can reduce the number of arguments and hence the complexity of it.
 
 For example we could do the following optimization
@@ -344,12 +353,11 @@ For example we could do the following optimization
 		\texttt{...}
 	\end{array}
 }
-
 We can optimize all of the following when at least some of the arguments are constant:
+
 \begin{center}
 	\texttt{+}, \texttt{-}, \texttt{*}, \texttt{/}, \texttt{eq}, \texttt{neq}, \texttt{<}, \texttt{>}, \texttt{<=}, \texttt{>=}, \texttt{and}, \texttt{or}, \texttt{not}
 \end{center}
-
 This sort of optimization would definitely be performed by any half decent C compiler, so we are not actually improving the performance of the final compiled program by doing this. The reason for doing it is it reduces the size and complexity of the generated Prob-C code greatly, therefore making other stages of compilation faster and easier and also making it easier for a human to scan and understand the outputted Prob-C code.
 
 
@@ -383,7 +391,6 @@ For example we could do the following optimization
 		\texttt{...}
 	\end{array}
 }
-
 This is a case that comes up in compiled programs surprisingly often, especially after other optimizations, so by optimizing it away we reduce the final complexity of the Prob-C.
 
 Again this optimization would likely be performed by the C compiler anyway so the final compiled program is unchanged.
@@ -436,7 +443,6 @@ For example we could do the following optimization
 		\texttt{...}
 	\end{array}
 }
-
 This optimization is admittedly rather inconsequential, but we include it anyway.
 
 
@@ -466,7 +472,6 @@ For example we could do the following optimization
 		\texttt{...}
 	\end{array}
 }
-
 This will then of course be removed on the next pass as it is an id assigned to another id.
 
 This optimization could be moderately important for performance. Although a decent C compiler will inline a small function such as the above and hence remove the extra application, after the other transformations that G2C performs it will not be simple, so removing it at this stage will greatly simplify later stages of compilation.
@@ -481,24 +486,106 @@ This optimization could be moderately important for performance. Although a dece
 %         ##   ##  ##      
 %         ##   ##  ########
 
-\subsection{Merging of samples}
+\subsection{Merging and manipulation of samples}
 
-If we have the situation
+One way we can improve performance is to reduce the number of samples as some of them can be moderately costly to perform. The ideal case for this optimization is shown below.
 
 \[
 	\begin{array}{l}
-		\lbrack \mathsf{assume}\ x_1\ (\mathsf{normal}\ m_1\ b_1) \rbrack \\
-		\dots \\
-		\lbrack \mathsf{assume}\ x_n\ (\mathsf{normal}\ m_n\ b_n) \rbrack \\
-		\lbrack \mathsf{assume}\ y\ (+\ x_1\ ...\ x_n) \rbrack
+		\texttt{[assume x\_1 (normal m\_1 b\_1)]} \\
+		\texttt{...} \\
+		\texttt{[assume x\_n (normal m\_n b\_n)]} \\
+		\texttt{[assume y (+ x\_1 ...\ x\_n)]}
 	\end{array}
 \]
+The general form is where we make many samples and perform some function on them, we then use that function output and never use the individual samples anywhere else.
 
-and each \(x_i\) is not used anywhere else, then we can simplify it to just
+Assuming that none of the \texttt{x\_i} are used anywhere else then the above can be optimized into the following
 
-\[\lbrack \mathsf{assume}\ y\ (\mathsf{normal}\ (+\ m_1\ \dots m_n)\ (+\ b_1 \dots b_n)) \rbrack\]
+\[
+	\texttt{[assume y (normal (+ m\_1 ...\ m\_n) (+ b\_1 ...\ b\_n))]}
+\]
+We can even perform this optimization in the case where some of the \texttt{x\_i}s are used again. If only \texttt{x\_1} were used elsewhere then we could optimize to the following
 
-Similar things can be done with other distributions.
+\[
+	\begin{array}{l}
+		\texttt{[assume x\_1 (normal m\_1 b\_1)]} \\
+		\texttt{[assume t (normal (+ m\_2 ...\ m\_n) (+ b\_2 ...\ b\_n))]} \\
+		\texttt{[assume y (+ x\_1 t)]}
+	\end{array}
+\]
+Although less of an optimization we have still reduced the number of samples.
+
+There are many cases where we can apply this optimization, some of which I have listed below. I have only included here a few for the normal distribution, but the optimization can be applied to many other distributions and operations.
+
+\begin{center}
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{lcl}
+		Before optimization && After optimization \\[2mm]
+		\hline \\[-2mm]
+
+		\(\begin{array}{l}
+				\texttt{[assume x\_1 (normal m\_1 b\_1)]} \\
+				\texttt{...} \\
+				\texttt{[assume x\_n (normal m\_n b\_n)]} \\
+				\texttt{[assume y (+ x\_1 ...\ x\_n)]}
+			\end{array}\)
+		&\(\Rightarrow\)&
+		\texttt{[assume y (normal (+ m\_1 ...\ m\_n) (+ b\_1 ...\ b\_n))]} \\[15mm]
+
+		\(\begin{array}{l}
+				\texttt{[assume x\_1 (normal m\_1 b\_1)]} \\
+				\texttt{...} \\
+				\texttt{[assume x\_n (normal m\_n b\_n)]} \\
+				\texttt{[assume y (- x\_1 ...\ x\_n)]}
+			\end{array}\)
+		&\(\Rightarrow\)&
+		\texttt{[assume y (normal (- m\_1 ...\ m\_n) (+ b\_1 ...\ b\_n))]} \\[15mm]
+
+		\(\begin{array}{l}
+				\texttt{[assume x (normal m b)]} \\
+				\texttt{[assume y (+ x 15)]}
+			\end{array}\)
+		&\(\Rightarrow\)&
+		\texttt{[assume y (normal (+ m 15) b)]} \\[10mm]
+
+		\(\begin{array}{l}
+				\texttt{[assume x (normal m b)]} \\
+				\texttt{[assume y (* x 3)]}
+			\end{array}\)
+		&\(\Rightarrow\)&
+		\texttt{[assume y (normal (* m 3) (* b 3))]}
+
+	\end{tabular}}
+\end{center}
+I will also prove the correctness of the first example.
+
+\begin{mdframed}
+	\begin{claim}
+	  The sum of independent normally distributed variables is normally distributed.
+	\end{claim}
+	\begin{claimproof}
+	  The easiest way to do this is using characteristic functions. For a random variable \(X\) this is
+
+	  \[\varphi_X(t) = E(e^{itX})\]
+	  The characteristic function of a normal distribution with mean \(\mu\) and variance \(\sigma^2\) is
+
+	  \[\varphi(t) = \exp(i t \mu - \frac{\sigma^2 t^2}{2})\]
+	  The characteristic function of the sum of two independent random variables \(X\) and \(Y\) is the product of their separate characteristic functions. Hence if \(X\) and \(Y\) are both normally distributed with means and variances \(\mu_X\), \(\mu_Y\) and \(\sigma_X^2\), \(\sigma_Y^2\) respectively, then
+
+  	\begin{align*}
+  		\varphi_{X+Y}(t)
+  		& = \varphi_X(t) \varphi_Y(t) \\
+  		& = \exp\left(i t \mu_X - \frac{\sigma_X^2 t^2}{2}\right) \exp\left(i t \mu_Y - \frac{\sigma_Y^2 t^2}{2}\right) \\
+  		& = \exp\left(i t (\mu_x + \mu_Y) - \frac{(\sigma_X^2 + \sigma_Y^2) t^2}{2}\right)
+  	\end{align*}
+	  Which is the characteristic function of a normal distribution with mean \(\mu_X + \mu_Y\) and variance \(\sigma_X^2 + \sigma_Y^2\).
+
+	  From here if we have \(n\) independent normally distributed random variables \(X_i \sim N(\mu_i, \sigma_i^2)\) then we proceed by induction using the above to get that
+
+	  \[\sum_{i=1}^n X_i \sim N(\sum_{i=1}^n \mu_i, \sum_{i=1}^n \sigma_i^2)\]
+	\end{claimproof}
+\end{mdframed}
 
 
 
@@ -511,6 +598,8 @@ Similar things can be done with other distributions.
 %         ##   ##   ###### 
 
 \subsection{Merging of observe statements}
+
+The main aim of all of our optimizations is to reduce the number of observes that the program does, it is these that greatly reduce both the programs performance and the quality of samples.
 
 
 
@@ -533,7 +622,6 @@ If we have the situation
 		\lbrack \mathsf{observe}\ (\mathsf{normal}\ m_n\ b_n)\ x_n \rbrack
 	\end{array}
 \]
-
 then it is equivalent to an observe that only relies on the sample mean and variance of the \(x_i\)s.
 
 Note the resulting observe will not follow a normal distribution.
@@ -563,7 +651,6 @@ Therefore the following
 		\mathsf{observe}(\mathsf{dist}_n(args_n ...));
 	\end{array}
 \]
-
 is equivalent to
 
 \[\mathsf{observe}(\sum_{i=1}^n\mathsf{dist}_i(args_i ...));\]
@@ -604,11 +691,9 @@ If we have the situation
 		\lbrack \mathsf{observe}\ (\mathsf{flip}\ p)\ \mathsf{true} \rbrack
 	\end{array}
 \]
-
 then it can be simplified to
 
 \[\lbrack \mathsf{assume}\ p\ (\mathsf{beta}\ (+\ a\ 1)\ b) \rbrack\]
-
 This is the easy case where \(a\) and \(b\) are constants, if they are not then the observe remains, but we might reduce 100 observes to just one so it will hopefully improve performance and definitely improve the quality of the samples generated.
 
 
