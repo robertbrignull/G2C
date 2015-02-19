@@ -21,15 +21,25 @@
 
 \maketitle
 
-%    #### ##    ## ######## ######    ##### 
-%     ##  ###   ##    ##    ##   ##  ##   ##
-%     ##  ####  ##    ##    ##   ##  ##   ##
-%     ##  ## ## ##    ##    ######   ##   ##
-%     ##  ##  ####    ##    ##  ##   ##   ##
-%     ##  ##   ###    ##    ##   ##  ##   ##
-%    #### ##    ##    ##    ##    ##  ##### 
+%     ##       #### ##    ## ######## ######    ##### 
+%    ###   ##   ##  ###   ##    ##    ##   ##  ##   ##
+%     ##   ##   ##  ####  ##    ##    ##   ##  ##   ##
+%     ##        ##  ## ## ##    ##    ######   ##   ##
+%     ##   ##   ##  ##  ####    ##    ##  ##   ##   ##
+%     ##   ##   ##  ##   ###    ##    ##   ##  ##   ##
+%    ####      #### ##    ##    ##    ##    ##  ##### 
 
 \section{Introduction}
+
+
+
+%     ##        ## 
+%    ###       ### 
+%     ##        ## 
+%     ##        ## 
+%     ##        ## 
+%     ##   ##   ## 
+%    ####  ##  ####
 
 \subsection{The purpose of the project}
 
@@ -45,6 +55,14 @@ If any optimizations can be done along the way, either probabilistic or not, the
 
 
 
+%     ##        ###### 
+%    ###       ##    ##
+%     ##            ###
+%     ##          ###  
+%     ##        ###    
+%     ##   ##  ##      
+%    ####  ##  ########
+
 \subsection{How this was achieved}
 
 Because both my source language and Prob-C handle sampling and observing in a very similar way, the bulk of the compiler is very standard.
@@ -57,15 +75,25 @@ It performs probabilistic optimizations such as merging multiple samples from on
 
 
 
-%    ######     ##     #####  ##   ##  #####   ######    #####  ##   ## ##    ## ###### 
-%    ##   ##   ####   ##   ## ##  ##  ##   ##  ##   ##  ##   ## ##   ## ###   ## ##   ##
-%    ##   ##  ##  ##  ##      ## ##   ##       ##   ##  ##   ## ##   ## ####  ## ##   ##
-%    ######  ##    ## ##      ####    ##       ######   ##   ## ##   ## ## ## ## ##   ##
-%    ##   ## ######## ##      ## ##   ##  #### ##  ##   ##   ## ##   ## ##  #### ##   ##
-%    ##   ## ##    ## ##   ## ##  ##  ##   ##  ##   ##  ##   ## ##   ## ##   ### ##   ##
-%    ######  ##    ##  #####  ##   ##  #####   ##    ##  #####   #####  ##    ## ###### 
+%     ######       ######     ##     #####  ##   ##  #####   ######    #####  ##   ## ##    ## ###### 
+%    ##    ##  ##  ##   ##   ####   ##   ## ##  ##  ##   ##  ##   ##  ##   ## ##   ## ###   ## ##   ##
+%         ###  ##  ##   ##  ##  ##  ##      ## ##   ##       ##   ##  ##   ## ##   ## ####  ## ##   ##
+%       ###        ######  ##    ## ##      ####    ##       ######   ##   ## ##   ## ## ## ## ##   ##
+%     ###      ##  ##   ## ######## ##      ## ##   ##  #### ##  ##   ##   ## ##   ## ##  #### ##   ##
+%    ##        ##  ##   ## ##    ## ##   ## ##  ##  ##   ##  ##   ##  ##   ## ##   ## ##   ### ##   ##
+%    ########      ######  ##    ##  #####  ##   ##  #####   ##    ##  #####   #####  ##    ## ###### 
 
 \section{Background}
+
+
+
+%     ######        ## 
+%    ##    ##      ### 
+%         ###       ## 
+%       ###         ## 
+%     ###           ## 
+%    ##        ##   ## 
+%    ########  ##  ####
 
 \subsection{Probabilistic programming}
 
@@ -79,6 +107,14 @@ The applications of probabilistic programming are diverse, anything that require
 
 
 
+%     ######        ###### 
+%    ##    ##      ##    ##
+%         ###           ###
+%       ###           ###  
+%     ###           ###    
+%    ##        ##  ##      
+%    ########  ##  ########
+
 \subsection{Anglican and Prob-c}
 
 Anglican and Prob-C are the two languages we'll be concerned with most, Anglican because it's what I've based my source language on, and Prob-C because it is the target language of my compiler.
@@ -89,6 +125,14 @@ Prob-C on the other hand is based on full C rather than a subset, in fact the on
 
 
 
+%     ######        ##### 
+%    ##    ##      ##   ##
+%         ###           ##
+%       ###         ##### 
+%     ###               ##
+%    ##        ##  ##   ##
+%    ########  ##   ##### 
+
 \subsection{Bayesian probability}
 
 Bayesian probability revolves around the idea of conditional probability, that is having some prior belief about an event and then estimating it's probability once you've observed that some other event happened.
@@ -97,15 +141,25 @@ The central theorem is Bayes' theorem \(p(A | B) = \dfrac{p(A \land B)}{p(B)}\)
 
 
 
-%     #####   #####  ##      ## ######  #### ##     ####### ######  
-%    ##   ## ##   ## ###    ### ##   ##  ##  ##     ##      ##   ## 
-%    ##      ##   ## ####  #### ##   ##  ##  ##     ##      ##   ## 
-%    ##      ##   ## ## #### ## ######   ##  ##     ######  ######  
-%    ##      ##   ## ##  ##  ## ##       ##  ##     ##      ##  ##  
-%    ##   ## ##   ## ##      ## ##       ##  ##     ##      ##   ## 
-%     #####   #####  ##      ## ##      #### ###### ####### ##    ##
+%     #####        #####   #####  ##      ## ######  #### ##     ####### ######  
+%    ##   ##  ##  ##   ## ##   ## ###    ### ##   ##  ##  ##     ##      ##   ## 
+%         ##  ##  ##      ##   ## ####  #### ##   ##  ##  ##     ##      ##   ## 
+%     #####       ##      ##   ## ## #### ## ######   ##  ##     ######  ######  
+%         ##  ##  ##      ##   ## ##  ##  ## ##       ##  ##     ##      ##  ##  
+%    ##   ##  ##  ##   ## ##   ## ##      ## ##       ##  ##     ##      ##   ## 
+%     #####        #####   #####  ##      ## ##      #### ###### ####### ##    ##
 
 \section{The compiler}
+
+
+
+%     #####        ## 
+%    ##   ##      ### 
+%         ##       ## 
+%     #####        ## 
+%         ##       ## 
+%    ##   ##  ##   ## 
+%     #####   ##  ####
 
 \subsection{The source language}
 
@@ -118,6 +172,14 @@ Without this extra type information, when translated to C all variables would ha
 ** BNF of G **
 
 
+
+%     #####        ###### 
+%    ##   ##      ##    ##
+%         ##           ###
+%     #####          ###  
+%         ##       ###    
+%    ##   ##  ##  ##      
+%     #####   ##  ########
 
 \subsection{Typing the source language}
 
@@ -135,6 +197,14 @@ For an observe, check that the outer expression of the first argument is a proba
 
 
 
+%     #####        ###### 
+%    ##   ##      ##    ##
+%         ##            ##
+%     #####        ###### 
+%         ##            ##
+%    ##   ##  ##  ##    ##
+%     #####   ##   ###### 
+
 \subsection{Making ids unique}
 
 At this point we change all ids to be unique, that is so that whenever two ids are the same then they refer to the same variable.
@@ -142,6 +212,14 @@ At this point we change all ids to be unique, that is so that whenever two ids a
 This means that for the rest of the compilation we do not have to worry about the scope of variables at all.
 
 
+
+%     #####           ### 
+%    ##   ##         #### 
+%         ##        ## ## 
+%     #####        ##  ## 
+%         ##      ########
+%    ##   ##  ##       ## 
+%     #####   ##       ## 
 
 \subsection{Into continuation passing style}
 
@@ -155,6 +233,14 @@ It is this step that is the defining transition from a functional to an imperati
 
 
 
+%     #####       ########
+%    ##   ##      ##      
+%         ##      ##      
+%     #####        ###### 
+%         ##            ##
+%    ##   ##  ##  ##    ##
+%     #####   ##   ###### 
+
 \subsection{Closure conversion and hoisting}
 
 What we want to do in this step is to lift all functions to the top level of the program, as they must be defined that way in a C program. The problem is that functions may reference variables defined outside of their scope.
@@ -167,6 +253,14 @@ Once this has been done all function definitions can be lifted to the top level 
 
 
 
+%     #####           ## 
+%    ##   ##         ##  
+%         ##        ##   
+%     #####        ##### 
+%         ##      ##   ##
+%    ##   ##  ##  ##   ##
+%     #####   ##   ##### 
+
 \subsection{Outputting C code}
 
 We need to output valid C code, including struct definitions and any extra library functions used.
@@ -177,13 +271,13 @@ One important point is we don't need to worry about memory management at all, wh
 
 
 
-%     #####  ######  ######## #### ##      ## #### ########    ##    ######## ####  #####  ##    ##  ##### 
-%    ##   ## ##   ##    ##     ##  ###    ###  ##       ##    ####      ##     ##  ##   ## ###   ## ##     
-%    ##   ## ##   ##    ##     ##  ####  ####  ##      ##    ##  ##     ##     ##  ##   ## ####  ## ##     
-%    ##   ## ######     ##     ##  ## #### ##  ##     ##    ##    ##    ##     ##  ##   ## ## ## ##  ##### 
-%    ##   ## ##         ##     ##  ##  ##  ##  ##    ##     ########    ##     ##  ##   ## ##  ####      ##
-%    ##   ## ##         ##     ##  ##      ##  ##   ##      ##    ##    ##     ##  ##   ## ##   ###      ##
-%     #####  ##         ##    #### ##      ## #### ######## ##    ##    ##    ####  #####  ##    ##  ##### 
+%        ###        #####  ######  ######## #### ##      ## #### ########    ##    ######## ####  #####  ##    ##  ##### 
+%       ####   ##  ##   ## ##   ##    ##     ##  ###    ###  ##       ##    ####      ##     ##  ##   ## ###   ## ##     
+%      ## ##   ##  ##   ## ##   ##    ##     ##  ####  ####  ##      ##    ##  ##     ##     ##  ##   ## ####  ## ##     
+%     ##  ##       ##   ## ######     ##     ##  ## #### ##  ##     ##    ##    ##    ##     ##  ##   ## ## ## ##  ##### 
+%    ########  ##  ##   ## ##         ##     ##  ##  ##  ##  ##    ##     ########    ##     ##  ##   ## ##  ####      ##
+%         ##   ##  ##   ## ##         ##     ##  ##      ##  ##   ##      ##    ##    ##     ##  ##   ## ##   ###      ##
+%         ##        #####  ##         ##    #### ##      ## #### ######## ##    ##    ##    ####  #####  ##    ##  ##### 
 
 \section{Optimizations}
 
@@ -193,11 +287,27 @@ All the optimizations described here are performed immediately after CPS transfo
 
 
 
+%        ###        ## 
+%       ####       ### 
+%      ## ##        ## 
+%     ##  ##        ## 
+%    ########       ## 
+%         ##   ##   ## 
+%         ##   ##  ####
+
 \subsection{Non-probabilistic optimizations}
 
 We do some standard non-probabilistic optimizations. None of these are technically necessary for the rest of the optimizations to work and some would be performed by the C compiler anyway. They still make our life a little easier however so that is why they are included here.
 
 
+
+%        ###         ##        ## 
+%       ####        ###       ### 
+%      ## ##         ##        ## 
+%     ##  ##         ##        ## 
+%    ########        ##        ## 
+%         ##   ##    ##   ##   ## 
+%         ##   ##   ####  ##  ####
 
 \subsubsection{Constant expression calculation}
 
@@ -244,6 +354,14 @@ This sort of optimization would definitely be performed by any half decent C com
 
 
 
+%        ###         ##        ###### 
+%       ####        ###       ##    ##
+%      ## ##         ##            ###
+%     ##  ##         ##          ###  
+%    ########        ##        ###    
+%         ##   ##    ##   ##  ##      
+%         ##   ##   ####  ##  ########
+
 \subsubsection{Merging multiple arithmetic expressions}
 
 Another thing we can do with arithmetic expressions is to merge ones of the same sort together.
@@ -272,6 +390,14 @@ Again this optimization would likely be performed by the C compiler anyway so th
 
 
 
+%        ###         ##        ###### 
+%       ####        ###       ##    ##
+%      ## ##         ##             ##
+%     ##  ##         ##        ###### 
+%    ########        ##             ##
+%         ##   ##    ##   ##  ##    ##
+%         ##   ##   ####  ##   ###### 
+
 \subsubsection{Removing let expressions where the id is not used}
 
 A very simple optimization is to remove any let expression where the variable being assigned to is never used later on in the program.
@@ -281,6 +407,14 @@ This optimization doesn't do much on its own, as the user is unlikely to have wr
 This is an optimization that a C compiler potentially would not perform. This is because C is a language with side effects so just because a variable is never used does not mean that the process of calculating it did not change program state. In our language however variables are immutable and there is no state so it is safe to remove the unused variable.
 
 
+
+%        ###         ##           ### 
+%       ####        ###          #### 
+%      ## ##         ##         ## ## 
+%     ##  ##         ##        ##  ## 
+%    ########        ##       ########
+%         ##   ##    ##   ##       ## 
+%         ##   ##   ####  ##       ## 
 
 \subsubsection{Removing let expressions where an id is assigned to another id}
 
@@ -307,6 +441,14 @@ This optimization is admittedly rather inconsequential, but we include it anyway
 
 
 
+%        ###         ##       ########
+%       ####        ###       ##      
+%      ## ##         ##       ##      
+%     ##  ##         ##        ###### 
+%    ########        ##             ##
+%         ##   ##    ##   ##  ##    ##
+%         ##   ##   ####  ##   ###### 
+
 \subsubsection{Removing trivial continuations}
 
 The final non-probabilistic optimization we do it to remove trivial functions which are equivalent to another function. The place where this happens a lot is continuations generated from the translation into CPS.
@@ -331,6 +473,14 @@ This optimization could be moderately important for performance. Although a dece
 
 
 
+%        ###        ###### 
+%       ####       ##    ##
+%      ## ##            ###
+%     ##  ##          ###  
+%    ########       ###    
+%         ##   ##  ##      
+%         ##   ##  ########
+
 \subsection{Merging of samples}
 
 If we have the situation
@@ -352,7 +502,25 @@ Similar things can be done with other distributions.
 
 
 
+%        ###        ###### 
+%       ####       ##    ##
+%      ## ##             ##
+%     ##  ##        ###### 
+%    ########            ##
+%         ##   ##  ##    ##
+%         ##   ##   ###### 
+
 \subsection{Merging of observe statements}
+
+
+
+%        ###        ######        ## 
+%       ####       ##    ##      ### 
+%      ## ##             ##       ## 
+%     ##  ##        ######        ## 
+%    ########            ##       ## 
+%         ##   ##  ##    ##  ##   ## 
+%         ##   ##   ######   ##  ####
 
 \subsubsection{Merging observes of the same distribution}
 
@@ -371,6 +539,14 @@ then it is equivalent to an observe that only relies on the sample mean and vari
 Note the resulting observe will not follow a normal distribution.
 
 
+
+%        ###        ######        ###### 
+%       ####       ##    ##      ##    ##
+%      ## ##             ##           ###
+%     ##  ##        ######          ###  
+%    ########            ##       ###    
+%         ##   ##  ##    ##  ##  ##      
+%         ##   ##   ######   ##  ########
 
 \subsubsection{Merging any consecutive observes}
 
@@ -394,9 +570,27 @@ is equivalent to
 
 
 
+%        ###           ### 
+%       ####          #### 
+%      ## ##         ## ## 
+%     ##  ##        ##  ## 
+%    ########      ########
+%         ##   ##       ## 
+%         ##   ##       ## 
+
 \subsection{Removal of observe statements}
 
-\subsection{Commuting samples and observe statements}
+
+
+%        ###           ###        ## 
+%       ####          ####       ### 
+%      ## ##         ## ##        ## 
+%     ##  ##        ##  ##        ## 
+%    ########      ########       ## 
+%         ##   ##       ##   ##   ## 
+%         ##   ##       ##   ##  ####
+
+\subsubsection{Commuting samples and observe statements}
 
 Here we start doing some actual probability in an attempt to swap sample and observe statements and hopefully remove the observe completely.
 
@@ -419,7 +613,15 @@ This is the easy case where \(a\) and \(b\) are constants, if they are not then 
 
 
 
-\subsection{Removal of constant observe statements}
+%        ###           ###        ###### 
+%       ####          ####       ##    ##
+%      ## ##         ## ##            ###
+%     ##  ##        ##  ##          ###  
+%    ########      ########       ###    
+%         ##   ##       ##   ##  ##      
+%         ##   ##       ##   ##  ########
+
+\subsubsection{Removal of constant observe statements}
 
 When the arguments to an observe statement are all constant, then that observe can have no influence on the posterior distribution as all particles will observe the same value.
 
