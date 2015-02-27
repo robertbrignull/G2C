@@ -544,17 +544,17 @@ There are many cases where we can apply this optimization, some of which I have 
 
 		\(\begin{array}{l}
 				\texttt{[assume x (normal m b)]} \\
-				\texttt{[assume y (+ x 15)]}
+				\texttt{[assume y (+ x r)]}
 			\end{array}\)
 		&\(\Rightarrow\)&
-		\texttt{[assume y (normal (+ m 15) b)]} \\[10mm]
+		\texttt{[assume y (normal (+ m r) b)]} \\[10mm]
 
 		\(\begin{array}{l}
 				\texttt{[assume x (normal m b)]} \\
-				\texttt{[assume y (* x 3)]}
+				\texttt{[assume y (* x s)]}
 			\end{array}\)
 		&\(\Rightarrow\)&
-		\texttt{[assume y (normal (* m 3) (* b 3))]}
+		\texttt{[assume y (normal (* m s) (* b s s))]}
 
 	\end{tabular}}
 \end{center}

@@ -869,6 +869,14 @@ let local prog =
                 next))))
         else None
 
+    | Prim ("abs", args) ->
+        let (nums, non_num_args) = extract_nums args in
+        if length nums = 1 then
+          let x = hd nums in
+          Some (fun next ->
+            Let (let_id, Num (if x > 0. then x else (-. x)), next))
+        else None
+
     | Prim ("eq", args) ->
         let (nums, non_num_args) = extract_nums args in
         if length non_num_args = 0 then
@@ -1087,22 +1095,96 @@ let merge_samples prog =
           Let (let_id, Prim ("plus", nv :: non_normal_args),
             expr)))))
 
-        else
-        let (poisson_args, non_poisson_args) = partition_by_prim "poisson" args in
-        if (  length poisson_args >= 2
-           && fold_right (&&) (map id_used_once poisson_args) true) then
-          let poisson_args_args = extract_prim_args poisson_args in
-          let ls = map hd poisson_args_args in
-          let nl = (new_id (), NumType, Unknown) in
-          let nv = (new_id (), NumType, Unknown) in
+        else if (  length normal_args = 1
+                && fold_right (&&) (map id_used_once normal_args) true
+                && fold_right (&&) (map is_const non_normal_args) true) then
+          let normal_args_args = extract_prim_args normal_args in
+          let m = hd (map hd normal_args_args) in
+          let b = hd (map hd (map tl normal_args_args)) in
+          let nm = (new_id (), NumType, Unknown) in
           (true,
-          Let (nl, Prim ("plus", ls),
-          Let (nv, Prim ("poisson", [nl]),
-          Let (let_id, Prim ("plus", nv :: non_poisson_args),
-            expr))))
+          Let (nm, Prim ("plus", m :: non_normal_args),
+          Let (let_id, Prim ("normal", [nm; b]),
+            expr)))
 
         else
           (c, Let (let_id, Prim ("plus", args), expr))
+
+    | Let (let_id, Prim ("minus", args), expr) ->
+        let (c, expr) = merge_samples_expr expr in
+
+        let (normal_args, non_normal_args) = partition_by_prim "normal" args in
+        if (  length normal_args >= 2
+           && fold_right (&&) (map id_used_once normal_args) true) then
+          let normal_args_args = extract_prim_args normal_args in
+          let ms = map hd normal_args_args in
+          let bs = map hd (map tl normal_args_args) in
+          let nm = (new_id (), NumType, Unknown) in
+          let nb = (new_id (), NumType, Unknown) in
+          let nv = (new_id (), NumType, Unknown) in
+          if hd normal_args = hd args then
+            if length non_normal_args = 0 then
+              (true,
+              Let (nm, Prim ("minus", ms),
+              Let (nb, Prim ("plus", bs),
+              Let (let_id, Prim ("normal", [nm; nb]),
+                expr))))
+            else
+              (true,
+              Let (nm, Prim ("minus", ms),
+              Let (nb, Prim ("plus", bs),
+              Let (nv, Prim ("normal", [nm; nb]),
+              Let (let_id, Prim ("minus", nv :: non_normal_args),
+                expr)))))
+          else
+            (true,
+            Let (nm, Prim ("plus", ms),
+            Let (nb, Prim ("plus", bs),
+            Let (nv, Prim ("normal", [nm; nb]),
+            Let (let_id, Prim ("minus", append non_normal_args [nv]),
+              expr)))))
+
+        (* else if (  length normal_args = 1
+                && fold_right (&&) (map id_used_once normal_args) true
+                && fold_right (&&) (map is_const non_normal_args) true) then
+          let normal_args_args = extract_prim_args normal_args in
+          let m = hd (map hd normal_args_args) in
+          let b = hd (map hd (map tl normal_args_args)) in
+          let nm = (new_id (), NumType, Unknown) in
+          if hd normal_args = hd args then
+            (true,
+            Let (nm, Prim ("minus", m :: non_normal_args),
+            Let (let_id, Prim ("normal", [nm; b]),
+              expr)))
+          else
+            (true,
+            Let (nm, Prim ("minus", append non_normal_args [m]),
+            Let (let_id, Prim ("normal", [nm; b]),
+              expr))) *)
+
+        else
+          (c, Let (let_id, Prim ("minus", args), expr))
+
+    | Let (let_id, Prim ("times", args), expr) ->
+        let (c, expr) = merge_samples_expr expr in
+
+        let (normal_args, non_normal_args) = partition_by_prim "normal" args in
+        if (  length normal_args = 1
+           && fold_right (&&) (map id_used_once normal_args) true
+           && fold_right (&&) (map is_const non_normal_args) true) then
+          let normal_args_args = extract_prim_args normal_args in
+          let ms = map hd normal_args_args in
+          let bs = map hd (map tl normal_args_args) in
+          let nm = (new_id (), NumType, Unknown) in
+          let nb = (new_id (), NumType, Unknown) in
+          (true,
+          Let (nm, Prim ("times", append ms non_normal_args),
+          Let (nb, Prim ("times", concat [bs; non_normal_args; non_normal_args]),
+          Let (let_id, Prim ("normal", [nm; nb]),
+            expr))))
+
+        else
+          (c, Let (let_id, Prim ("times", args), expr))
 
     | Let (id, value, expr) ->
         let (c, expr) = merge_samples_expr expr in
