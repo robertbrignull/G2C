@@ -599,7 +599,7 @@ I will also prove the correctness of the first example.
 
 \subsection{Merging of observe statements}
 
-The main aim of all of our optimizations is to reduce the number of observes that the program does, it is these that greatly reduce both the programs performance and the quality of samples.
+The ultimate aim of all of our optimizations is to reduce the number of observes that the program does, it is these that greatly reduce both the programs performance and the quality of samples. Here we talk about how to merge multiple observe statements into one.
 
 
 
@@ -613,18 +613,41 @@ The main aim of all of our optimizations is to reduce the number of observes tha
 
 \subsubsection{Merging observes of the same distribution}
 
+The scenario here is that there are multiple consecutive observes of the same distribution. It is usually the case then that their conjunction can be written in a nicer form, as a function of some selection of properties of the observed data such as the sum or the sample mean and variance.
+
+This optimization can be applied to many different distributions, some are obvious such as multiple Bernoulli observes being equivalent to one binomial observe, some are more complicated such as the case of normal distributions which we will focus on.
+
 If we have the situation
 
 \[
 	\begin{array}{l}
-		\lbrack \mathsf{observe}\ (\mathsf{normal}\ m_1\ b_1)\ x_1 \rbrack \\
+		\lbrack \mathsf{observe}\ (\mathsf{normal}\ m\ b)\ x_1 \rbrack \\
 		\dots \\
-		\lbrack \mathsf{observe}\ (\mathsf{normal}\ m_n\ b_n)\ x_n \rbrack
+		\lbrack \mathsf{observe}\ (\mathsf{normal}\ m\ b)\ x_n \rbrack
 	\end{array}
 \]
-then it is equivalent to an observe that only relies on the sample mean and variance of the \(x_i\)s.
+then we can show that it is equivalent to an observe that only relies on the sample mean and variance of the \(x_i\)'s. The resulting observe will not be of a normal distribution however.
 
-Note the resulting observe will not follow a normal distribution.
+To do this consider the joint probability density function, which can be written as a product of the individual densities as all the observations are independent. Here \(\bar{x}\) denotes the sample mean and \(s^2\) the sample variance.
+
+\begin{flalign*}
+	   & \prod_{i=1}^n \frac{1}{\sqrt{2 \pi \sigma^2}} e^{-\frac{(x_i - \mu)^2}{2 \sigma^2}} & \notag\\
+	=\ & (2 \pi \sigma^2)^{-\frac{n}{2}} e^{-\frac{1}{2 \sigma^2} \sum_{i=1}^n (x_i - \mu)^2} \notag\\
+	=\ & (2 \pi \sigma^2)^{-\frac{n}{2}} e^{-\frac{1}{2 \sigma^2} \sum_{i=1}^n ((x_i - \bar{x}) - (\mu - \bar{x}))^2} \notag\\
+	=\ & (2 \pi \sigma^2)^{-\frac{n}{2}} e^{-\frac{1}{2 \sigma^2} (\sum_{i=1}^n (x_i - \bar{x})^2 + \sum_{i=1}^n (\mu - \bar{x})^2 - 2 \sum_{i=1}^n (x_i - \bar{x})(\mu - \bar{x}))} \notag\\
+	  & \text{Then since }\sum_{i=1}^n (x_i - \bar{x})(\mu - \bar{x}) = 0 \notag\\
+	=\ & (2 \pi \sigma^2)^{-\frac{n}{2}} e^{-\frac{1}{2 \sigma^2} (\sum_{i=1}^n (x_i - \bar{x})^2 + \sum_{i=1}^n (\mu - \bar{x})^2)} & \notag\\
+	=\ & (2 \pi \sigma^2)^{-\frac{n}{2}} e^{-\frac{1}{2 \sigma^2} \sum_{i=1}^n (x_i - \bar{x})^2} e^{-\frac{n}{2 \sigma^2} (\mu - \bar{x})^2} \notag\\
+	=\ & (2 \pi \sigma^2)^{-\frac{n}{2}} e^{-\frac{n - 1}{2 \sigma^2} s^2} e^{-\frac{n}{2 \sigma^2} (\mu - \bar{x})^2} \notag
+\end{flalign*}
+
+And importantly for us
+\begin{flalign*}
+	   & \log(\prod_{i=1}^n \frac{1}{\sqrt{2 \pi \sigma^2}} e^{-\frac{(x_i - \mu)^2}{2 \sigma^2}}) & \notag\\
+	=\ & - n \pi \sigma^2 - \frac{n - 1}{2 \sigma^2} s^2 - \frac{n}{2 \sigma^2} (\mu - \bar{x})^2 \notag
+\end{flalign*}
+
+We can then replace the sequence of observes or normal distributions by one observe of a function which calculates the above. This is the first optimization that is only possible within Prob-C, because you are not limited to observing a standard builtin distribution but can pass any numerical value you want to an observe.
 
 
 
