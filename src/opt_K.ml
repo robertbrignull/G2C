@@ -1144,7 +1144,7 @@ let merge_samples prog =
             Let (let_id, Prim ("minus", append non_normal_args [nv]),
               expr)))))
 
-        (* else if (  length normal_args = 1
+        else if (  length normal_args = 1
                 && fold_right (&&) (map id_used_once normal_args) true
                 && fold_right (&&) (map is_const non_normal_args) true) then
           let normal_args_args = extract_prim_args normal_args in
@@ -1160,7 +1160,7 @@ let merge_samples prog =
             (true,
             Let (nm, Prim ("minus", append non_normal_args [m]),
             Let (let_id, Prim ("normal", [nm; b]),
-              expr))) *)
+              expr)))
 
         else
           (c, Let (let_id, Prim ("minus", args), expr))
@@ -1452,8 +1452,8 @@ let merge_observes prog =
             Let (num_vs, Num (float_of_int (length vs)),
             Let (mean, Prim ("divide", [vs_sum; num_vs]),
             map_prim (fun id -> Prim ("minus", [id; mean])) NumType vs (fun subd_vs ->
-            map_prim (fun id -> Prim ("times", [id; id])) NumType subd_vs (fun sqaured_subd_vs ->
-            Let (variance_times_n_minus_1, Prim ("plus", sqaured_subd_vs),
+            map_prim (fun id -> Prim ("times", [id; id])) NumType subd_vs (fun squared_subd_vs ->
+            Let (variance_times_n_minus_1, Prim ("plus", squared_subd_vs),
             SingleUnvaluedObserve ("merged_normal_observes", [m; b; num_vs; mean; variance_times_n_minus_1], next)))))))
           in
           let new_let next =

@@ -22,7 +22,12 @@ EXAMPLES =\
   examples/observe-removal-test-2\
   examples/observe-removal-test-3\
   examples/observe-removal-test-4\
-  examples/distribution-sum-merge
+  examples/distribution-sum-merge\
+  test_data/beta_flip/beta_flip\
+  test_data/consecutive_observes/consecutive_observes\
+  test_data/merged_normal_observes/merged_normal_observes\
+  test_data/merged_samples/merged_samples\
+  test_data/killer/killer
   
 
 
