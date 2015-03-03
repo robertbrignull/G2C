@@ -27,6 +27,7 @@ EXAMPLES =\
   test_data/consecutive_observes/consecutive_observes\
   test_data/merged_normal_observes/merged_normal_observes\
   test_data/merged_samples/merged_samples\
+  test_data/move_samples_back/move_samples_back\
   test_data/killer/killer
   
 
