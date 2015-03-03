@@ -598,22 +598,33 @@ let rec remove_observes t_prim t_args t_values = function
 
 
 
+(* extract_somes :: 'a option list -> 'a list option *)
+let rec extract_somes = function
+  | Some x :: xs ->
+      (match extract_somes xs with
+      | Some xs -> Some (x ::xs)
+      | None -> None)
+  | None :: xs -> None
+  | [] -> Some []
+
+
+
 let is_linear_of_prim prim id_in prog =
-  let rec find_prims (id, _, value) =
-    match value with
+  let rec find_prims id =
+    match id_value id with
     | Prim (prim2, args) ->
-        if prim2 = prim then [id]
+        if prim2 = prim then [(id, args)]
         else concat (map find_prims args)
     | TypedPrim (prim2, type_c, args) ->
-        if prim2 = prim then [id]
+        if prim2 = prim then [(id, args)]
         else concat (map find_prims args)
     | _ -> []
   in
 
-  let rec contains_id target (id, _, value) =
+  let rec contains_id target id =
     if id = target then true
     else
-      match value with
+      match id_value id with
       | Id id ->
           contains_id target id
       | Prim (prim2, args) ->
@@ -623,125 +634,126 @@ let is_linear_of_prim prim id_in prog =
       | _ -> false
   in
 
-  let rec calc_coeff_const prim_id = function
-    | Prim (prim2, args) when prim2 = prim ->
-        let coeff = (new_id (), NumType, Unknown) in
-        let const = (new_id (), NumType, Unknown) in
-        Some (prim_id, nth args 0, nth args 1,
-              coeff, const,
-              [],
-              fun next ->
-                Let (coeff, Num 1.0,
-                Let (const, Num 0.0,
-                next)))
+  let e_1_4 (x, _, _, _) = x in
+  let e_2_4 (_, x, _, _) = x in
+  let e_3_4 (_, _, x, _) = x in
+  let e_4_4 (_, _, _, x) = x in
 
-    | Prim ("plus", args) ->
-        let (containing_args, non_containing_args) = partition (contains_id prim_id) args in
-        if length containing_args = 1 then
-          (match calc_coeff_const prim_id (id_value (hd containing_args)) with
-          | Some (prim_id, m1, b1, coeff, const, dependent_ids, gen_values) ->
-              let new_const = (new_id (), NumType, Unknown) in
-              Some (prim_id, m1, b1,
-                    coeff, new_const,
-                    concat (dependent_ids :: (map list_ids_used non_containing_args)),
+  let rec calc_coeff_const prim_id id =
+    if id = prim_id then
+      let coeff = (new_id (), NumType, Unknown) in
+      let const = (new_id (), NumType, Unknown) in
+      Some (coeff, const,
+            [],
+            fun next ->
+              Let (coeff, Num 1.0,
+              Let (const, Num 0.0,
+              next)))
+
+    else if not (contains_id prim_id id) then
+      let coeff = (new_id (), NumType, Unknown) in
+      Some (coeff, id,
+            [id_name id],
+            fun next ->
+              Let (coeff, Num 0.0,
+              next))
+
+    else
+      match id_value id with
+      | Prim ("plus", args) ->
+          let coeff_consts = map (calc_coeff_const prim_id) args in
+          (match extract_somes coeff_consts with
+          | Some coeff_consts ->
+              let coeffs = map e_1_4 coeff_consts in
+              let consts = map e_2_4 coeff_consts in
+              let dependent_idss = map e_3_4 coeff_consts in
+              let gen_valuess = map e_4_4 coeff_consts in
+              let coeff = (new_id (), NumType, Unknown) in
+              let const = (new_id (), NumType, Unknown) in
+              Some (coeff, const,
+                    concat dependent_idss,
                     fun next ->
-                      gen_values
-                        (Let (new_const, Prim ("plus", const :: non_containing_args),
-                         next)))
+                      fold_right (fun f x -> f x)
+                                 gen_valuess
+                                 (Let (coeff, Prim ("plus", coeffs),
+                                  Let (const, Prim ("plus", consts),
+                                  next))))
           | None -> None)
-        else
-          None
 
-    | Prim ("minus", args) ->
-        let (containing_args, non_containing_args) = partition (contains_id prim_id) args in
-        if length containing_args = 1 then
-          (match calc_coeff_const prim_id (id_value (hd containing_args)) with
-          | Some (prim_id, m1, b1, coeff, const, dependent_ids, gen_values) ->
-              let new_const = (new_id (), NumType, Unknown) in
-              let new_coeff = (new_id (), NumType, Unknown) in
-              if hd containing_args = hd args then
-                Some (prim_id, m1, b1,
-                      coeff, new_const,
-                      concat (dependent_ids :: (map list_ids_used non_containing_args)),
-                      fun next ->
-                        gen_values
-                          (Let (new_const, Prim ("minus", const :: non_containing_args),
-                           next)))
-              else
-                Some (prim_id, m1, b1,
-                      new_coeff, new_const,
-                      concat (dependent_ids :: (map list_ids_used non_containing_args)),
-                      fun next ->
-                        gen_values
-                          (Let (new_coeff, Prim ("minus", [coeff]),
-                           Let (new_const, Prim ("minus", append non_containing_args [const]),
-                           next))))
-          | None -> None)
-        else
-          None
-
-    | Prim ("times", args) ->
-        let (containing_args, non_containing_args) = partition (contains_id prim_id) args in
-        if length containing_args = 1 then
-          (match calc_coeff_const prim_id (id_value (hd containing_args)) with
-          | Some (prim_id, m1, b1, coeff, const, dependent_ids, gen_values) ->
-              let new_const = (new_id (), NumType, Unknown) in
-              let new_coeff = (new_id (), NumType, Unknown) in
-              let id1 = (new_id (), NumType, Unknown) in
-              Some (prim_id, m1, b1,
-                    new_coeff, new_const,
-                    concat (dependent_ids :: (map list_ids_used non_containing_args)),
+      | Prim ("minus", args) ->
+          let coeff_consts = map (calc_coeff_const prim_id) args in
+          (match extract_somes coeff_consts with
+          | Some coeff_consts ->
+              let coeffs = map e_1_4 coeff_consts in
+              let consts = map e_2_4 coeff_consts in
+              let dependent_idss = map e_3_4 coeff_consts in
+              let gen_valuess = map e_4_4 coeff_consts in
+              let coeff = (new_id (), NumType, Unknown) in
+              let const = (new_id (), NumType, Unknown) in
+              Some (coeff, const,
+                    concat dependent_idss,
                     fun next ->
-                      gen_values
-                        (Let (id1, Prim ("times", non_containing_args),
-                         Let (new_coeff, Prim ("times", [coeff; id1]),
-                         Let (new_const, Prim ("times", [const; id1]),
-                         next)))))
+                      fold_right (fun f x -> f x)
+                                 gen_valuess
+                                 (Let (coeff, Prim ("minus", coeffs),
+                                  Let (const, Prim ("minus", consts),
+                                  next))))
           | None -> None)
-        else
-          None
 
-    | Prim ("divide", args) ->
-        let (containing_args, non_containing_args) = partition (contains_id prim_id) args in
-        if length containing_args = 1 then
-          (match calc_coeff_const prim_id (id_value (hd containing_args)) with
-          | Some (prim_id, m1, b1, coeff, const, dependent_ids, gen_values) ->
-              if hd containing_args = hd args && length non_containing_args > 0 then
+      | Prim ("times", args) ->
+          let (containing_args, non_containing_args) = partition (contains_id prim_id) args in
+          if length containing_args = 1 then
+            (match calc_coeff_const prim_id (hd containing_args) with
+            | Some (coeff, const, dependent_ids, gen_values) ->
                 let new_const = (new_id (), NumType, Unknown) in
                 let new_coeff = (new_id (), NumType, Unknown) in
                 let id1 = (new_id (), NumType, Unknown) in
-                Some (prim_id, m1, b1,
-                      new_coeff, new_const,
+                Some (new_coeff, new_const,
                       concat (dependent_ids :: (map list_ids_used non_containing_args)),
                       fun next ->
                         gen_values
                           (Let (id1, Prim ("times", non_containing_args),
-                           Let (new_coeff, Prim ("divide", [coeff; id1]),
-                           Let (new_const, Prim ("divide", [const; id1]),
+                           Let (new_coeff, Prim ("times", [coeff; id1]),
+                           Let (new_const, Prim ("times", [const; id1]),
                            next)))))
-              else
-                None
-          | None -> None)
-        else
-          None
+            | None -> None)
+          else
+            None
 
-    | _ -> None
+      | Prim ("divide", args) ->
+          let (containing_args, non_containing_args) = partition (contains_id prim_id) args in
+          if length containing_args = 1 then
+            (match calc_coeff_const prim_id (hd containing_args) with
+            | Some (coeff, const, dependent_ids, gen_values) ->
+                if hd containing_args = hd args && length non_containing_args > 0 then
+                  let new_const = (new_id (), NumType, Unknown) in
+                  let new_coeff = (new_id (), NumType, Unknown) in
+                  let id1 = (new_id (), NumType, Unknown) in
+                  Some (new_coeff, new_const,
+                        concat (dependent_ids :: (map list_ids_used non_containing_args)),
+                        fun next ->
+                          gen_values
+                            (Let (id1, Prim ("times", non_containing_args),
+                             Let (new_coeff, Prim ("divide", [coeff; id1]),
+                             Let (new_const, Prim ("divide", [const; id1]),
+                             next)))))
+                else
+                  None
+            | None -> None)
+          else
+            None
+
+      | _ -> None
   in
 
-  let ids_used = list_ids_used id_in in
-  let f prim_id output =
-    (* The idea here is that if prim_id appears in id_in more than once
-       then it cannot possibly be linear, however if it only appears once
-       and we determine it to be linear then we can later rearrange let
-       expressions so that everything is defined correctly.
-     *)
-    if length (filter (eq prim_id) ids_used) = 1 then
-      match calc_coeff_const prim_id (id_value id_in) with
-      | Some (prim_id, m1, b1, coeff, const, dependent_ids, gen_values) ->
-          Some (prim_id, m1, b1, coeff, const, dependent_ids, gen_values)
-      | None -> output
-    else
-      output
+  let f (prim_id, args) output =
+    match output with
+    | Some _ -> output
+    | None ->
+        (match calc_coeff_const prim_id id_in with
+        | Some (coeff, const, dependent_ids, gen_values) ->
+            Some (prim_id, args, coeff, const, dependent_ids, gen_values)
+        | None -> output)
   in
   fold_right f (find_prims id_in) None
 
@@ -1552,8 +1564,10 @@ let commute_sample_observe prog =
     | SingleValuedObserve ("normal", [m2; b2], value, next) ->
         (try
           (match is_linear_of_prim "normal" m2 prog with
-          | Some (prim_id, m1, b1, coeff, const, dependent_ids, gen_values) ->
-              if    is_direct_path_from_let_to_expr prim_id (SingleValuedObserve ("normal", [m2; b2], value, next)) prog
+          | Some (prim_id, args, coeff, const, dependent_ids, gen_values) ->
+              let m1 = nth args 0 in
+              let b1 = nth args 1 in
+              if    is_direct_path_from_let_to_expr (id_name prim_id) (SingleValuedObserve ("normal", [m2; b2], value, next)) prog
                  && is_determined m1
                  && is_determined b1
                  && is_determined b2
@@ -1563,7 +1577,7 @@ let commute_sample_observe prog =
                   concat [dependent_ids;
                           list_ids_used b2;
                           list_ids_used value] in
-                let prog = move_let_after prim_id ids_used prog in
+                let prog = move_let_after (id_name prim_id) ids_used prog in
                 let nm1 = (new_id (), NumType, Unknown) in
                 let nb1 = (new_id (), NumType, Unknown) in
                 let nm2 = (new_id (), NumType, Unknown) in
@@ -1596,7 +1610,7 @@ let commute_sample_observe prog =
                   Let (id8, Prim ("times", [id6; id7]),
                   Let (id9, Prim ("plus", [id5; id8]),
                   Let (nm1, Prim ("times", [nb1; id9]),
-                  Let ((prim_id, NumType, Unknown),
+                  Let (prim_id,
                        Prim ("normal", [nm1; nb1]),
                        next)))))))))))))))
                 in
@@ -1611,7 +1625,7 @@ let commute_sample_observe prog =
                     gend_value,
                     next)))))
                 in
-                let prog = replace_let prim_id new_let prog in
+                let prog = replace_let (id_name prim_id) new_let prog in
                 let prog = replace_valued_observe ("normal", [m2; b2], value) new_observe prog in
                 (true, prog)
 
