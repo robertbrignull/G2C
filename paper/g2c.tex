@@ -661,22 +661,19 @@ We can then replace the sequence of observes or normal distributions by one obse
 
 \subsubsection{Merging any consecutive observes}
 
-The way that Prob-C observes work is that you call the observe function with the log of the probability of the event happening.
+This optimization relies on the way that observing works in Prob-C, it is specific to Prob-C and might not be possible in other languages, this makes it rather interesting. The way that Prob-C observes work is that you call the observe function with the log of the probability of the event happening. For all the standard distributions this relates to the log of the p.d.f. at that point, but the crucial point is that we're not limited to named distributions, any floating point value can be passed to the observe function.
 
-Also note that the distributions used for each observe are independent of each other.
+We therefore perform the following optimization
 
-Therefore the following
-
-\[
+\optimization{
 	\begin{array}{l}
-		\mathsf{observe}(\mathsf{dist}_1(args_1 ...)); \\
-		\dots \\
-		\mathsf{observe}(\mathsf{dist}_n(args_n ...));
+		\texttt{observe(dist\_1(args\_1));} \\
+		\texttt{...} \\
+		\texttt{observe(dist\_1(args\_2));}
 	\end{array}
-\]
-is equivalent to
-
-\[\mathsf{observe}(\sum_{i=1}^n\mathsf{dist}_i(args_i ...));\]
+}{
+	\texttt{observe(}\sum_{i=1}^n\texttt{dist\_i(args\_i));}
+}
 
 
 
