@@ -486,7 +486,21 @@ This optimization could be moderately important for performance. Although a dece
 %         ##   ##  ##      
 %         ##   ##  ########
 
-\subsection{Merging and manipulation of samples}
+\subsection{Samples}
+
+One of the things we'd like to do is to reduce the number of samples as some of them can be quite costly, and more importantly improve the quality of the ones we do. By this I mean we'd like to have a high level of mixing, so we need to make fewer runs of the program before the output has converged enough towards to the correct output.
+
+
+
+%        ###        ######         ## 
+%       ####       ##    ##       ### 
+%      ## ##            ###        ## 
+%     ##  ##          ###          ## 
+%    ########       ###            ## 
+%         ##   ##  ##        ##    ## 
+%         ##   ##  ########  ##   ####
+
+\subsubsection{Merging samples}
 
 One way we can improve performance is to reduce the number of samples as some of them can be moderately costly to perform. The ideal case for this optimization is shown below.
 
@@ -540,21 +554,7 @@ There are many cases where we can apply this optimization, some of which I have 
 				\texttt{[assume y (- x\_1 ...\ x\_n)]}
 			\end{array}\)
 		&\(\Rightarrow\)&
-		\texttt{[assume y (normal (- m\_1 ...\ m\_n) (+ b\_1 ...\ b\_n))]} \\[15mm]
-
-		\(\begin{array}{l}
-				\texttt{[assume x (normal m b)]} \\
-				\texttt{[assume y (+ x r)]}
-			\end{array}\)
-		&\(\Rightarrow\)&
-		\texttt{[assume y (normal (+ m r) b)]} \\[10mm]
-
-		\(\begin{array}{l}
-				\texttt{[assume x (normal m b)]} \\
-				\texttt{[assume y (* x s)]}
-			\end{array}\)
-		&\(\Rightarrow\)&
-		\texttt{[assume y (normal (* m s) (* b s s))]}
+		\texttt{[assume y (normal (- m\_1 ...\ m\_n) (+ b\_1 ...\ b\_n))]}
 
 	\end{tabular}}
 \end{center}
@@ -586,6 +586,79 @@ I will also prove the correctness of the first example.
 	  \[\sum_{i=1}^n X_i \sim N(\sum_{i=1}^n \mu_i, \sum_{i=1}^n \sigma_i^2)\]
 	\end{claimproof}
 \end{mdframed}
+
+
+
+%        ###        ######         ###### 
+%       ####       ##    ##       ##    ##
+%      ## ##            ###            ###
+%     ##  ##          ###            ###  
+%    ########       ###            ###    
+%         ##   ##  ##        ##   ##      
+%         ##   ##  ########  ##   ########
+
+\subsubsection{Doing arithmetic on samples}
+
+Another thing we can do is merge some arithmetic operations into the sample, as shown below. Although not very helpful at all on its own, the hope is it would allow us to later merge more samples as in the previous optimization. With these two together we can merge any linear combination of samples into only one sample.
+
+\begin{center}
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{lcl}
+		Before optimization && After optimization \\[2mm]
+		\hline \\[-2mm]
+
+		\(\begin{array}{l}
+				\texttt{[assume x (normal m b)]} \\
+				\texttt{[assume y (+ x r)]}
+			\end{array}\)
+		&\(\Rightarrow\)&
+		\texttt{[assume y (normal (+ m r) b)]} \\[10mm]
+
+		\(\begin{array}{l}
+				\texttt{[assume x (normal m b)]} \\
+				\texttt{[assume y (* x s)]}
+			\end{array}\)
+		&\(\Rightarrow\)&
+		\texttt{[assume y (normal (* m s) (* b s s))]}
+
+	\end{tabular}}
+\end{center}
+
+
+
+%        ###        ######        ###### 
+%       ####       ##    ##      ##    ##
+%      ## ##            ###            ##
+%     ##  ##          ###         ###### 
+%    ########       ###                ##
+%         ##   ##  ##        ##  ##    ##
+%         ##   ##  ########  ##   ###### 
+
+\subsubsection{Pushing samples back}
+
+Something we can do which has the capacity to greatly improve the quality of samples made is to move samples after potentially costly observe statements. The idea is that when an observe is made that kills almost all of the particles, the ones which remain will all have been spawned from some small set and hence have similar values of samples. However by moving the sample after the observe, whatever happens with the particles, they will all have different values of the sampled value.
+
+An example of what we might do is
+
+\optimization{
+	\begin{array}{l}
+		\texttt{[assume x (poisson 1)]} \\
+		\texttt{[assume y (normal 0 1)]} \\
+		\texttt{[observe (normal y 1) 100]} \\
+		\texttt{[predict y] }
+	\end{array}
+}{
+	\begin{array}{l}
+		\texttt{[assume x (poisson 1)]} \\
+		\texttt{[observe (normal y 1) 100]} \\
+		\texttt{[assume y (normal 0 1)]} \\
+		\texttt{[predict y] }
+	\end{array}
+}
+
+In a perfect world we'd be able to remove the observe and the value \texttt{x} completely as they have no effect on the predicted value \texttt{y}, however that is hard to work out so do not do this.
+
+One obvious point is that the observe we're moving to before the sample cannot depend on the variable being sampled.
 
 
 
