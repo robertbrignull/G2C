@@ -324,7 +324,6 @@ We do some standard non-probabilistic optimizations. None of these are technical
 When the arguments to a primitive such as plus or times are all constant, we can easily calculate what the answer should be and set the id equal to that rather than applying a primitive.
 
 For example we could do the following optimization
-
 \optimization{
 	\begin{array}{l}
 		\texttt{let x = prim + 2 5 in} \\
@@ -339,7 +338,6 @@ For example we could do the following optimization
 This can be extended to the case when only some of the arguments are constant, now we can't remove the whole primitive application but we can reduce the number of arguments and hence the complexity of it.
 
 For example we could do the following optimization
-
 \optimization{
 	\begin{array}{l}
 		\texttt{let x = ... in} \\
@@ -354,7 +352,6 @@ For example we could do the following optimization
 	\end{array}
 }
 We can optimize all of the following when at least some of the arguments are constant:
-
 \begin{center}
 	\texttt{+}, \texttt{-}, \texttt{*}, \texttt{/}, \texttt{eq}, \texttt{neq}, \texttt{<}, \texttt{>}, \texttt{<=}, \texttt{>=}, \texttt{and}, \texttt{or}, \texttt{not}
 \end{center}
@@ -375,7 +372,6 @@ This sort of optimization would definitely be performed by any half decent C com
 Another thing we can do with arithmetic expressions is to merge ones of the same sort together.
 
 For example we could do the following optimization
-
 \optimization{
 	\begin{array}{l}
 		\texttt{let x = ... in} \\
@@ -428,7 +424,6 @@ This is an optimization that a C compiler potentially would not perform. This is
 Another very simple optimization is to remove a variable when it is assigned to the value of another variable. We then change all references to the removed variable in the rest of the program to the variable it was assigned to.
 
 For example we could do the following optimization
-
 \optimization{
 	\begin{array}{l}
 		\texttt{let x = ... in} \\
@@ -460,7 +455,6 @@ This optimization is admittedly rather inconsequential, but we include it anyway
 The final non-probabilistic optimization we do it to remove trivial functions which are equivalent to another function. The place where this happens a lot is continuations generated from the translation into CPS.
 
 For example we could do the following optimization
-
 \optimization{
 	\begin{array}{l}
 		\texttt{let f = lambda x y z -> g x y z in} \\
@@ -503,7 +497,6 @@ One of the things we'd like to do is to reduce the number of samples as some of 
 \subsubsection{Merging samples}
 
 One way we can improve performance is to reduce the number of samples as some of them can be moderately costly to perform. The ideal case for this optimization is shown below.
-
 \[
 	\begin{array}{l}
 		\texttt{[assume x\_1 (normal m\_1 b\_1)]} \\
@@ -515,12 +508,10 @@ One way we can improve performance is to reduce the number of samples as some of
 The general form is where we make many samples and perform some function on them, we then use that function output and never use the individual samples anywhere else.
 
 Assuming that none of the \texttt{x\_i} are used anywhere else then the above can be optimized into the following
-
 \[
 	\texttt{[assume y (normal (+ m\_1 ...\ m\_n) (+ b\_1 ...\ b\_n))]}
 \]
 We can even perform this optimization in the case where some of the \texttt{x\_i}s are used again. If only \texttt{x\_1} were used elsewhere then we could optimize to the following
-
 \[
 	\begin{array}{l}
 		\texttt{[assume x\_1 (normal m\_1 b\_1)]} \\
@@ -639,7 +630,6 @@ Another thing we can do is merge some arithmetic operations into the sample, as 
 Something we can do which has the capacity to greatly improve the quality of samples made is to move samples after potentially costly observe statements. The idea is that when an observe is made that kills almost all of the particles, the ones which remain will all have been spawned from some small set and hence have similar values of samples. However by moving the sample after the observe, whatever happens with the particles, they will all have different values of the sampled value.
 
 An example of what we might do is
-
 \optimization{
 	\begin{array}{l}
 		\texttt{[assume x (poisson 1)]} \\
@@ -655,7 +645,6 @@ An example of what we might do is
 		\texttt{[predict y] }
 	\end{array}
 }
-
 In a perfect world we'd be able to remove the observe and the value \texttt{x} completely as they have no effect on the predicted value \texttt{y}, however that is hard to work out so do not do this.
 
 One obvious point is that the observe we're moving to before the sample cannot depend on the variable being sampled.
@@ -691,7 +680,6 @@ The scenario here is that there are multiple consecutive observes of the same di
 This optimization can be applied to many different distributions, some are obvious such as multiple Bernoulli observes being equivalent to one binomial observe, some are more complicated such as the case of normal distributions which we will focus on.
 
 If we have the situation
-
 \[
 	\begin{array}{l}
 		\lbrack \mathsf{observe}\ (\mathsf{normal}\ m\ b)\ x_1 \rbrack \\
@@ -737,7 +725,6 @@ We can then replace the sequence of observes or normal distributions by one obse
 This optimization relies on the way that observing works in Prob-C, it is specific to Prob-C and might not be possible in other languages, this makes it rather interesting. The way that Prob-C observes work is that you call the observe function with the log of the probability of the event happening. For all the standard distributions this relates to the log of the p.d.f. at that point, but the crucial point is that we're not limited to named distributions, any floating point value can be passed to the observe function.
 
 We therefore perform the following optimization
-
 \optimization{
 	\begin{array}{l}
 		\texttt{observe(dist\_1(args\_1));} \\
@@ -760,6 +747,8 @@ We therefore perform the following optimization
 
 \subsection{Removal of observe statements}
 
+The best way of improving both performance and mixing is to remove observe statements completely, so that is what we try to do here.
+
 
 
 %        ###           ###        ## 
@@ -772,22 +761,18 @@ We therefore perform the following optimization
 
 \subsubsection{Commuting samples and observe statements}
 
-Here we start doing some actual probability in an attempt to swap sample and observe statements and hopefully remove the observe completely.
+In certain cases we can compute the effect that an observe will have on the samples that it depends on directly, we can then make those changes to the samples and potentially remove the observe. The term for what we're doing here is conjugate prior.
 
-The term for what we're doing is conjugate prior.
-
-If we have the situation
-
-\[
+For example we can perform the following optimization
+\optimization{
 	\begin{array}{l}
-		\lbrack \mathsf{assume}\ p\ (\mathsf{beta}\ a\ b) \rbrack \\
-		\lbrack \mathsf{observe}\ (\mathsf{flip}\ p)\ \mathsf{true} \rbrack
+		\texttt{[assume p (beta a b)]} \\
+		\texttt{[observe (flip p) true]}
 	\end{array}
-\]
-then it can be simplified to
-
-\[\lbrack \mathsf{assume}\ p\ (\mathsf{beta}\ (+\ a\ 1)\ b) \rbrack\]
-This is the easy case where \(a\) and \(b\) are constants, if they are not then the observe remains, but we might reduce 100 observes to just one so it will hopefully improve performance and definitely improve the quality of the samples generated.
+}{
+	\texttt{[assume p (beta (+ a 1) b)]}
+}
+This is for the simple case where \(a\) and \(b\) are constants, if they are not then we cannot remove the observe completely but we might reduce 100 observes to just one so it will significantly improve both performance and the quality of samples generated.
 
 
 
