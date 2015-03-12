@@ -475,18 +475,25 @@ let prims_2_header = [
   (["merged_normal_observes"], "merged_normal_observes")
 ]
 
+
+
+(* Reads a single C header file *)
+(* read_C_header :: string -> string *)
+let read_C_header src =
+  read_file ((Str.string_before Sys.argv.(0) (Str.search_backward (Str.regexp "/") Sys.argv.(0) (String.length Sys.argv.(0) - 1))) ^ "/" ^ src)
+
 (* Loads a single C header file if needed *)
-(* load_C_header :: prog -> (string list * string) -> string list *)
-let load_C_header prog (prims, header) =
-  if uses_prims prims prog then [read_file ("src/c_headers/" ^ header ^ ".c")] else []
+(* load_C_header_if_prims_used :: prog -> (string list * string) -> string list *)
+let load_C_header_if_prims_used prog (prims, header) =
+  if uses_prims prims prog then [read_C_header ("src/c_headers/" ^ header ^ ".c")] else []
 
 (* Pretty prints an entire program *)
 (* pretty_print_prog :: prog -> string *)
 let pretty_print_prog prog =
   let (bundle_structs, data_structs, procs, main) = prog in
   String.concat "\n" (List.concat [
-    [read_file "src/c_headers/default.c"];
-    List.concat (List.map (load_C_header prog) prims_2_header);
+    [read_C_header "src/c_headers/default.c"];
+    List.concat (List.map (load_C_header_if_prims_used prog) prims_2_header);
     List.map print_bundle_decl bundle_structs;
     List.map print_data_decl data_structs;
     List.map print_proc_decl procs;

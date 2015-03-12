@@ -2,7 +2,7 @@ all: g2c
 
 G2C = exceptions.cmo AST_U.ml AST_F.ml AST_K.ml AST_K_Prime.ml AST_H.ml AST_C.ml common.cmo printing_U.cmo printing_F.cmo printing_K.cmo printing_H.cmo printing_C.cmo lexer.cmo parser.cmo trans_infer_types.cmo trans_F_to_K.cmo trans_K_to_H.cmo trans_H_to_C.cmo opt_unique_ids.cmo opt_K.cmo main.cmo
 g2c: $(G2C) c_headers/*.c
-	ocamlc -o ../g2c $(G2C)
+	ocamlc -o ../g2c str.cma $(G2C)
 
 parser.mli parser.ml: parser.mly
 	ocamlyacc parser.mly
@@ -16,10 +16,10 @@ clean:
 	rm -f parser.ml parser.mli
 
 %.cmi : %.mli
-	ocamlc -c $(INCLUDE) $<
+	ocamlc -c str.cma $(INCLUDE) $<
 
 %.cmo : %.ml
-	ocamlc -c $(INCLUDE) $<
+	ocamlc -c str.cma $(INCLUDE) $<
 
 ###
 
