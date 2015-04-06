@@ -705,7 +705,7 @@ To do this consider the joint probability density function, which can be written
 And importantly for us
 \begin{flalign*}
 	   & \log(\prod_{i=1}^n \frac{1}{\sqrt{2 \pi \sigma^2}} e^{-\frac{(x_i - \mu)^2}{2 \sigma^2}}) & \notag\\
-	=\ & - n \pi \sigma^2 - \frac{n - 1}{2 \sigma^2} s^2 - \frac{n}{2 \sigma^2} (\mu - \bar{x})^2 \notag
+	=\ & - \frac{n}{2} \log(2 \pi \sigma^2) - \frac{n - 1}{2 \sigma^2} s^2 - \frac{n}{2 \sigma^2} (\mu - \bar{x})^2 \notag
 \end{flalign*}
 
 We can then replace the sequence of observes or normal distributions by one observe of a function which calculates the above. This is the first optimization that is only possible within Prob-C, because you are not limited to observing a standard builtin distribution but can pass any numerical value you want to an observe.
@@ -789,5 +789,57 @@ This is for the simple case where \(a\) and \(b\) are constants, if they are not
 When the arguments to an observe statement are all constant, then that observe can have no influence on the posterior distribution as all particles will observe the same value.
 
 It is therefore safe to remove these constant observes.
+
+
+
+%    ########      ######## #######  #####  ########        ######      ##    ########    ##   
+%    ##        ##     ##    ##      ##         ##           ##   ##    ####      ##      ####  
+%    ##        ##     ##    ##      ##         ##           ##   ##   ##  ##     ##     ##  ## 
+%     ######          ##    ######   #####     ##           ##   ##  ##    ##    ##    ##    ##
+%          ##  ##     ##    ##           ##    ##           ##   ##  ########    ##    ########
+%    ##    ##  ##     ##    ##           ##    ##           ##   ##  ##    ##    ##    ##    ##
+%     ######          ##    #######  #####     ##           ######   ##    ##    ##    ##    ##
+
+\section{Experimental data}
+
+Here I will show to you with experimental data just how much benefit the different optimizations can give. For each one I will usually show both how it affects performance and mixing, that is how quickly we can make samples and how quickly those samples converge to the correct posterior distribution.
+
+
+
+%    ########        ## 
+%    ##             ### 
+%    ##              ## 
+%     ######         ## 
+%          ##        ## 
+%    ##    ##  ##    ## 
+%     ######   ##   ####
+
+\subsection{Merging and manipulation of samples}
+
+To test this optimization I used a program of the following form
+
+\[
+	\begin{array}{l}
+		\texttt{[assume m (poisson 40)]} \\
+		\texttt{[assume b 20]} \\
+		\texttt{[observe (normal m b) 45]} \\
+		\texttt{...} \\
+		\texttt{[observe (normal m b) 45]} \\
+		\texttt{[predict m]}
+	\end{array}
+\]
+where the number of observe statements was varied. Programs of the above form were compiled with either no optimizations enabled or all optimizations enabled, then the resulting programs were run for 1000 iterations with 100 particles.
+
+The following two graphs show running time againt number of observes and mean value of the posterior distribution against number of observes (labeled as n).
+
+\centerline{\includegraphics[width=16cm]{images/merging_observes_1.png}}
+
+What you can see from these is firstly that the optimized and non-optimized programs give the same answer, but that the optimized program is far faster. Considering the complexity, it appears that the non-optimized programs have linear or slightly super-linear complexity in the number of observes, however the optimized programs running time remains constant.
+
+I will now investigate the \(n = 30\) case in more detail, looking at both the final posterior distribution and how the mean of it varies over time. These aspects can be seen in the following two graphs.
+
+\centerline{\includegraphics[width=16cm]{images/merging_observes_2.png}}
+
+What you see from these is again firstly that the optimized and non-optimized programs give the same answer, but the second graph is harder to read. It appears that the optimized program reaches it's final answer after around 600 iterations whilst the non-optimized program has still not converged satisfactorily after 1000 iterations.
 
 \end{document}
