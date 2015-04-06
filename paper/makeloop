@@ -1,5 +1,4 @@
-while :
-do
-    make
-    sleep 0.5
+while true; do
+  inotifywait -e close_write,moved_to,create .
+  make
 done
