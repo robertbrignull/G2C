@@ -830,13 +830,13 @@ To test this optimization I used a program of the following form
 \]
 where the number of observe statements was varied. Programs of the above form were compiled with either no optimizations enabled or all optimizations enabled, then the resulting programs were run for 1000 iterations with 100 particles.
 
-The following two graphs show running time against number of observes and mean value of the posterior distribution against number of observes (labeled as n).
+The following two graphs show running time against number of observes and mean value of the posterior distribution against number of observes.
 
 \centerline{\includegraphics[width=16cm]{images/merging_observes_1.png}}
 
 What you can see from these is firstly that the optimized and non-optimized programs give the same answer, but that the optimized program is far faster. Considering the complexity, it appears that the non-optimized program is close to linear in the number of observes, however the optimized program running time remains constant.
 
-I will now investigate the \(n = 30\) case in more detail, looking at both the final posterior distribution and how the mean of it varies over time. These aspects can be seen in the following two graphs.
+I will now investigate the \(n = 30\) case in more detail. These aspects can be seen in the following two graphs. The first graph shows the final posterior distribution. The second graph shows how the mean varies over time, so the value at t is the mean of the first t iterations.
 
 \centerline{\includegraphics[width=16cm]{images/merging_observes_2.png}}
 
@@ -868,13 +868,13 @@ To test this optimization I used a program of the following form
 \]
 where the number of observe statements was varied. Programs of the above form were compiled with either no optimizations enabled or all optimizations enabled, then the resulting programs were run for 1000 iterations with 100 particles.
 
-The following two graphs show running time against number of observes and mean value of the posterior distribution against number of observes (labeled as n).
+The following two graphs show running time against number of observes and mean value of the posterior distribution against number of observes.
 
 \centerline{\includegraphics[width=16cm]{images/merging_consecutive_observes_1.png}}
 
 What you can see from these is firstly that the optimized and non-optimized programs give the same answer to within an acceptable margin, but again that the optimized program is far faster. Considering the complexity, it again appears that the non-optimized program is close to linear in the number of observes, however the optimized program running time remains constant.
 
-I will now investigate the \(n = 30\) case in more detail, looking at both the final posterior distribution and how the mean of it varies over time. These aspects can be seen in the following two graphs.
+I will now investigate the \(n = 30\) case in more detail. These aspects can be seen in the following two graphs. The first graph shows the final posterior distribution. The second graph shows how the mean varies over time, so the value at t is the mean of the first t iterations.
 
 \centerline{\includegraphics[width=16cm]{images/merging_consecutive_observes_2.png}}
 
@@ -905,7 +905,7 @@ To test this optimization I used a program of the following form
 \]
 where the number of observe statements was varied. Programs of the above form were compiled with either no optimizations enabled or all optimizations enabled, then the resulting programs were run for 1000 iterations with 100 particles.
 
-The following two graphs show running time against number of observes and mean value of the posterior distribution against number of observes (labeled as n).
+The following two graphs show running time against number of observes and mean value of the posterior distribution against number of observes.
 
 \centerline{\includegraphics[width=16cm]{images/removing_observes_1.png}}
 

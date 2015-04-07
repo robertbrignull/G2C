@@ -61,9 +61,9 @@ plt.plot(ns, times_no_opt, color='#AA0000', label='no opt', linewidth=4)
 plt.plot(ns, times_with_opt, color='#00AAAA', label='with opt', linewidth=4)
 plt.xlim(initial_N, max_N)
 plt.ylim(0, max(max(times_no_opt), max(times_with_opt)) + 1)
-plt.title('time against n')
-plt.xlabel('n')
-plt.ylabel('time')
+plt.title('time against number of observes')
+plt.xlabel('number of observes')
+plt.ylabel('time (seconds)')
 plt.legend(loc=2)
 
 # plot the means
@@ -73,8 +73,8 @@ plt.ylim(min(min(mean_no_opt), min(mean_with_opt)) - 0.01,
 	     max(max(mean_no_opt), max(mean_with_opt)) + 0.01)
 plt.scatter(ns, mean_no_opt, color='#AA0000', label='no opt', linewidth=4)
 plt.scatter(ns, mean_with_opt, color='#00AAAA', label='with opt', linewidth=4)
-plt.title('mean value against n')
-plt.xlabel('n')
+plt.title('mean value against number of observes')
+plt.xlabel('number of observes')
 plt.ylabel('mean value')
 plt.legend(loc=1)
 
@@ -87,8 +87,8 @@ plt.xlim(min(min(last_data_no_opt), min(last_data_with_opt)),
 bins = 40
 plt.hist(last_data_no_opt, bins=bins, color='#AA0000', alpha=0.5, normed=True, label='no opt')
 plt.hist(last_data_with_opt, bins=bins, color='#00AAAA', alpha=0.5, normed=True, label='with_opt')
-plt.title('histogram for n={0}'.format(ns[-1]))
-plt.xlabel('n')
+plt.title('histogram for {0} observes'.format(ns[-1]))
+plt.xlabel('predicted value of m')
 plt.ylabel('frequency')
 plt.legend(loc=1)
 
@@ -99,7 +99,7 @@ plt.ylim(min(running_mean_no_opt[-1], running_mean_with_opt[-1]) - 0.015,
 	     max(running_mean_no_opt[-1], running_mean_with_opt[-1]) + 0.015)
 plt.plot(range(1, iterations+1), running_mean_no_opt, color='#AA0000', label='no opt', linewidth=2)
 plt.plot(range(1, iterations+1), running_mean_with_opt, color='#00AAAA', label='with opt', linewidth=2)
-plt.title('running mean to show mixing for n={0}'.format(ns[-1]))
+plt.title('running mean to show mixing for {0} observes'.format(ns[-1]))
 plt.xlabel('iteration')
 plt.ylabel('mean')
 plt.legend(loc=1)

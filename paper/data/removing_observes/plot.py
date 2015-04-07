@@ -55,9 +55,9 @@ plt.plot(ns, times_no_opt, color='#AA0000', label='no opt', linewidth=4)
 plt.plot(ns, times_with_opt, color='#00AAAA', label='with opt', linewidth=4)
 plt.xlim(initial_N, max_N)
 plt.ylim(0, max(max(times_no_opt), max(times_with_opt)) + 1)
-plt.title('time against n')
-plt.xlabel('n')
-plt.ylabel('time')
+plt.title('time against number of observes')
+plt.xlabel('number of observes')
+plt.ylabel('time (seconds)')
 plt.legend(loc=2)
 
 # plot the means (ignoring n=0 if it exists)
@@ -69,8 +69,8 @@ plt.ylim(min(min(mean_no_opt[s:]), min(mean_with_opt[s:])) - 0.01,
 	     max(max(mean_no_opt[s:]), max(mean_with_opt[s:])) + 0.01)
 plt.scatter(ns[s:], mean_no_opt[s:], color='#AA0000', label='no opt', linewidth=4)
 plt.scatter(ns[s:], mean_with_opt[s:], color='#00AAAA', label='with opt', linewidth=4)
-plt.title('mean value against n')
-plt.xlabel('n')
+plt.title('mean value against number of observes')
+plt.xlabel('number of observes')
 plt.ylabel('mean value')
 plt.legend(loc=2)
 
@@ -82,17 +82,19 @@ w = int(ceil(len(ns) * 1.0 / h))
 
 # plot hists for each dataset
 for i in range(len(ns)):
-	plt.subplot(h, w, i+1)
+	ax = plt.subplot(h, w, i+1)
 	min_val = min(data_with_opt[i])
 	max_val = max(data_with_opt[i])
 	plt.xlim(min_val, max_val)
 	bins = [ min_val + (j / 41.0) * (max_val - min_val) for j in range(41) ]
-	plt.hist(data_no_opt[i], bins=bins, color='#AA0000', alpha=0.5, normed=True, label='no opt')
-	plt.hist(data_with_opt[i], bins=bins, color='#00AAAA', alpha=0.5, normed=True, label='with_opt')
-	plt.title('histogram for n={0}'.format(ns[i]))
-	plt.xlabel('n')
+	plt.hist(data_no_opt[i], bins=bins, color='#AA0000', alpha=0.5, normed=True)
+	plt.hist(data_with_opt[i], bins=bins, color='#00AAAA', alpha=0.5, normed=True)
+	plt.title('{0} observes'.format(ns[i]))
+	plt.xlabel('predicted value of m')
 	plt.ylabel('frequency')
-	plt.legend(loc=1)
+	ax.xaxis.set_tick_params(labelsize=10)
+
+plt.subplots_adjust(wspace=0.4, hspace=0.4)
 
 matplotlib.rcParams.update({'font.size': 18})
 
