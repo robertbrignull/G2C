@@ -14,7 +14,7 @@ except ValueError:
 	print "n must be an integer"
 	exit(1)
 
-if n < 1:
+if n < 0:
 	print "n must be a non-negative integer"
 	exit(1)
 

@@ -834,7 +834,7 @@ The following two graphs show running time against number of observes and mean v
 
 \centerline{\includegraphics[width=16cm]{images/merging_observes_1.png}}
 
-What you can see from these is firstly that the optimized and non-optimized programs give the same answer, but that the optimized program is far faster. Considering the complexity, it appears that the non-optimized programs have linear or slightly super-linear complexity in the number of observes, however the optimized programs running time remains constant.
+What you can see from these is firstly that the optimized and non-optimized programs give the same answer, but that the optimized program is far faster. Considering the complexity, it appears that the non-optimized program is close to linear in the number of observes, however the optimized program running time remains constant.
 
 I will now investigate the \(n = 30\) case in more detail, looking at both the final posterior distribution and how the mean of it varies over time. These aspects can be seen in the following two graphs.
 
@@ -872,12 +872,49 @@ The following two graphs show running time against number of observes and mean v
 
 \centerline{\includegraphics[width=16cm]{images/merging_consecutive_observes_1.png}}
 
-What you can see from these is firstly that the optimized and non-optimized programs give the same answer to within an acceptable margin, but again that the optimized program is far faster. Considering the complexity, it again appears that the non-optimized programs have linear or slightly super-linear complexity in the number of observes, whereas the optimized programs running time remains constant.
+What you can see from these is firstly that the optimized and non-optimized programs give the same answer to within an acceptable margin, but again that the optimized program is far faster. Considering the complexity, it again appears that the non-optimized program is close to linear in the number of observes, however the optimized program running time remains constant.
 
 I will now investigate the \(n = 30\) case in more detail, looking at both the final posterior distribution and how the mean of it varies over time. These aspects can be seen in the following two graphs.
 
 \centerline{\includegraphics[width=16cm]{images/merging_consecutive_observes_2.png}}
 
 What you see from the first graph is again that minus a bit or noise the optimized and non-optimized programs give the same answer. Looking at the second graph they appear to have similar levels of mixing, that is they both approach their final mean value of posterior distribution at the same rate.
+
+
+
+%    ########       ###### 
+%    ##            ##    ##
+%    ##                  ##
+%     ######        ###### 
+%          ##            ##
+%    ##    ##  ##  ##    ##
+%     ######   ##   ###### 
+
+\subsection{Merging any consecutive observes}
+
+To test this optimization I used a program of the following form
+
+\[
+	\begin{array}{l}
+		\texttt{[assume m (normal 10 4)]} \\
+		\texttt{[observe (normal m 0.1) 15]} \\
+		\texttt{...} \\
+		\texttt{[observe (normal m 0.1) 15]} \\
+		\texttt{[predict m]}
+	\end{array}
+\]
+where the number of observe statements was varied. Programs of the above form were compiled with either no optimizations enabled or all optimizations enabled, then the resulting programs were run for 1000 iterations with 100 particles.
+
+The following two graphs show running time against number of observes and mean value of the posterior distribution against number of observes (labeled as n).
+
+\centerline{\includegraphics[width=16cm]{images/removing_observes_1.png}}
+
+What you can see here is firstly that the optimized program is far faster than the non-optimized one, and the optimized program gives a sensible and correct answer whereas the non-optimized programs are much less consistent. Considering complexity, it again appears that the non-optimized program is close to linear in the number of observes, however the optimized program running time remains constant.
+
+I will now show the extend to which the non-optimized programs fail to give usable output, looking at the posterior distribution of each one and showing how it deteriorates as the number of observes increases. Consider the following set of graphs.
+
+\centerline{\includegraphics[width=16cm]{images/removing_observes_2.png}}
+
+What you can see here is that the optimized program gives a perfect normal distribution every time, in fact we could have run far fewer than 1000 iterations and still achieved a good distribution. However, the non-optimized program's distributions are much less clean and if we were to increase the number of observes more or move the observed value further from the value \texttt{m} then the distributions would deteriorate even more. The non-optimized program is not even usable except in easy cases, so this optimization actually opens whole new areas of program that can be written rather than just making things faster.
 
 \end{document}
