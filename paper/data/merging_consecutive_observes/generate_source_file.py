@@ -24,13 +24,14 @@ source_file = open("prog_{0}.g".format(n), "w")
 
 ##### Start outputting G code #####
 
-source_file.write("[assume m (poisson 40)]\n")
-source_file.write("[assume b 20]\n")
+source_file.write("[assume m (normal 5 1)]\n")
+
+source_file.write("[assume f (lambda () -> Num m)]\n")
 
 for i in xrange(n):
-	source_file.write("[observe (normal m b) 45]\n")
+	source_file.write("[observe (normal (f) 0.1) 4]\n")
 
-source_file.write("[predict m]")
+source_file.write("[predict m]\n")
 
 ##### End outputting G code #####
 

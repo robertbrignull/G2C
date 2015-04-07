@@ -806,15 +806,15 @@ Here I will show to you with experimental data just how much benefit the differe
 
 
 
-%    ########        ## 
-%    ##             ### 
-%    ##              ## 
-%     ######         ## 
-%          ##        ## 
-%    ##    ##  ##    ## 
-%     ######   ##   ####
+%    ########       ## 
+%    ##            ### 
+%    ##             ## 
+%     ######        ## 
+%          ##       ## 
+%    ##    ##  ##   ## 
+%     ######   ##  ####
 
-\subsection{Merging and manipulation of samples}
+\subsection{Merging observes of the same distribution}
 
 To test this optimization I used a program of the following form
 
@@ -830,7 +830,7 @@ To test this optimization I used a program of the following form
 \]
 where the number of observe statements was varied. Programs of the above form were compiled with either no optimizations enabled or all optimizations enabled, then the resulting programs were run for 1000 iterations with 100 particles.
 
-The following two graphs show running time againt number of observes and mean value of the posterior distribution against number of observes (labeled as n).
+The following two graphs show running time against number of observes and mean value of the posterior distribution against number of observes (labeled as n).
 
 \centerline{\includegraphics[width=16cm]{images/merging_observes_1.png}}
 
@@ -840,6 +840,44 @@ I will now investigate the \(n = 30\) case in more detail, looking at both the f
 
 \centerline{\includegraphics[width=16cm]{images/merging_observes_2.png}}
 
-What you see from these is again firstly that the optimized and non-optimized programs give the same answer, but the second graph is harder to read. It appears that the optimized program reaches it's final answer after around 600 iterations whilst the non-optimized program has still not converged satisfactorily after 1000 iterations.
+What you see from the first graph is again that the optimized and non-optimized programs give the same answer. Looking at the second graph it appears that the optimized program reaches it's final answer after around 600 iterations whilst the non-optimized program has still not converged satisfactorily after 1000 iterations, so at first glance the optimized program has better mixing, however I don't feel this is conclusive and would instead say that they perform roughly equally.
+
+
+
+%    ########       ###### 
+%    ##            ##    ##
+%    ##                 ###
+%     ######          ###  
+%          ##       ###    
+%    ##    ##  ##  ##      
+%     ######   ##  ########
+
+\subsection{Merging any consecutive observes}
+
+To test this optimization I used a program of the following form
+
+\[
+	\begin{array}{l}
+		\texttt{[assume m (normal 5 1)]} \\
+		\texttt{[assume f (lambda () -> Num m)]} \\
+		\texttt{[observe (normal (f) 0.1) 4]} \\
+		\texttt{...} \\
+		\texttt{[observe (normal (f) 0.1) 4]} \\
+		\texttt{[predict m]}
+	\end{array}
+\]
+where the number of observe statements was varied. Programs of the above form were compiled with either no optimizations enabled or all optimizations enabled, then the resulting programs were run for 1000 iterations with 100 particles.
+
+The following two graphs show running time against number of observes and mean value of the posterior distribution against number of observes (labeled as n).
+
+\centerline{\includegraphics[width=16cm]{images/merging_consecutive_observes_1.png}}
+
+What you can see from these is firstly that the optimized and non-optimized programs give the same answer to within an acceptable margin, but again that the optimized program is far faster. Considering the complexity, it again appears that the non-optimized programs have linear or slightly super-linear complexity in the number of observes, whereas the optimized programs running time remains constant.
+
+I will now investigate the \(n = 30\) case in more detail, looking at both the final posterior distribution and how the mean of it varies over time. These aspects can be seen in the following two graphs.
+
+\centerline{\includegraphics[width=16cm]{images/merging_consecutive_observes_2.png}}
+
+What you see from the first graph is again that minus a bit or noise the optimized and non-optimized programs give the same answer. Looking at the second graph they appear to have similar levels of mixing, that is they both approach their final mean value of posterior distribution at the same rate.
 
 \end{document}
