@@ -634,18 +634,18 @@ An example of what we might do is
 	\begin{array}{l}
 		\texttt{[assume x (poisson 1)]} \\
 		\texttt{[assume y (normal 0 1)]} \\
-		\texttt{[observe (normal y 1) 100]} \\
+		\texttt{[observe (normal x 1) 100]} \\
 		\texttt{[predict y] }
 	\end{array}
 }{
 	\begin{array}{l}
 		\texttt{[assume x (poisson 1)]} \\
-		\texttt{[observe (normal y 1) 100]} \\
+		\texttt{[observe (normal x 1) 100]} \\
 		\texttt{[assume y (normal 0 1)]} \\
 		\texttt{[predict y] }
 	\end{array}
 }
-In a perfect world we'd be able to remove the observe and the value \texttt{x} completely as they have no effect on the predicted value \texttt{y}, however that is hard to work out so do not do this.
+In a perfect world we'd be able to remove the observe and the value \texttt{x} completely as they have no effect on the predicted value \texttt{y}, however it is hard to work out when it is safe to do this, so we do not consider it.
 
 One obvious point is that the observe we're moving to before the sample cannot depend on the variable being sampled.
 
@@ -814,6 +814,44 @@ Here I will show to you with experimental data just how much benefit the differe
 %    ##    ##  ##   ## 
 %     ######   ##  ####
 
+\subsection{Pushing samples backwards}
+
+To test this optimization I used a program of the following form
+
+\[
+	\begin{array}{l}
+		\texttt{[assume x (normal 0 1)]} \\
+		\texttt{[assume y (poisson 1)]} \\
+		\texttt{[observe (normal y 0.1) v]} \\
+		\texttt{[predict x]}
+	\end{array}
+\]
+where the value of \texttt{v} can be varied. Programs of the above form were compiled with either no optimizations enabled or all optimizations enabled, then the resulting programs were run for 1000 iterations with 100 particles.
+
+I will show the resulting histograms and a visualization of how quickly it converges to the final posterior distribution. I should point out that the running time of the optimized and non-optimized programs is identical.
+
+First consider the case of \texttt{v = 3}, as shown in the following graphs.
+
+\centerline{\includegraphics[width=16cm]{images/pushing_samples_back_1.png}}
+
+This case demonstrates when the non-optimized program is still usable but the optimized program is superior in its mixing.
+
+Now consider instead the case of \texttt{v = 10}, as shown in the next two graphs.
+
+\centerline{\includegraphics[width=16cm]{images/pushing_samples_back_2.png}}
+
+This case demonstrates when the non-optimized program is completely useless however the optimized program is working exactly as well as it was before.
+
+
+
+%    ########       ###### 
+%    ##            ##    ##
+%    ##                 ###
+%     ######          ###  
+%          ##       ###    
+%    ##    ##  ##  ##      
+%     ######   ##  ########
+
 \subsection{Merging observes of the same distribution}
 
 To test this optimization I used a program of the following form
@@ -846,11 +884,11 @@ What you see from the first graph is again that the optimized and non-optimized 
 
 %    ########       ###### 
 %    ##            ##    ##
-%    ##                 ###
-%     ######          ###  
-%          ##       ###    
-%    ##    ##  ##  ##      
-%     ######   ##  ########
+%    ##                  ##
+%     ######        ###### 
+%          ##            ##
+%    ##    ##  ##  ##    ##
+%     ######   ##   ###### 
 
 \subsection{Merging any consecutive observes}
 
@@ -882,13 +920,13 @@ What you see from the first graph is again that minus a bit or noise the optimiz
 
 
 
-%    ########       ###### 
-%    ##            ##    ##
-%    ##                  ##
-%     ######        ###### 
-%          ##            ##
-%    ##    ##  ##  ##    ##
-%     ######   ##   ###### 
+%    ########          ### 
+%    ##               #### 
+%    ##              ## ## 
+%     ######        ##  ## 
+%          ##      ########
+%    ##    ##  ##       ## 
+%     ######   ##       ## 
 
 \subsection{Merging any consecutive observes}
 
