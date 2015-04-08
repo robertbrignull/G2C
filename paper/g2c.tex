@@ -592,6 +592,8 @@ I will also prove the correctness of the first example.
 
 Another thing we can do is merge some arithmetic operations into the sample, as shown below. Although not very helpful at all on its own, the hope is it would allow us to later merge more samples as in the previous optimization. With these two together we can merge any linear combination of samples into only one sample.
 
+Here are some examples of the sort of optimizations we could do.
+
 \begin{center}
 	\resizebox{\textwidth}{!}{%
 	\begin{tabular}{lcl}
@@ -627,7 +629,7 @@ Another thing we can do is merge some arithmetic operations into the sample, as 
 
 \subsubsection{Pushing samples back}
 
-Something we can do which has the capacity to greatly improve the quality of samples made is to move samples after potentially costly observe statements. The idea is that when an observe is made that kills almost all of the particles, the ones which remain will all have been spawned from some small set and hence have similar values of samples. However by moving the sample after the observe, whatever happens with the particles, they will all have different values of the sampled value.
+Something we can do which has the capacity to greatly improve the quality of samples made is to move samples after potentially costly observe statements. The idea is that when an observe is made that kills almost all of the particles, the ones which remain will all have been cloned from some small set and hence all samples that have been made also come from some small set. However by moving the sample after the observe, whatever happens with the cloning of particles, they will all have different values of the sample just made.
 
 An example of what we might do is
 \optimization{
@@ -645,9 +647,10 @@ An example of what we might do is
 		\texttt{[predict y] }
 	\end{array}
 }
-In a perfect world we'd be able to remove the observe and the value \texttt{x} completely as they have no effect on the predicted value \texttt{y}, however it is hard to work out when it is safe to do this, so we do not consider it.
 
-One obvious point is that the observe we're moving to before the sample cannot depend on the variable being sampled.
+The only check we make when pushing samples back is whether the operation immediately following the samples uses the sampled value, if not then we move the sample past. Note that in a perfect world we'd be able to remove the observe and the value \texttt{x} completely as they have no effect on the predicted value \texttt{y}, however we do not consider this as it is hard to work out when it is safe to do.
+
+Also note that like many of the optimizations we talk about here this would be possible to do by hand, but people should not have to. Therefore this still is a very powerful optimization in that it can greatly improve the quality of the posterior distribution of a badly written program.
 
 
 
