@@ -832,7 +832,6 @@ let rec move_sample_back prog =
   (* find_non_dependent_let :: string -> expr -> expr *)
   let rec find_non_dependent_let let_id = function
     | Let (id, Prim (prim, args), expr) ->
-        (* print_endline ("find_non_dependent_let Let prim " ^ (id_name id)); *)
         if not (contains (eq let_id) (map id_name args)) then
           if is_probabilistic_prim prim then
             find_non_dependent_let let_id expr
@@ -842,7 +841,6 @@ let rec move_sample_back prog =
           raise Not_found
 
     | Let (id, TypedPrim (prim, type_c, args), expr) ->
-        (* print_endline ("find_non_dependent_let Let typed_prim " ^ (id_name id)); *)
         if not (contains (eq let_id) (map id_name args)) then
           if is_probabilistic_prim prim then
             find_non_dependent_let let_id expr
@@ -852,85 +850,73 @@ let rec move_sample_back prog =
           raise Not_found
 
     | Let (id, Lambda (args, body), expr) ->
-        (* print_endline ("find_non_dependent_let Let lambda " ^ (id_name id)); *)
         raise Not_found
 
     | Let (id, value, expr) ->
-        (* print_endline ("find_non_dependent_let Let value " ^ (id_name id)); *)
         Let (id, value, expr)
 
     | SingleValuedObserve (prim, args, value, next) ->
-        (* print_endline ("find_non_dependent_let SingleValuedObserve " ^ prim); *)
         if not (contains (eq let_id) (map id_name (value :: args))) then
           SingleValuedObserve (prim, args, value, next)
         else
           raise Not_found
 
     | SingleUnvaluedObserve (prim, args, next) ->
-        (* print_endline ("find_non_dependent_let SingleUnvaluedObserve " ^ prim); *)
         if not (contains (eq let_id) (map id_name args)) then
           SingleUnvaluedObserve (prim, args, next)
         else
           raise Not_found
 
     | MultiObserve (observables, next) ->
-        (* print_endline ("find_non_dependent_let MultiObserve"); *)
         if not (contains (eq let_id) (concat (map list_ids_used_observable observables))) then
           MultiObserve (observables, next)
         else
           raise Not_found
 
     | Predict (label, value, next) ->
-        (* print_endline ("find_non_dependent_let Predict"); *)
         if not (contains (eq let_id) [id_name value]) then
           Predict (label, value, next)
         else
           raise Not_found
 
-    | _ -> ((* print_endline ("find_non_dependent_let nothing");  *)raise Not_found)
+    | _ -> raise Not_found
 
   in
   (* move_let_after_target :: expr -> expr *)
   let move_let_back_one = function
     | Let (id_1, value_1, expr_1) ->
-        (* print_endline ("moving " ^ (id_name id_1) ^ " back one"); *)
         (match find_non_dependent_let (id_name id_1) expr_1 with
         | Let (id_2, value_2, expr_2) ->
-            (* print_endline ("move_let_back_one Let"); *)
             replace_let
               (id_name id_2)
               (fun next -> Let (id_2, value_2, Let (id_1, value_1, next)))
               expr_1
 
         | SingleValuedObserve (prim, args, value, next) ->
-            (* print_endline ("move_let_back_one SingleValuedObserve"); *)
             replace_valued_observe
               (prim, args, value)
               (fun next -> SingleValuedObserve (prim, args, value, Let (id_1, value_1, next)))
               expr_1
 
         | SingleUnvaluedObserve (prim, args, next) ->
-            (* print_endline ("move_let_back_one SingleUnvaluedObserve"); *)
             replace_unvalued_observe
               (prim, args)
               (fun next -> SingleUnvaluedObserve (prim, args, Let (id_1, value_1, next)))
               expr_1
 
         | MultiObserve (observables, next) ->
-            (* print_endline ("move_let_back_one MultiObserve"); *)
             replace_multi_observe
               observables
               (fun next -> MultiObserve (observables, Let (id_1, value_1, next)))
               expr_1
 
         | Predict (label, value, next) ->
-            (* print_endline ("move_let_back_one Predict"); *)
             replace_predict
               (label, value)
               (fun next -> Predict (label, value, Let (id_1, value_1, next)))
               expr_1
 
-        | _ -> ((* print_endline ("move_let_back_one nothing");  *)raise Not_found))
+        | _ -> raise Not_found)
     | _ -> raise Not_found
 
   in
