@@ -677,7 +677,7 @@ This process is run repeatedly for every sample until no more changes can be mad
 
 \subsection{Merging of observe statements}
 
-The ultimate aim of all of our optimizations is to reduce the number of observes that the program does, it is these that greatly reduce both the programs performance and the quality of samples. Here we talk about how to merge multiple observe statements into one.
+In most cases it is the observations that govern running time rather than any computation being performed, so much so that the cost of sampling and other computation is often negligible. Observations also impact on sample quality by causing the death and cloning of particles. This set of optimizations focus on merging observations together and can improve the speed of a program greatly.
 
 
 
@@ -691,9 +691,9 @@ The ultimate aim of all of our optimizations is to reduce the number of observes
 
 \subsubsection{Merging observes of the same distribution}
 
-The scenario here is that there are multiple consecutive observes of the same distribution. It is usually the case then that their conjunction can be written in a nicer form, as a function of some selection of properties of the observed data such as the sum or the sample mean and variance.
+The scenario here is that there are multiple consecutive observes of the same distribution. What we note is that it is usually the case then that their conjunction can be written in a nicer form, as a function of some selection of properties of the observed data such as the sum or the sample mean and variance.
 
-This optimization can be applied to many different distributions, some are obvious such as multiple Bernoulli observes being equivalent to one binomial observe, some are more complicated such as the case of normal distributions which we will focus on.
+This optimization can be applied to many different distributions, some are obvious such as multiple identical Bernoulli observes being equivalent to one binomial observe, some are more complicated such as the case of normal distributions which we will focus on.
 
 If we have the situation
 \[
@@ -703,9 +703,9 @@ If we have the situation
 		\lbrack \mathsf{observe}\ (\mathsf{normal}\ m\ b)\ x_n \rbrack
 	\end{array}
 \]
-then we can show that it is equivalent to an observe that only relies on the sample mean and variance of the \(x_i\)'s. The resulting observe will not be of a normal distribution however.
+then we can show that it is equivalent to an observe that only relies on the sample mean and variance of the \(x_i\)'s. Note however that the resulting observe will not be of a normal distribution, in fact it will not be of any of the distributions that Prob-C has a primitive for.
 
-To do this consider the joint probability density function, which can be written as a product of the individual densities as all the observations are independent. Here \(\bar{x}\) denotes the sample mean and \(s^2\) the sample variance.
+To work out what distribution it will have, consider the joint probability density function, which can be written as a product of the individual densities as all the observations are independent. Here \(\bar{x}\) denotes the sample mean and \(s^2\) the sample variance.
 
 \begin{flalign*}
 	   & \prod_{i=1}^n \frac{1}{\sqrt{2 \pi \sigma^2}} e^{-\frac{(x_i - \mu)^2}{2 \sigma^2}} & \notag\\
@@ -749,7 +749,6 @@ We therefore perform the following optimization
 }{
 	\texttt{observe(}\sum_{i=1}^n\texttt{dist\_i(args\_i));}
 }
-This optimization can give a large speed increase with no change at all to the quality of samples.
 
 
 
@@ -944,7 +943,7 @@ What you see from the first graph is again that minus a bit or noise the optimiz
 %    ##    ##  ##       ## 
 %     ######   ##       ## 
 
-\subsection{Merging any consecutive observes}
+\subsection{Removing observes}
 
 To test this optimization I used a program of the following form
 
