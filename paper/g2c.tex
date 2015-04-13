@@ -776,9 +776,9 @@ The best way of improving both performance and mixing is to remove observe state
 
 \subsubsection{Commuting samples and observe statements}
 
-In certain cases we can compute the effect that an observe will have on the samples that it depends on directly, we can then make those changes to the samples and potentially remove the observe. The term for what we're doing here is conjugate prior.
+In certain cases we can compute the effect that an observe will have on a sample directly, we can then make those changes to the sample and potentially remove the observe. The term for what we're doing here is conjugate prior and there is much literature on the subject.
 
-For example we can perform the following optimization
+As an example we could perform the two following optimizations
 \optimization{
 	\begin{array}{l}
 		\texttt{[assume p (beta a b)]} \\
@@ -787,7 +787,64 @@ For example we can perform the following optimization
 }{
 	\texttt{[assume p (beta (+ a 1) b)]}
 }
-This is for the simple case where \(a\) and \(b\) are constants, if they are not then we cannot remove the observe completely but we might reduce 100 observes to just one so it will significantly improve both performance and the quality of samples generated.
+
+\optimization{
+	\begin{array}{l}
+		\texttt{[assume m (normal 3 1)]} \\
+		\texttt{[observe (normal m 1) 6]}
+	\end{array}
+}{
+	\texttt{[assume m (normal 4.5 0.5)]}
+}
+These are for the simple cases where the variable \texttt{a}, \texttt{b}, \texttt{m} are constants, if they are not then we might not be able to remove the observe completely as I explain later. This optimization has potential for huge increases in both performance and sample quality and could make it possible to write program which we infeasible before.
+
+I will now give a proof of correctness for the first example in order to show what happens when parameters are unknown. Suppose we have the scenario as in the first example, then this corresponds to having random variables \(p \sim Beta(\alpha, \beta)\) and \(x \sim Bernoulli(p)\), so \(\text{P}(p) = \frac{p^{\alpha - 1} (1 - p)^{\beta - 1}}{\text{B}(\alpha, \beta)}\) and \(\text{P}(x\ |\ p) = p\).
+
+By Bayes theorem
+\begin{flalign*}
+	   \text{P}(p\ |\ x)
+	&= \frac{\text{P}(x\ |\ p) \text{P}(p)}{\text{P}(x)}
+	 = \frac{\text{P}(x\ |\ p) \text{P}(p)}{\int_0^1 \text{P}(x\ |\ p') \text{P}(p') dp'} \\
+	&= \frac{\frac{p^\alpha (1 - p)^{\beta - 1}}{\text{B}(\alpha, \beta)}}{\int_0^1 \frac{p'^\alpha (1 - p')^{\beta - 1}}{\text{B}(\alpha, \beta)} dp'} \\
+	&= \frac{p^\alpha (1 - p)^{\beta - 1}}{\int_0^1 p'^\alpha (1 - p')^{\beta - 1} dp'} \\
+	&= \frac{p^\alpha (1 - p)^{\beta - 1}}{\text{B}(\alpha + 1, \beta)}
+\end{flalign*}
+Hence \(p\ |\ x \sim Beta(\alpha + 1, \beta)\). Then what's left is
+\begin{flalign*}
+     \text{P}(x)
+  &= \int_0^1 \text{P}(x\ |\ p') \text{P}(p') dp' \\
+  &= \int_0^1 \frac{p'^\alpha (1 - p')^{\beta - 1}}{\text{B}(\alpha, \beta)} dp' \\
+  &= \frac{\text{B}(\alpha + 1, \beta)}{\text{B}(\alpha, \beta)} \\
+  &= \frac{\alpha}{\alpha + \beta}
+\end{flalign*}
+Thus as \(\text{P}(x\ |\ p) \text{P}(p) = \text{P}(x) \text{P}(p\ |\ x)\) we can replace the sample to be from the \(Beta(\alpha + 1, \beta)\) distribution and the observe to be of the value \(\frac{\alpha}{\alpha + \beta}\).
+
+If \(\alpha\) and \(\beta\) are constant then this observe can then be removed entirely as is explained in the next optimization, but if not then the observe must remain.
+
+Note that the observe is no longer one of Anglican's distributions and so the optimization cannot be performed within Anglican, however within Prob-C or out intermediate language we can observe any distribution we like or even just values.
+
+I will also detail here the formula used for the conjugate prior of the normal distribution. With this optimization it is possible to go beyond merely the example given but instead to have the mean of the observed normal distribution be some linear function of a normally sampled variable. Suppose we have the following scenario
+\[
+	\begin{array}{l}
+		\texttt{[assume m\_2 (normal m\_1 b\_1)]} \\
+		\texttt{[observe (normal (+ (* m\_1 coeff) const) b\_2) v]}
+	\end{array}
+\]
+Then they can be replaced by
+\[
+	\begin{array}{l}
+		\texttt{[assume nm\_2 (normal nm\_1 nb\_1)]} \\
+		\texttt{[observe (normal nm\_2 nb\_2) v]}
+	\end{array}
+\]
+where
+\begin{flalign*}
+	\texttt{nm\_1} &= \left( \frac{1}{\texttt{b\_1}} + \frac{\texttt{coeff}^2}{\texttt{b\_2}} \right)^{-1} \left( \frac{\texttt{m\_1}}{\texttt{b\_1}} + \frac{\texttt{coeff}}{\texttt{b\_2}} \left( \texttt{v} - \texttt{const} \right) \right) \\
+	\texttt{nb\_1} &= \left( \frac{1}{\texttt{b\_1}} + \frac{\texttt{coeff}^2}{\texttt{b\_2}} \right)^{-1} \\
+	\texttt{nm\_2} &= \texttt{coeff} \times \texttt{m\_1} + \texttt{const} \\
+	\texttt{nb\_2} &= \texttt{b\_1} \times \texttt{coeff}^2
+\end{flalign*}
+Again if \texttt{m\_1} and \texttt{b\_1} are constant then the observe can be removed completely, but even if not the observe is no longer dependent on the value \texttt{m\_2} and this is an improvement. It is possible to remove a normal observe whose mean is a linear combination of any number of normally sampled variables with constant parameters.
 
 
 
