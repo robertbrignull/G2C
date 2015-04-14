@@ -1025,4 +1025,29 @@ I will now show the extend to which the non-optimized programs fail to give usab
 
 What you can see here is that the optimized program gives a perfect normal distribution every time, in fact we could have run far fewer than 1000 iterations and still achieved a good distribution. However, the non-optimized program's distributions are much less clean and if we were to increase the number of observes more or move the observed value further from the value \texttt{m} then the distributions would deteriorate even more. The non-optimized program is not even usable except in easy cases, so this optimization actually opens whole new areas of program that can be written rather than just making things faster.
 
+
+
+%    ########      ########
+%    ##            ##      
+%    ##            ##      
+%     ######        ###### 
+%          ##            ##
+%    ##    ##  ##  ##    ##
+%     ######   ##   ###### 
+
+\subsection{Removing constant observes}
+
+To test this optimization I used the following program
+
+\[
+	\begin{array}{l}
+		\texttt{[assume x (uniform-continuous 0 1)]} \\
+		\texttt{[observe (flip 0.5) true]} \\
+		\texttt{[predict x]}
+	\end{array}
+\]
+where the point is that the optimization would remove the observe and change nothing else. The above program was compiled with either no optimizations enabled or all optimizations enabled, then the resulting programs were run for 1000 iterations with 100 particles.
+
+The result on speed was that the optimized program was approximately 27\% faster. When counting the number of unique samples in an iteration, the non-optimized program had on average 47\% unique samples, but the optimized program had on average 63\% unique samples. What we see here is that removing a constant observe improves the program in all ways.
+
 \end{document}

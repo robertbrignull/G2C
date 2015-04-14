@@ -5,8 +5,6 @@ from math import *
 
 import matplotlib
 from matplotlib import pyplot as plt
-from scipy import stats
-import numpy as np
 
 # read in the parameters when generating the data
 data_for_plot = open("data_for_plot").readlines()
