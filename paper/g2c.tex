@@ -7,6 +7,8 @@
 
 \usepackage{graphicx}
 
+\usepackage{varwidth}
+
 \usepackage{mdframed}
 \usepackage{proof}
 
@@ -173,13 +175,119 @@ The central theorem is Bayes' theorem \(p(A | B) = \dfrac{p(A \land B)}{p(B)}\)
 
 \subsection{The source language}
 
-For this project I had to invent my own toy language, I chose to base it on Anglican but with some extra type information to make compilation easier.
+For this project I needed a high level probabilistic programming language to be the source language of my compiler. I had two choices: to use an existing one or to write my own. In fact I went somewhere in between by modifying Anglican to include some extra type information to make compilation easier. Compiling from an untyped language to a typed one is difficult, one way would be to forget the idea of using native types and introduce a layer of abstraction around all variables, but this incurs a large performance penalty. I therefore made the choice to introduce some extra type information into my source language so that I always know the type of a variable or function argument or a function return type.
 
-** Small example program **
+What follows are a couple of examples of my language, which I will refer to as G. This first example shows that for programs not involving user-defined functions or lists, G is identical to Anglican.
+\begin{center}
+	\begin{varwidth}{\linewidth}
+		\small
+		\begin{verbatim}
+			[assume iscloudy (flip 0.5)]
+			
+			[assume israining (if iscloudy (flip 0.8) (flip 0.2))]
+			
+			[assume sprinkler (if iscloudy (flip 0.1) (flip 0.5))]
+			
+			[assume pwetgrass (if (and sprinkler israining) 0.99
+			                  (if (or  sprinkler israining) 0.9
+			                                                0))]
+			
+			[observe (flip pwetgrass) true]
+			
+			[predict israining]
+		\end{verbatim}
+	\end{varwidth}
+\end{center}
+However for more complicated programs you can see the extra type information in the function arguments, function return type, and anywhere that something is extracted from a list. This second example demonstrates all of these.
+\begin{center}
+	\begin{varwidth}{\linewidth}
+		\small
+		\begin{verbatim}
+			; Prior drill beliefs
+			[assume state-of-nature (list 0.5 0.3 0.2)] 
 
-Without this extra type information, when translated to C all variables would have to be data-structures rather than native types, this would largely eliminate the benefit of transforming to a compiled language.
+			; Oil quantity: dry, wet or soaking (0, 1 or 2)
+			[assume oil-quant (discrete state-of-nature)]
 
-** BNF of G **
+			; Sensor reliability conditional distribution
+			[assume sound-state-dist (lambda (o : Num) -> List
+			  (cond ((= o 0) (list .6 .3 .1))
+			        ((= o 1) (list .3 .4 .3))
+			        (else    (list .1 .4 .5))))]
+
+			; Utility function 
+			[assume utility (lambda (drill : Bool) -> Num 
+			  (if drill
+			      (nth Num (list -70 50 200) oil-quant)
+			      0))]
+
+			; Make a sound observation
+			[observe (discrete (sound-state-dist oil-quant)) 2]
+
+			; Predict the oil quantity in the well
+			[predict oil-quant]
+
+			; What is the utility if we decide to drill?
+			[predict (utility true)]
+
+			; What is the utility if we don't?
+			[predict (utility false)]
+
+			; With what probability should I drill?
+			[assume should-i-drill (if (> (utility true) (utility false)) 1 0)]
+			[predict should-i-drill]
+		\end{verbatim}
+	\end{varwidth}
+\end{center}
+What follows is an exact description of the syntax of G.
+\begin{center}
+	\begin{varwidth}{\linewidth}
+		\small
+		\begin{verbatim}
+			<program> ::= <directive> | <directive> <program>
+			<directive> ::= "[" "assume" <id> <expr> "]" |
+			                "[" "observe" <expr> <expr> "]" |
+			                "[" "predict" <expr> "]"
+			<exprs> ::= <expr> | <expr> <exprs>
+			<expr> ::= <number> | <boolean> | <empty-list> | <id> |
+			           <let-expr> |
+			           <lambda-expr> | <mem-expr> |
+			           <if-expr> | <cond-expr> |
+			           <prim-expr> | <typed-prim-expr> |
+			           <app-expr>
+			<let-expr> ::= "(" "let" <id> <expr> <expr> ")"
+			<lambda-expr> ::= "(" "lambda" <lambda-type> <expr> ")"
+			<lambda-type> ::= "(" <lambda-args> ")" "->" <type>
+			<lambda-args> ::= <id> ":" <type> | <id> ":" <type> <lambda-args>
+			<mem-expr> ::= "(" "mem" <expr> ")"
+			<if-expr> ::= "(" "if" <expr> <expr> <expr> ")"
+			<cond-expr> ::= "( "cond" <cond-args> ")"
+			<cond-args> ::= "(" "else" <expr> ")" |
+			                "(" <expr> <expr> ")" <cond-args>
+			<prim-expr> ::= "(" <prim> <exprs> ")"
+			<typed-prim-expr> ::= "(" <typed-prim> <type> <exprs> ")"
+			<app-expr> ::= "(" <exprs> ")"
+			<prim> ::= "+" | "-" | "*" | "/" |
+			           "=" | "!=" | "<" | ">" | "<=" | ">=" |
+			           "and" | "or" | "not" |
+			           "list" | "cons" | "rest" | "empty" | "count" |
+			           "log" | "log10" | "exp" |
+			           "pow" | "sqrt" | "cbrt" |
+			           "floor" | "ceil" | "round" | "rint" |
+			           "abs" | "signum" |
+			           "sin" | "cos" | "tan" |
+			           "asin" | "acos" | "atan" |
+			           "sinh" | "cosh" | "tanh" |
+			           "inc" | "dec" | "mod" |
+			           "flip" | "beta" | "gamma" | "normal" | "poisson" |
+			           "geometric" | "exponential" |
+			           "uniform-continuous" | "uniform-discrete" | "discrete"
+			<typed-prim> ::= "first" | "second" | "nth" | "categorical"
+			<types> ::= <type> | <type> "," <types>
+			<type> ::= "Num" | "Bool" | "List" | "(" <types> ")" "->" <type>
+		\end{verbatim}
+	\end{varwidth}
+\end{center}
 
 
 
