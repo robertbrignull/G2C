@@ -339,9 +339,7 @@ The first stage of compilation is to type the source language, that is to assign
 
 \subsection{Making ids unique}
 
-At this point we change all ids to be unique, that is so that whenever two ids are the same then they refer to the same variable.
-
-This means that for the rest of the compilation we do not have to worry about the scope of variables at all.
+At this point in the compilation we change all ids to be unique, so whenever two ids are the same they always refer to the same variable. This means that we can work out scoping rules now and then never have to think about them again for the rest of the compilation. It also removes the complication that Scheme's list of characters allowed in ids is a lot larger than C's. This does have the downside that it makes the outputted C harder to understand, but that is a price worth paying.
 
 
 
