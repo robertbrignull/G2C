@@ -301,17 +301,31 @@ What follows is an exact description of the syntax of G.
 
 \subsection{Typing the source language}
 
-Typing the source language is very easy, all the information is there and only minimal inference has to be done.
+The first stage of compilation is to type the source language, that is to assign a type to every node of the abstract syntax tree (AST). The way typing works throughout the compiler is that here we assign a type to every single expression and then later we reduce that to only remembering the types of ids. The typing itself is very easy, all the information is there and only minimal inference has to be done. The checks performed are:
+\begin{itemize}
+\item
+	That all variables are defined before they are used.
 
-We know the types of simple values such as numbers and booleans.
+\item
+	For all built-in (untyped) prims (e.g. \texttt{+}, \texttt{-}, \texttt{and}, \texttt{or}) we know their type or can give them one from their arguments. Then we just check that the types of the arguments match what we expected. What I mean by give them a type is that for example if \texttt{=} had 4 arguments and the first was a number, then we would give it the type
+	\begin{verbatim}
+		(Num, Num, Num, Num) -> Bool
+	\end{verbatim}
+	For functions such as \texttt{first} we also use the user supplied type, often simply using it as the return type. It is worth nothing that although in G the first argument appears to be a type it is not a true argument, a better way of thinking about it that it specifies which of a set of functions you're referring to.
 
-For all built-in functions (eg. +, -, and, or) we know their type or in the case of = can give them one based on their argument types. Then we just check that the types of the arguments match the types of the formal parameters.
+\item
+	That the given return type of a lambda matches the type that its body evaluates to. The reason for making the user specify a return type at all is for recursive functions so we don't have to do any type guesswork at all.
 
-For if expressions we check that the test is a boolean type and that both of the branches have the same type.
+\item
+	That the two branches of an if expression have the same type.
 
-For lambdas the user must specify the parameter types and return type, so we just check that the actual type of the body matches the return type they gave. We have to do a little bit of extra work to deal with recursive functions, this is the reason why function return types must be specified.
+\item
+	In a plain old application we use the map from expressions to types that we have built up to type each expression, we then check that the first expression is a function type and its argument types match the types of the rest of the expressions.
 
-For an observe, check that the outer expression of the first argument is a probabilistic primitive. This is a restriction of the sampling method and hence of the language.
+\item
+	For an observe directive we check that the outer expression of the first argument is a probabilistic primitive. The list of probabilistic primitives is: \texttt{flip}, \texttt{beta}, \texttt{gamma}, \texttt{normal}, \texttt{poisson}, \texttt{geometric}, \texttt{exponential}, \texttt{uniform-continuous}, \texttt{uniform-discrete}, \texttt{discrete}, \texttt{categorical}.
+
+\end{itemize}
 
 
 
