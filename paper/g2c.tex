@@ -422,11 +422,9 @@ One important point to make is that we do not try to do any explicit memory mana
 
 \subsection{Outputting C code}
 
-We need to output valid C code, including struct definitions and any extra library functions used.
+We need to output valid C code, including struct definitions and any extra library functions used. Mostly the translation here is obvious and direct, the only difficult point is to make sure all structs and functions are declared before they are defined to allow full recursion.
 
-Mostly the translation here is obvious and direct, only difficult point is to make sure all structs and functions are defined before they are described to allow full recursion.
-
-One important point is we don't need to worry about memory management at all, which simplifies like tremendously. This is because each run of the program happens within its own thread and when it ends the operating system will release all memory it owns. Because each thread is short lived and doesn't use much memory individually, the memory usage of the program is low and does not grow over time.
+There are a few times that we need to add in some extra C code to provide an implementation of linked lists or an extra math function, also some optimizations require observing the result of a specific calculation. To this end some C code has been written in files to be included in the output if needed. Usually this is done by checking to see if any of a set of primitive functions is used.
 
 
 
