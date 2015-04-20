@@ -377,13 +377,9 @@ I wont say too much about the actual transformation as it's fairly standard, the
 
 \subsection{Closure conversion and hoisting}
 
-What we want to do in this step is to lift all functions to the top level of the program, as they must be defined that way in a C program. The problem is that functions may reference variables defined outside of their scope.
+The goal of this step of compilation is to lift all functions to the top level of the program, as that is the way that functions must be defined in a C program. The problem we must overcome is that functions may have free variables, that is variables which are used in the function but not defined within it or one of the arguments. The way we will fix this to effectively add more arguments to functions so that they no longer contain any free variables. In practice however we keep the original arguments and the new ones separate, what we do is that whenever a function is created we store the values of all its free variables into some kind of bundle, then when the function is executed we unpack the bundle to get at the values of any free variable that are needed.
 
-Closure conversion concerns working out which are the variables used by a function are free variables and which are present in the arguments or defined by let expressions within that function.
-
-The effect of this is almost to add more arguments to the function so that it has no free variables, in practice however we keep separate the original arguments and the new arguments are formed into one package, a closure or bundle.
-
-Once this has been done all function definitions can be lifted to the top level of the program. Whenever a function would have been defined we instead instantiate a data structure containing the name of the function and the values of all variables it references formed into a closure.
+The first thing we do is to go though the entire program and every function to find the free variables, that is to work out which variables are used in the function but not defined within it or one of the arguments. Once that is done all functions are lifted or hoisted to the top level and where the function was originally defined we instead form a bundle of all the variable that that function will need. We change all functions to accept as their first argument a bundle containing the free variables, when executed the first thing the function will do is to unpack the bundle into variables of the correct name and then it will execute as before. Invocations of functions will have to be changed as the bundle previously created will need to be passed as the first argument.
 
 
 
