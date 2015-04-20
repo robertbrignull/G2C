@@ -353,13 +353,17 @@ At this point in the compilation we change all ids to be unique, so whenever two
 
 \subsection{Into continuation passing style}
 
-The first step is to transform into continuation passing style.
+The next step of compilation is to transform into continuation passing style (CPS). The primary difference here is that functions and arithmetic operators and such like do not return values but instead take as an extra argument an explicit continuation, that is a function of one argument which caries on the computation. The reason for doing this is that it makes explicit a lot of things that were originally implicit, e.g. intermediate values, order of evaluation. This immediately brings the style of execution a lot closer to that of C. The exception to the transformation is built-in primitives which we assume can be done atomically by the target language, hence they can be calculated directly and stored into variables.
 
-The main difference is that now functions do not return values but instead take as another parameter a function to call when they're done with the value they would have returned.
+I wont say too much about the actual transformation as it's fairly standard, the two points I will mention are:
+\begin{itemize}
+\item
+	When transforming an if expression, generate the continuation before and then use the same one in each branch, rather than generating it within the branch. This has the effect of increasing the number of continuations but reduces the overall amount of code generated and reduces the nesting level.
 
-The exception to this is built-in primitives which we assume can be done atomically by the target language and hence they can be calculated directly and stored into variables.
+\item
+	When transforming a let expression of a lambda, make sure that the resulting generated lambda is assigned to the correct id rather than to a new or temporary one. This is because the lambda could be recursive and we must make sure that it is assigned to the id it is expecting. 
 
-It is this step that is the defining transition from a functional to an imperative language.
+\end{itemize}
 
 
 
