@@ -353,7 +353,7 @@ At this point in the compilation we change all ids to be unique, so whenever two
 
 \subsection{Into continuation passing style}
 
-The next step of compilation is to transform into continuation passing style (CPS). The primary difference here is that functions and arithmetic operators and such like do not return values but instead take as an extra argument an explicit continuation, that is a function of one argument which caries on the computation. The reason for doing this is that it makes explicit a lot of things that were originally implicit, e.g. intermediate values, order of evaluation. This immediately brings the style of execution a lot closer to that of C. The exception to the transformation is built-in primitives which we assume can be done atomically by the target language, hence they can be calculated directly and stored into variables.
+The next step of compilation is to transform into continuation passing style (CPS). The primary difference here is that functions and arithmetic operators and such like do not return values but instead take as an extra argument an explicit continuation, that is a function of one argument which caries on the computation. The reason for doing this is that it makes explicit a lot of things that were originally implicit, e.g. intermediate values, order of evaluation. This immediately brings the style of execution a lot closer to that of C, in that it brings it away from a functional language with nested expressions and more towards an imperative one where statements are executed in order. The exception to the transformation is built-in primitives which we assume can be done atomically by the target language, hence they can be calculated directly and stored into variables.
 
 I wont say too much about the actual transformation as it's fairly standard, the two points I will mention are:
 \begin{itemize}
@@ -377,9 +377,20 @@ I wont say too much about the actual transformation as it's fairly standard, the
 
 \subsection{Closure conversion and hoisting}
 
-The goal of this step of compilation is to lift all functions to the top level of the program, as that is the way that functions must be defined in a C program. The problem we must overcome is that functions may have free variables, that is variables which are used in the function but not defined within it or one of the arguments. The way we will fix this to effectively add more arguments to functions so that they no longer contain any free variables. In practice however we keep the original arguments and the new ones separate, what we do is that whenever a function is created we store the values of all its free variables into some kind of bundle, then when the function is executed we unpack the bundle to get at the values of any free variable that are needed.
+The goal of this step of compilation is to lift all functions to the top level of the program, as that is the way that functions must be defined in a C program. The problem we must overcome is that functions may have free variables, that is variables which are used in the function but not defined within it or one of the arguments. The way we will fix this to effectively add more arguments to functions so that they no longer contain any free variables. In practice however we keep the original arguments and the new ones separate, what we do is that whenever a function is created we store the values of all its free variables into some kind of bundle or closure, then when the function is executed we unpack the bundle to get at the values of any free variable that are needed.
 
-The first thing we do is to go though the entire program and every function to find the free variables, that is to work out which variables are used in the function but not defined within it or one of the arguments. Once that is done all functions are lifted or hoisted to the top level and where the function was originally defined we instead form a bundle of all the variable that that function will need. We change all functions to accept as their first argument a bundle containing the free variables, when executed the first thing the function will do is to unpack the bundle into variables of the correct name and then it will execute as before. Invocations of functions will have to be changed as the bundle previously created will need to be passed as the first argument.
+The first thing we do is to go though the entire program and every function to find the free variables, that is to work out which variables are used in the function but not defined within it or one of the arguments. Once that is done we then make the following changes:
+\begin{itemize}
+\item
+	The list of types and names of a function's free variables is added to the function definition and that definition is then lifted or hoisted to the top level. The function is also changed to accept as its first argument a bundle containing the free variables, when executed the first thing the function will do is to unpack the bundle into variables of the correct name and then it will execute its original body.
+
+\item
+	Where a function was originally defined we instead form a bundle containing the name of the function being called and a list of all its free variables.
+
+\item
+	Any invocations of functions will have to be changed to have a previously created bundle passed as the first argument.
+
+\end{itemize}
 
 
 
@@ -390,6 +401,24 @@ The first thing we do is to go though the entire program and every function to f
 %         ##      ##   ##
 %    ##   ##  ##  ##   ##
 %     #####   ##   ##### 
+
+\subsection{Into C}
+
+Before outputting C code we first do a final transformation into a C-like AST. We try to do as much of the calculation here to make the printing itself trivial, most of the work is about allocating ids to bundles and making sure that they are packed and unpacked correctly.
+
+We alter the idea of a bundle to be made of two parts. Firstly there is the part that we call the data, this contains the actual values of the free variables and is specific to a particular function. Then there is the part we will continue to call the bundle, this contains a pointer to the function to the executed and a pointer to a data object, each bundle relates to a function signature (i.e. a function type). We make one pass though the code, creating bundles and data objects and explicitly packing each individual free variable into a data object. We also make explicit the unpacking of variables from data objects.
+
+One important point to make is that we do not try to do any explicit memory management. The main reason for this is that it is unnecessary. It is important to understand that the program execution happens within many short lived threads, as each thread dies all its allocated memory is freed by the operating system. Therefore as it is such a complex thing to do and the memory usage benefits are small, we decide to not do explicit memory management.
+
+
+
+%     #####       ########
+%    ##   ##           ## 
+%         ##          ##  
+%     #####          ##   
+%         ##        ##    
+%    ##   ##  ##   ##     
+%     #####   ##  ##      
 
 \subsection{Outputting C code}
 
