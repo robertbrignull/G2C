@@ -43,47 +43,11 @@
 
 \section{Introduction}
 
+Recently research has been done into a new type of programming language, they are called probabilistic programming languages (PPL). Most PPLs extend another language and this could be any type of language including C, Java, Python, Haskell, and Scheme. Some of these base languages have different characteristics in terms of their paradigms or execution speed. What we attempt here is to make a compiler from a high level probabilistic programming language to a lower level one. We do this so we can get the obvious performance increase of using a lower level language, and also so we can perform some probabilistic optimizations along the way.
 
+Our source language will be based off of the PPL Anglican is itself built upon a subset of the language Scheme. This is a high level functional language and is usually interpreted. Our target language will be Probabilistic-C which is of course based on the language C. This is a much lower level compiled language, it is also a very unconstrained PPL and this should allow us to do some interesting optimizations.
 
-%     ##        ## 
-%    ###       ### 
-%     ##        ## 
-%     ##        ## 
-%     ##        ## 
-%     ##   ##   ## 
-%    ####  ##  ####
-
-\subsection{The purpose of the project}
-
-Talk about how there a many different probabilistic programming languages.
-
-A lot are both functional and interpreted as this makes them easy to code in and easy to implement, but it lessens their performance.
-
-Prob-C is the opposite, being based on C it is more difficult to code in but by being a compiled language and highly multi-threaded it has good performance.
-
-The purpose of this project is to create a transcompiler from a functional probabilistic programming language into Prob-C.
-
-If any optimizations can be done along the way, either probabilistic or not, then that is even better.
-
-
-
-%     ##        ###### 
-%    ###       ##    ##
-%     ##            ###
-%     ##          ###  
-%     ##        ###    
-%     ##   ##  ##      
-%    ####  ##  ########
-
-\subsection{How this was achieved}
-
-Because both my source language and Prob-C handle sampling and observing in a very similar way, the bulk of the compiler is very standard.
-
-It first transforms into continuation passing style, then adds closures to functions and hoists them to the top level, before outputting C code.
-
-It performs some non-probabilistic optimizations such as identifier reassignment and constant expression calculation.
-
-It performs probabilistic optimizations such as merging multiple samples from one distribution family into one sample, and potentially removing observes when it forms a conjugate prior.
+The bulk of the compiler is very standard, we transform into continuation passing style, perform closure conversion, hoist functions to the top level, and then output C code. One fortunate thing is that both Anglican and Prob-C handle observations in a similar way which makes the compilation considerably easier. We perform some non-probabilistic optimizations such as identifier reassignment and constant expression calculation. We then perform some probabilistic optimizations such as merging multiple samples from one distribution family into one sample, merging together multiple observes from the same family, merging any consecutive observes, and potentially completely removing observes when they forms a conjugate prior.
 
 
 
