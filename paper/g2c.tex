@@ -43,9 +43,9 @@
 
 \section{Introduction}
 
-Recently research has been done into a new type of programming language, they are called probabilistic programming languages (PPL). There are PPLs that extend existing languages, including C, Java, Python, Haskell, and Scheme. Obviously these base languages differ in terms of their paradigms and their execution speed and what we attempt in this project is to make a compiler from a high level probabilistic programming language to a lower level one. We do this both for the performance increase of using a lower level language and also so we can perform some probabilistic optimizations along the way.
+Recently research has been done into a new type of programming language, they are called probabilistic programming languages (PPL). There are PPLs that extend existing languages, including C, Java, Python, Haskell, and Lisp. Obviously these base languages differ in terms of their paradigms and their execution speed and what we attempt in this project is to make a compiler from a high level probabilistic programming language to a lower level one. We do this both for the performance increase of using a lower level language and also so we can perform some probabilistic optimizations along the way.
 
-Our source language will be based off of the PPL Anglican is itself built upon a subset of the language Scheme. This is a high level functional language and is usually interpreted. Our target language will be Probabilistic-C which is of course based on the language C. This is a much lower level compiled language, it is also a very unconstrained PPL and this should allow us to do some interesting optimizations.
+Our source language will be based off of the PPL Anglican is itself built upon a subset of the language Lisp. This is a high level functional language and is usually interpreted. Our target language will be Probabilistic-C which is of course based on the language C. This is a much lower level compiled language, it is also a very unconstrained PPL and this should allow us to do some interesting optimizations.
 
 The bulk of the compiler is very standard, we transform into continuation passing style, perform closure conversion, hoist functions to the top level, and then output C code. One fortunate thing is that both Anglican and Prob-C handle observations in a similar way which makes the compilation considerably easier. We perform some non-probabilistic optimizations such as identifier reassignment and constant expression calculation. We then perform some probabilistic optimizations such as merging multiple samples from one distribution family into one sample, merging together multiple observes from the same family, merging any consecutive observes, and potentially completely removing observes when they forms a conjugate prior.
 
@@ -79,7 +79,7 @@ For the sake of this explanation a good way of thinking about all programs would
 
 Where things get more complicated is the when we introduce the true power of PPLs which is the ability to observe, this allows you to condition the entire program execution on some observed data and change the poterior distribution to match. Essentially what you're doing is saying that we observed this statement to be true and any run of the program which does not match that statement can be discarded, we only want program executions that match our observations. When getting output via sampling this can either be done in a hard (rejection sampling) or soft (particles) way. In rejection sampling the observe statements act like an assume statement would, you run the program and if an observe fails then you restart the program from the beginning and try again. With particle sampling you run the program many times simultaneously and have them synchronize at observe statements where you calculate not just whether an observe is satisfied but rather what is the probability of it being satisfied, you then kill off less likely particles and clone new ones from those left. Of course actual sampling techniques are far more sofisticated, but this hopefully gives you an idea of how they work.
 
-Usually a probabilistic programming language is based on an existing language rather than being a completely new one, examples include: Venture (Scheme), Anglican (Scheme), IBAL (OCaml), Infer.NET (.NET), PSQL (SQL), FACTORIE (Scala), Alchemy (C++), Church (Scheme), Stan (none). More are being designed constantly as people discover new ways of using them.
+Usually a probabilistic programming language is based on an existing language rather than being a completely new one, examples include: Venture (Lisp), Anglican (Lisp), IBAL (OCaml), Infer.NET (.NET), PSQL (SQL), FACTORIE (Scala), Alchemy (C++), Church (Lisp), Stan (none). More are being designed constantly as people discover new ways of using them.
 
 The applications of probabilistic programming are diverse, anything that requires estimating a distribution given prior beliefs and conditioned on some observed data. They can be used in artificial intelligence, predicting stock prices, recomending products to customers, diagnosing problems in computers/cars/whatever, cyber security, image detection, etc.
 
@@ -93,29 +93,15 @@ The applications of probabilistic programming are diverse, anything that require
 %    ##        ##  ##      
 %    ########  ##  ########
 
-\subsection{Anglican and Prob-c}
+\subsection{Anglican and Prob-C}
 
-Anglican and Prob-C are the two languages we'll be concerned with most, Anglican because it's what I've based my source language on, and Prob-C because it is the target language of my compiler.
+Anglican and Prob-C are the two languages we'll be concentrating on, Anglican because it is the basis for the source language of my compiler, and Prob-C because it is the target language of my compiler.
 
-Anglican is based on the Venture modeling language which is itself based on Scheme. Anglican is effectively one language embedded inside another, specifically it is build from a sequence of the commands Assume, Observe and Predict, each of which can contain expressions which come from a functional subset of Scheme.
+Anglican is based on the Venture modeling language which is itself built upon Lisp. It is effectively one language embedded within another, specifically it is built from a sequence of Assume, Observe, and Predict directives, each of which contain expressions which can from a safe, functional subset of Lisp. Being Lisp like, Anglican is quite high level and this makes it nice and easy to create complex models, however it is interpreted and therefore for those same complex models it runs quite slowly.
 
-Prob-C on the other hand is based on full C rather than a subset, in fact the only difference is the addition of a library of sampling functions, two extra functions to observe and predict, and a macro which redefines the main function. So Prob-C has all the power of C. Unlike almost all other probabilistic programming languages, Prob-C is unsafe in the sense that it is possible to create programs which make no sense statistically, for this reason as well as C's unfriendliness it is not recommended to code in Prob-C directly.
+Prob-C on the other hand is based on full C rather than a subset, in fact the only difference is the addition of a library of sampling functions, two extra functions to observe and predict, and a macro which redefines the main function. So Prob-C has all the power of C and most of the speed. Unlike almost all other probabilistic programming languages, Prob-C is unsafe in the sense that it is possible to create programs which make no sense statistically, for this reason as well as C's unfriendliness it is not recommended to code in Prob-C directly.
 
-
-
-%     ######        ##### 
-%    ##    ##      ##   ##
-%         ###           ##
-%       ###         ##### 
-%     ###               ##
-%    ##        ##  ##   ##
-%    ########  ##   ##### 
-
-\subsection{Bayesian probability}
-
-Bayesian probability revolves around the idea of conditional probability, that is having some prior belief about an event and then estimating it's probability once you've observed that some other event happened.
-
-The central theorem is Bayes' theorem \(p(A | B) = \dfrac{p(A \land B)}{p(B)}\)
+Combine the facts about these two languages and you can see there is an obvious motive for creating a compiler between them.
 
 
 
@@ -305,7 +291,7 @@ The first stage of compilation is to type the source language, that is to assign
 
 \subsection{Making ids unique}
 
-At this point in the compilation we change all ids to be unique, so whenever two ids are the same they always refer to the same variable. This means that we can work out scoping rules now and then never have to think about them again for the rest of the compilation. It also removes the complication that Scheme's list of characters allowed in ids is a lot larger than C's. This does have the downside that it makes the outputted C harder to understand, but that is a price worth paying.
+At this point in the compilation we change all ids to be unique, so whenever two ids are the same they always refer to the same variable. This means that we can work out scoping rules now and then never have to think about them again for the rest of the compilation. It also removes the complication that Lisp's list of characters allowed in ids is a lot larger than C's. This does have the downside that it makes the outputted C harder to understand, but that is a price worth paying.
 
 
 
