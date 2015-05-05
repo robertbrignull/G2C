@@ -43,11 +43,149 @@
 
 \section{Introduction}
 
-Recently research has been done into a new type of programming language, they are called probabilistic programming languages (PPL). There are PPLs that extend existing languages, including C, Java, Python, Haskell, and Lisp. Obviously these base languages differ in terms of their paradigms and their execution speed and what we attempt in this project is to make a compiler from a high level probabilistic programming language to a lower level one. We do this both for the performance increase of using a lower level language and also so we can perform some probabilistic optimizations along the way.
+Recently research has been made about a new type of programming language, they are called probabilistic programming languages. There are probabilistic programming languages that extend various existing languages, examples include C, Java, Python, Haskell, Lisp, SQL, .NET and MATLAB. Obviously these base languages differ in terms of their paradigms and their execution speed, what we attempt in this project is bring techniques from compilers and programming languages to make a compiler from a high level probabilistic probabilistic language to a lower level one. We do this both for the performance increase of using a lower level language and also so we can perform some probabilistic optimizations along the way.
 
-Our source language will be based off of the PPL Anglican is itself built upon a subset of the language Lisp. This is a high level functional language and is usually interpreted. Our target language will be Probabilistic-C which is of course based on the language C. This is a much lower level compiled language, it is also a very unconstrained PPL and this should allow us to do some interesting optimizations.
+The field of probabilistic programming is a very interesting one with far reaching applications. One of its main uses is to open up the field of machine learning to non-experts. It is currently the case that to do any non-trivial machine learning one must design and build both the model and the inference algorithm oneself, this requires a large amount of statistical and general computer science knowledge. Probabilistic probabilistic languages aim to remove those needs by taking care of all the inference in a very general yet still efficient way. The user should be able to write the model they desire in what is almost a normal programming language using all of its powerful and expression, then the inference will be done automatically and efficiently by the language without any need for deep statistical knowledge.
+
+Another benefit of probabilistic programming is that it allows generic and yet efficient inference on very complex models, add to this the ability to explore new models rapidly and with relatively little code and it could open up whole new approaches to machine learning. This not to say that probabilistic programming languages are trying to compete with current machine learning frameworks, they will likely never be as efficient at running current machine learning models as the current highly specialized algorithms. The point of probabilistic programming languages is to enable the construction of entirely new models without the need to write a new specialized inference algorithm each time.
+
+Our source language is based off of the probabilistic programming language Anglican, which is itself built upon a subset of the language Lisp. This is a high level functional language and is interpreted. Our target language will be Probabilistic-C which is of course based on the language C. This is a much lower level imperative language and is compiled, it is also a very unconstrained PPL and this should allow us to do some interesting optimizations.
 
 The bulk of the compiler is very standard, we transform into continuation passing style, perform closure conversion, hoist functions to the top level, and then output C code. One fortunate thing is that both Anglican and Prob-C handle observations in a similar way which makes the compilation considerably easier. We perform some non-probabilistic optimizations such as identifier reassignment and constant expression calculation. We then perform some probabilistic optimizations such as merging multiple samples from one distribution family into one sample, merging together multiple observes from the same family, merging any consecutive observes, and potentially completely removing observes when they forms a conjugate prior.
+
+To give an idea of what the system achieves we will examine one model in detail and see what optimizations can be done to it. The situation is this: some crickets and grasshoppers will chirp more during hot whether, scientists think that this relationship is linear but with some various between individual animals. The scientists find some crickets and take readings of chirp frequency at different temperatures, they record the following data.
+
+\begin{center}
+	\def\arraystretch{1.3}
+	\begin{tabular}{l|l}
+		Temperature (\(^\circ\)F) & Chirp frequency (Hz) \\
+		\hline
+		88.6 & 20.0 \\
+		71.6 & 16.0 \\
+		93.3 & 19.8 \\
+		84.3 & 18.4 \\
+		80.6 & 17.1 \\
+		75.2 & 15.5
+	\end{tabular}
+\end{center}
+They then try to calculate the gradient of the relationship using the following probabilistic program. As ever with beyesian probability they have some prior beliefs, they think that the gradient is between 0 and 1 and they have some bound on the variation between individual animals.
+
+\begin{center}
+	\begin{varwidth}{\linewidth}
+		\small
+		\begin{verbatim}
+			[assume gradient (uniform-continuous 0 1)]
+
+			[assume coeff (normal gradient 0.05)]
+			[assume const (normal 0 0.2)]
+
+			[observe (normal (+ (* 88.6 coeff) const) 0.1) 20.0]
+			[observe (normal (+ (* 71.6 coeff) const) 0.1) 16.0]
+			[observe (normal (+ (* 93.3 coeff) const) 0.1) 19.8]
+			[observe (normal (+ (* 84.3 coeff) const) 0.1) 18.4]
+			[observe (normal (+ (* 80.6 coeff) const) 0.1) 17.1]
+			[observe (normal (+ (* 75.2 coeff) const) 0.1) 15.5]
+
+			[predict gradient]
+		\end{verbatim}
+	\end{varwidth}
+\end{center}
+The compilation follows standard steps of transforming into continuation passing style, closure conversion, hosting of functions to the top level. Below is the output if we did not then apply any probabilistic optimizations.
+
+\begin{center}
+	\begin{varwidth}{\linewidth}
+		\small
+		\begin{verbatim}
+			#include <stdlib.h>
+			#include <stdio.h>
+
+			#include "probabilistic.h"
+
+			int main(int argc, char **argv) {
+			    double gradient = uniform_rng(0.0, 1.0);
+
+			    double coeff = normal_rng(gradient, 0.05);
+			    double const_ = normal_rng(0.0, 0.2);
+
+			    observe(normal_lnp(20.0, coeff * 88.6 + const_, 0.1));
+			    observe(normal_lnp(16.0, coeff * 71.6 + const_, 0.1));
+			    observe(normal_lnp(19.8, coeff * 93.3 + const_, 0.1));
+			    observe(normal_lnp(18.4, coeff * 84.3 + const_, 0.1));
+			    observe(normal_lnp(17.1, coeff * 80.6 + const_, 0.1));
+			    observe(normal_lnp(15.5, coeff * 75.2 + const_, 0.1));
+
+			    predict("%s,%f\n", "gradient", gradient);
+
+			    return 0;
+			}
+		\end{verbatim}
+	\end{varwidth}
+\end{center}
+However, there are a few optimizations that we can perform and we will list them in the order that they are performed.
+\begin{enumerate}
+\item
+	The first thing to notice is that the normal distributions of the coeff and const samples are conjugate priors to the normal distributions of the observations. We will explain what we mean by this later on. What this optimization does when we apply it is to remove the reference to the sampled variable from the observe, the observe will then be in terms of the parameters to the sample instead. If we apply this ten times we can remove all references to the coeff and const variables from the observes and have them only in terms of the gradient variable.
+
+	After this optimization we are making three samples and six observes.
+
+\item
+	At this point the coeff and const variables are not actually used at all and so we can remove them completely from the program.
+
+	After this optimization we are making one sample and six observes.
+
+\item
+	We want to collect as many observes as possible together so we try to push them as far back down as we can. We do this in the obvious way by blindly pushing observes backwards, even going as far as to push them inside continuations. After doing this we successfully manage to collect together the six observes.
+
+	After this optimization we are making one sample and six observes.
+
+\item
+	The final optimization is to merge together any consecutive observes into one, this is why we collected them together. Here we can merge all six into one. This optimization works because the probability of all of a collection of events happening is the product of their individual probabilities. Observes work using the log of the probability however so we can calculate the log of the product as the sum of the logs.
+
+	After this optimization we are making one sample and one observe.
+
+\end{enumerate}
+
+So after all that we have reduced three samples and six observes into just one sample and one observe. This will improve both performance and sample quality greatly.
+
+To make the program prettier here we have made all arithmetic calculations in-line and reduced them as much as possible. This is something the system could do but currently does not, in practice it would not affect program performance much so there is little encouragement to do this. What follows is the final program after reducing the arithmetic by hand.
+
+\begin{center}
+	\begin{varwidth}{\linewidth}
+		\small
+		\begin{verbatim}
+			#include <stdlib.h>
+			#include <stdio.h>
+
+			#include "probabilistic.h"
+
+			int main(int argc, char **argv) {
+			    double gradient = uniform_rng(0.0, 1.0);
+
+			    observe(normal_lnp(20.0,
+			                       gradient * 88.6,
+			                       392.798)
+			          + normal_lnp(16.0,
+			                       gradient * 0.009572350164697 + 16.1603674152755,
+			                       0.172665339437)
+			          + normal_lnp(19.8,
+			                       gradient * 0.0215414920690030 + 20.9779100181940,
+			                       0.171472119913)
+			          + normal_lnp(18.4,
+			                       gradient * 0.00714550738045528 + 18.5274790332219,
+			                       0.132812797595)
+			          + normal_lnp(17.1,
+			                       gradient * 0.0032241962331263 + 17.6916967883102,
+			                       0.123114249847)
+			          + normal_lnp(15.5,
+			                       gradient * -0.0005048414824 + 16.4109671553285,
+			                       0.118203847628));
+			    
+			    predict("%s,%f\n", "gradient", gradient);
+			    return 0;
+			}
+		\end{verbatim}
+	\end{varwidth}
+\end{center}
 
 
 
@@ -141,8 +279,8 @@ What follows are a couple of examples of my language, which I will refer to as G
 			[assume sprinkler (if iscloudy (flip 0.1) (flip 0.5))]
 			
 			[assume pwetgrass (if (and sprinkler israining) 0.99
-			                  (if (or  sprinkler israining) 0.9
-			                                                0))]
+												(if (or  sprinkler israining) 0.9
+																											0))]
 			
 			[observe (flip pwetgrass) true]
 			
@@ -163,15 +301,15 @@ However for more complicated programs you can see the extra type information in 
 
 			; Sensor reliability conditional distribution
 			[assume sound-state-dist (lambda (o : Num) -> List
-			  (cond ((= o 0) (list .6 .3 .1))
-			        ((= o 1) (list .3 .4 .3))
-			        (else    (list .1 .4 .5))))]
+				(cond ((= o 0) (list .6 .3 .1))
+							((= o 1) (list .3 .4 .3))
+							(else    (list .1 .4 .5))))]
 
 			; Utility function 
 			[assume utility (lambda (drill : Bool) -> Num 
-			  (if drill
-			      (nth Num (list -70 50 200) oil-quant)
-			      0))]
+				(if drill
+						(nth Num (list -70 50 200) oil-quant)
+						0))]
 
 			; Make a sound observation
 			[observe (discrete (sound-state-dist oil-quant)) 2]
@@ -198,15 +336,15 @@ What follows is an exact description of the syntax of G.
 		\begin{verbatim}
 			<program> ::= <directive> | <directive> <program>
 			<directive> ::= "[" "assume" <id> <expr> "]" |
-			                "[" "observe" <expr> <expr> "]" |
-			                "[" "predict" <expr> "]"
+											"[" "observe" <expr> <expr> "]" |
+											"[" "predict" <expr> "]"
 			<exprs> ::= <expr> | <expr> <exprs>
 			<expr> ::= <number> | <boolean> | <empty-list> | <id> |
-			           <let-expr> |
-			           <lambda-expr> | <mem-expr> |
-			           <if-expr> | <cond-expr> |
-			           <prim-expr> | <typed-prim-expr> |
-			           <app-expr>
+								 <let-expr> |
+								 <lambda-expr> | <mem-expr> |
+								 <if-expr> | <cond-expr> |
+								 <prim-expr> | <typed-prim-expr> |
+								 <app-expr>
 			<let-expr> ::= "(" "let" <id> <expr> <expr> ")"
 			<lambda-expr> ::= "(" "lambda" <lambda-type> <expr> ")"
 			<lambda-type> ::= "(" <lambda-args> ")" "->" <type>
@@ -215,25 +353,25 @@ What follows is an exact description of the syntax of G.
 			<if-expr> ::= "(" "if" <expr> <expr> <expr> ")"
 			<cond-expr> ::= "( "cond" <cond-args> ")"
 			<cond-args> ::= "(" "else" <expr> ")" |
-			                "(" <expr> <expr> ")" <cond-args>
+											"(" <expr> <expr> ")" <cond-args>
 			<prim-expr> ::= "(" <prim> <exprs> ")"
 			<typed-prim-expr> ::= "(" <typed-prim> <type> <exprs> ")"
 			<app-expr> ::= "(" <exprs> ")"
 			<prim> ::= "+" | "-" | "*" | "/" |
-			           "=" | "!=" | "<" | ">" | "<=" | ">=" |
-			           "and" | "or" | "not" |
-			           "list" | "cons" | "rest" | "empty" | "count" |
-			           "log" | "log10" | "exp" |
-			           "pow" | "sqrt" | "cbrt" |
-			           "floor" | "ceil" | "round" | "rint" |
-			           "abs" | "signum" |
-			           "sin" | "cos" | "tan" |
-			           "asin" | "acos" | "atan" |
-			           "sinh" | "cosh" | "tanh" |
-			           "inc" | "dec" | "mod" |
-			           "flip" | "beta" | "gamma" | "normal" | "poisson" |
-			           "geometric" | "exponential" |
-			           "uniform-continuous" | "uniform-discrete" | "discrete"
+								 "=" | "!=" | "<" | ">" | "<=" | ">=" |
+								 "and" | "or" | "not" |
+								 "list" | "cons" | "rest" | "empty" | "count" |
+								 "log" | "log10" | "exp" |
+								 "pow" | "sqrt" | "cbrt" |
+								 "floor" | "ceil" | "round" | "rint" |
+								 "abs" | "signum" |
+								 "sin" | "cos" | "tan" |
+								 "asin" | "acos" | "atan" |
+								 "sinh" | "cosh" | "tanh" |
+								 "inc" | "dec" | "mod" |
+								 "flip" | "beta" | "gamma" | "normal" | "poisson" |
+								 "geometric" | "exponential" |
+								 "uniform-continuous" | "uniform-discrete" | "discrete"
 			<typed-prim> ::= "first" | "second" | "nth" | "categorical"
 			<types> ::= <type> | <type> "," <types>
 			<type> ::= "Num" | "Bool" | "List" | "(" <types> ")" "->" <type>
@@ -652,28 +790,28 @@ I will also prove the correctness of the first example.
 
 \begin{mdframed}
 	\begin{claim}
-	  The sum of independent normally distributed variables is normally distributed.
+		The sum of independent normally distributed variables is normally distributed.
 	\end{claim}
 	\begin{claimproof}
-	  The easiest way to do this is using characteristic functions. For a random variable \(X\) this is
+		The easiest way to do this is using characteristic functions. For a random variable \(X\) this is
 
-	  \[\varphi_X(t) = E(e^{itX})\]
-	  The characteristic function of a normal distribution with mean \(\mu\) and variance \(\sigma^2\) is
+		\[\varphi_X(t) = E(e^{itX})\]
+		The characteristic function of a normal distribution with mean \(\mu\) and variance \(\sigma^2\) is
 
-	  \[\varphi(t) = \exp(i t \mu - \frac{\sigma^2 t^2}{2})\]
-	  The characteristic function of the sum of two independent random variables \(X\) and \(Y\) is the product of their separate characteristic functions. Hence if \(X\) and \(Y\) are both normally distributed with means and variances \(\mu_X\), \(\mu_Y\) and \(\sigma_X^2\), \(\sigma_Y^2\) respectively, then
+		\[\varphi(t) = \exp(i t \mu - \frac{\sigma^2 t^2}{2})\]
+		The characteristic function of the sum of two independent random variables \(X\) and \(Y\) is the product of their separate characteristic functions. Hence if \(X\) and \(Y\) are both normally distributed with means and variances \(\mu_X\), \(\mu_Y\) and \(\sigma_X^2\), \(\sigma_Y^2\) respectively, then
 
-  	\begin{align*}
-  		\varphi_{X+Y}(t)
-  		& = \varphi_X(t) \varphi_Y(t) \\
-  		& = \exp\left(i t \mu_X - \frac{\sigma_X^2 t^2}{2}\right) \exp\left(i t \mu_Y - \frac{\sigma_Y^2 t^2}{2}\right) \\
-  		& = \exp\left(i t (\mu_x + \mu_Y) - \frac{(\sigma_X^2 + \sigma_Y^2) t^2}{2}\right)
-  	\end{align*}
-	  Which is the characteristic function of a normal distribution with mean \(\mu_X + \mu_Y\) and variance \(\sigma_X^2 + \sigma_Y^2\).
+		\begin{align*}
+			\varphi_{X+Y}(t)
+			& = \varphi_X(t) \varphi_Y(t) \\
+			& = \exp\left(i t \mu_X - \frac{\sigma_X^2 t^2}{2}\right) \exp\left(i t \mu_Y - \frac{\sigma_Y^2 t^2}{2}\right) \\
+			& = \exp\left(i t (\mu_x + \mu_Y) - \frac{(\sigma_X^2 + \sigma_Y^2) t^2}{2}\right)
+		\end{align*}
+		Which is the characteristic function of a normal distribution with mean \(\mu_X + \mu_Y\) and variance \(\sigma_X^2 + \sigma_Y^2\).
 
-	  From here if we have \(n\) independent normally distributed random variables \(X_i \sim N(\mu_i, \sigma_i^2)\) then we proceed by induction using the above to get that
+		From here if we have \(n\) independent normally distributed random variables \(X_i \sim N(\mu_i, \sigma_i^2)\) then we proceed by induction using the above to get that
 
-	  \[\sum_{i=1}^n X_i \sim N(\sum_{i=1}^n \mu_i, \sum_{i=1}^n \sigma_i^2)\]
+		\[\sum_{i=1}^n X_i \sim N(\sum_{i=1}^n \mu_i, \sum_{i=1}^n \sigma_i^2)\]
 	\end{claimproof}
 \end{mdframed}
 
@@ -807,11 +945,11 @@ then we can show that it is equivalent to an observe that only relies on the sam
 To work out what distribution it will have, consider the joint probability density function, which can be written as a product of the individual densities as all the observations are independent. Here \(\bar{x}\) denotes the sample mean and \(s^2\) the sample variance.
 
 \begin{flalign*}
-	   & \prod_{i=1}^n \frac{1}{\sqrt{2 \pi \sigma^2}} e^{-\frac{(x_i - \mu)^2}{2 \sigma^2}} & \notag\\
+		 & \prod_{i=1}^n \frac{1}{\sqrt{2 \pi \sigma^2}} e^{-\frac{(x_i - \mu)^2}{2 \sigma^2}} & \notag\\
 	=\ & (2 \pi \sigma^2)^{-\frac{n}{2}} e^{-\frac{1}{2 \sigma^2} \sum_{i=1}^n (x_i - \mu)^2} \notag\\
 	=\ & (2 \pi \sigma^2)^{-\frac{n}{2}} e^{-\frac{1}{2 \sigma^2} \sum_{i=1}^n ((x_i - \bar{x}) - (\mu - \bar{x}))^2} \notag\\
 	=\ & (2 \pi \sigma^2)^{-\frac{n}{2}} e^{-\frac{1}{2 \sigma^2} (\sum_{i=1}^n (x_i - \bar{x})^2 + \sum_{i=1}^n (\mu - \bar{x})^2 - 2 \sum_{i=1}^n (x_i - \bar{x})(\mu - \bar{x}))} \notag\\
-	  & \text{Then since }\sum_{i=1}^n (x_i - \bar{x})(\mu - \bar{x}) = 0 \notag\\
+		& \text{Then since }\sum_{i=1}^n (x_i - \bar{x})(\mu - \bar{x}) = 0 \notag\\
 	=\ & (2 \pi \sigma^2)^{-\frac{n}{2}} e^{-\frac{1}{2 \sigma^2} (\sum_{i=1}^n (x_i - \bar{x})^2 + \sum_{i=1}^n (\mu - \bar{x})^2)} & \notag\\
 	=\ & (2 \pi \sigma^2)^{-\frac{n}{2}} e^{-\frac{1}{2 \sigma^2} \sum_{i=1}^n (x_i - \bar{x})^2} e^{-\frac{n}{2 \sigma^2} (\mu - \bar{x})^2} \notag\\
 	=\ & (2 \pi \sigma^2)^{-\frac{n}{2}} e^{-\frac{n - 1}{2 \sigma^2} s^2} e^{-\frac{n}{2 \sigma^2} (\mu - \bar{x})^2} \notag
@@ -819,7 +957,7 @@ To work out what distribution it will have, consider the joint probability densi
 
 And importantly for us
 \begin{flalign*}
-	   & \log(\prod_{i=1}^n \frac{1}{\sqrt{2 \pi \sigma^2}} e^{-\frac{(x_i - \mu)^2}{2 \sigma^2}}) & \notag\\
+		 & \log(\prod_{i=1}^n \frac{1}{\sqrt{2 \pi \sigma^2}} e^{-\frac{(x_i - \mu)^2}{2 \sigma^2}}) & \notag\\
 	=\ & - \frac{n}{2} \log(2 \pi \sigma^2) - \frac{n - 1}{2 \sigma^2} s^2 - \frac{n}{2 \sigma^2} (\mu - \bar{x})^2 \notag
 \end{flalign*}
 We can then replace the sequence of observes or normal distributions by one observe of a function which calculates the above. This is the first optimization that is only possible within Prob-C, because you are not limited to observing a standard builtin distribution but can pass any numerical value you want to an observe.
@@ -901,7 +1039,7 @@ I will now give a proof of correctness for the first example in order to show wh
 
 By Bayes theorem
 \begin{flalign*}
-	   \text{P}(p\ |\ x)
+		 \text{P}(p\ |\ x)
 	&= \frac{\text{P}(x\ |\ p) \text{P}(p)}{\text{P}(x)}
 	 = \frac{\text{P}(x\ |\ p) \text{P}(p)}{\int_0^1 \text{P}(x\ |\ p') \text{P}(p') dp'} \\
 	&= \frac{\frac{p^\alpha (1 - p)^{\beta - 1}}{\text{B}(\alpha, \beta)}}{\int_0^1 \frac{p'^\alpha (1 - p')^{\beta - 1}}{\text{B}(\alpha, \beta)} dp'} \\
@@ -910,11 +1048,11 @@ By Bayes theorem
 \end{flalign*}
 Hence \(p\ |\ x \sim Beta(\alpha + 1, \beta)\). Then what's left is
 \begin{flalign*}
-     \text{P}(x)
-  &= \int_0^1 \text{P}(x\ |\ p') \text{P}(p') dp' \\
-  &= \int_0^1 \frac{p'^\alpha (1 - p')^{\beta - 1}}{\text{B}(\alpha, \beta)} dp' \\
-  &= \frac{\text{B}(\alpha + 1, \beta)}{\text{B}(\alpha, \beta)} \\
-  &= \frac{\alpha}{\alpha + \beta}
+		 \text{P}(x)
+	&= \int_0^1 \text{P}(x\ |\ p') \text{P}(p') dp' \\
+	&= \int_0^1 \frac{p'^\alpha (1 - p')^{\beta - 1}}{\text{B}(\alpha, \beta)} dp' \\
+	&= \frac{\text{B}(\alpha + 1, \beta)}{\text{B}(\alpha, \beta)} \\
+	&= \frac{\alpha}{\alpha + \beta}
 \end{flalign*}
 Thus as \(\text{P}(x\ |\ p) \text{P}(p) = \text{P}(x) \text{P}(p\ |\ x)\) we can replace the sample to be from the \(Beta(\alpha + 1, \beta)\) distribution and the observe to be of the value \(\frac{\alpha}{\alpha + \beta}\).
 
