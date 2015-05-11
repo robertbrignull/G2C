@@ -1,6 +1,9 @@
 \documentclass[a4paper]{article}
 \usepackage[utf8]{inputenc}
 
+\usepackage{cite}
+\usepackage{url}
+
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{amsthm}
@@ -27,7 +30,7 @@
 
 \title{G2C: an optimizing transcompiler for probabilistic programming languages}
 \author{Robert Brignull}
-\date{ }
+\date{2015}
 
 \begin{document}
 
@@ -43,15 +46,25 @@
 
 \section{Introduction}
 
-Recently research has been made about a new type of programming language, they are called probabilistic programming languages. There are probabilistic programming languages that extend various existing languages, examples include C, Java, Python, Haskell, Lisp, SQL, .NET and MATLAB. Obviously these base languages differ in terms of their paradigms and their execution speed, what we attempt in this project is bring techniques from compilers and programming languages to make a compiler from a high level probabilistic probabilistic language to a lower level one. We do this both for the performance increase of using a lower level language and also so we can perform some probabilistic optimizations along the way.
+\subsection{Why probabilistic programming}
+
+Recently research has been made about a new type of programming language, they are called probabilistic programming languages. There are probabilistic programming languages that extend various existing languages, examples include C \cite{ProbabilisticC}, Java \cite{BLOG}, Python \cite{PyMC}, Lisp \cite{Anglican} \cite{Venture} \cite{Church}, SQL \cite{PSQL}, .NET \cite{Infer.NET} and MATLAB \cite{dimple}. These base languages differ greatly in terms of their paradigms and their execution speed. What we attempt in this project is bring techniques from compilers and programming languages to make a compiler from a high level probabilistic probabilistic language to a lower level one. We do this both for the performance increase of using a lower level language and also so we can perform some probabilistic optimizations along the way.
 
 The field of probabilistic programming is a very interesting one with far reaching applications. One of its main uses is to open up the field of machine learning to non-experts. It is currently the case that to do any non-trivial machine learning one must design and build both the model and the inference algorithm oneself, this requires a large amount of statistical and general computer science knowledge. Probabilistic probabilistic languages aim to remove those needs by taking care of all the inference in a very general yet still efficient way. The user should be able to write the model they desire in what is almost a normal programming language using all of its powerful and expression, then the inference will be done automatically and efficiently by the language without any need for deep statistical knowledge.
 
-Another benefit of probabilistic programming is that it allows generic and yet efficient inference on very complex models, add to this the ability to explore new models rapidly and with relatively little code and it could open up whole new approaches to machine learning. This not to say that probabilistic programming languages are trying to compete with current machine learning frameworks, they will likely never be as efficient at running current machine learning models as the current highly specialized algorithms. The point of probabilistic programming languages is to enable the construction of entirely new models without the need to write a new specialized inference algorithm each time.
+Another benefit of probabilistic programming is that it allows generic and yet efficient inference on very complex models. It also could open up whole new approaches to machine learning by giving researchers the ability to explore new models rapidly and with relatively little code. This is not to say that probabilistic programming languages are trying to compete with current machine learning frameworks. They will likely never be as efficient at running current machine learning models as the current highly specialized algorithms. The point of probabilistic programming languages is to enable the construction of entirely new models without the need to write a new specialized inference algorithm each time.
+
+
+
+\subsection{What we do}
 
 Our source language is based off of the probabilistic programming language Anglican, which is itself built upon a subset of the language Lisp. This is a high level functional language and is interpreted. Our target language will be Probabilistic-C which is of course based on the language C. This is a much lower level imperative language and is compiled, it is also a very unconstrained PPL and this should allow us to do some interesting optimizations.
 
 The bulk of the compiler is very standard, we transform into continuation passing style, perform closure conversion, hoist functions to the top level, and then output C code. One fortunate thing is that both Anglican and Prob-C handle observations in a similar way which makes the compilation considerably easier. We perform some non-probabilistic optimizations such as identifier reassignment and constant expression calculation. We then perform some probabilistic optimizations such as merging multiple samples from one distribution family into one sample, merging together multiple observes from the same family, merging any consecutive observes, and potentially completely removing observes when they forms a conjugate prior.
+
+
+
+\subsection{A brief example}
 
 To give an idea of what the system achieves we will examine one model in detail and see what optimizations can be done to it. The situation is this: some crickets and grasshoppers will chirp more during hot whether, scientists think that this relationship is linear but with some various between individual animals. The scientists find some crickets and take readings of chirp frequency at different temperatures, they record the following data.
 
@@ -1286,5 +1299,10 @@ To test this optimization I used the following program
 where the point is that the optimization would remove the observe and change nothing else. The above program was compiled with either no optimizations enabled or all optimizations enabled, then the resulting programs were run for 1000 iterations with 100 particles.
 
 The result on speed was that the optimized program was approximately 27\% faster. When counting the number of unique samples in an iteration, the non-optimized program had on average 47\% unique samples, but the optimized program had on average 63\% unique samples. What we see here is that removing a constant observe improves the program in all ways.
+
+
+
+\bibliography{g2c}{}
+\bibliographystyle{plainurl}
 
 \end{document}
