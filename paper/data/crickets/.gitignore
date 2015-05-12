@@ -1,0 +1,5 @@
+prog_*
+!prog_*.c
+data_*
+data_for_plot
+times

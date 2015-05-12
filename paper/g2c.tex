@@ -54,11 +54,15 @@ The field of probabilistic programming is a very interesting one with far reachi
 
 Another benefit of probabilistic programming is that it allows generic and yet efficient inference on very complex models. It also could open up whole new approaches to machine learning by giving researchers the ability to explore new models rapidly and with relatively little code. This is not to say that probabilistic programming languages are trying to compete with current machine learning frameworks. They will likely never be as efficient at running current machine learning models as the current highly specialized algorithms. The point of probabilistic programming languages is to enable the construction of entirely new models without the need to write a new specialized inference algorithm each time.
 
+One of the main problems that is holding back probabilistic programming is the ability to perform efficient inference, this is the problem our compiler aims to tackle. We note that the choice of language makes a significant difference to the inference problem. Users want to write in a high level language but it is then harder to perform inference. In a lower level language it is easier to perform inference but harder for the users to write programs. The obvious solution is a compiler from a high level probabilistic programming language to a lower level one.
+
 
 
 \subsection{What we do}
 
-Our source language is based off of the probabilistic programming language Anglican, which is itself built upon a subset of the language Lisp. This is a high level functional language and is interpreted. Our target language will be Probabilistic-C which is of course based on the language C. This is a much lower level imperative language and is compiled, it is also a very unconstrained PPL and this should allow us to do some interesting optimizations.
+We apply standard compiler techniques to transform a high level lisp-like language to a lower level C-like language. We also apply some known and some novel probabilistic optimizations during the compilation process. We follow the general idea of a paper entitled ``From System F to Typed Assembly Language'' \cite{SystemF}. This describes in detail the process of compilation from their own high level lisp-like language into an assembly language with type information. Adapting this to our own source language and a C-like language was not complicated.
+
+Our source language is based off of the probabilistic programming language Anglican, which is itself built upon a subset of the language Lisp. Anglican is a high level functional language and is interpreted. I will rarely refer to our source language by name but I have chosen to name it G since the aforementioned paper by G. Morrisett et al. used a language named F. Our target language will be Probabilistic-C which is of course based on the language C. This is a much lower level imperative language and is compiled, it is also a very unconstrained PPL and this should allow us to do some interesting optimizations.
 
 The bulk of the compiler is very standard, we transform into continuation passing style, perform closure conversion, hoist functions to the top level, and then output C code. One fortunate thing is that both Anglican and Prob-C handle observations in a similar way which makes the compilation considerably easier. We perform some non-probabilistic optimizations such as identifier reassignment and constant expression calculation. We then perform some probabilistic optimizations such as merging multiple samples from one distribution family into one sample, merging together multiple observes from the same family, merging any consecutive observes, and potentially completely removing observes when they forms a conjugate prior.
 
@@ -66,7 +70,7 @@ The bulk of the compiler is very standard, we transform into continuation passin
 
 \subsection{A brief example}
 
-To give an idea of what the system achieves we will examine one model in detail and see what optimizations can be done to it. The situation is this: some crickets and grasshoppers will chirp more during hot whether, scientists think that this relationship is linear but with some various between individual animals. The scientists find some crickets and take readings of chirp frequency at different temperatures, they record the following data.
+To give an idea of what the system achieves we will examine one model in detail and see what optimizations can be done to it. The situation is this: some crickets and grasshoppers will chirp more during hot whether, scientists think that this relationship is linear but with some variation between individual animals. The scientists find some crickets and take readings of chirp frequency at different temperatures, they record the following data. (Note: this is actually a subset of some real data collected by George W. Pierce in 1948 \cite{Crickets})
 
 \begin{center}
 	\def\arraystretch{1.3}
@@ -81,7 +85,7 @@ To give an idea of what the system achieves we will examine one model in detail 
 		75.2 & 15.5
 	\end{tabular}
 \end{center}
-They then try to calculate the gradient of the relationship using the following probabilistic program. As ever with beyesian probability they have some prior beliefs, they think that the gradient is between 0 and 1 and they have some bound on the variation between individual animals.
+They then try to calculate the gradient of the relationship using the following probabilistic program. As ever with Bayesian probability they have some prior beliefs, they think that the gradient is between 0 and 1 and they have some bound on the variation between individual animals.
 
 \begin{center}
 	\begin{varwidth}{\linewidth}
@@ -103,7 +107,11 @@ They then try to calculate the gradient of the relationship using the following 
 		\end{verbatim}
 	\end{varwidth}
 \end{center}
-The compilation follows standard steps of transforming into continuation passing style, closure conversion, hosting of functions to the top level. Below is the output if we did not then apply any probabilistic optimizations.
+The first thing this program does is sample a gradient uniformly from between 0 and 1. This will be our underlying gradient for all insects. It then samples a coefficient and constant for a particular insect supplying a mean and variance. Next it makes six observations, one for each piece of data collected by the scientists. For example the first observe statement effectively states that \(\texttt{coeff} \times 88.6 + \texttt{const} = 20.0\). All arithmetic in Lisp is done in a prefix style. Unfortunately in Anglican and similarly in G we cannot observe an equality like this directly, but using a normal distribution with a small variance has the same effect. The last thing done is to output the gradient of this run of the program. It is this value that we are interested in rather than the coefficient of that particular insect.
+
+It is not necessary now to understand exactly how the observe statements behave as all will be explained later. As an informal explanation, try to think of a program in terms of the data it outputs, which we will refer to as the posterior distribution. An observe statement modifies the values of variables and hence modifies the posterior distribution to more closely match the observed data. In fact an individual program trace is never altered. Instead of this, multiple programs are run in parallel, each is called a particle. Particles that don't match the observed data are killed off and others are cloned so the posterior distribution of the ensemble of programs converges to the observed data.
+
+The compilation of our program will follow the standard steps of transforming into continuation passing style, closure conversion, hosting of functions to the top level. Below is the output if we did not then apply any probabilistic optimizations.
 
 \begin{center}
 	\begin{varwidth}{\linewidth}
@@ -134,7 +142,9 @@ The compilation follows standard steps of transforming into continuation passing
 		\end{verbatim}
 	\end{varwidth}
 \end{center}
-However, there are a few optimizations that we can perform and we will list them in the order that they are performed.
+Immediately you can see that the syntax has changed dramatically but the fundamental program structure is unaltered. We still sample the underlying gradient and the coefficient and constant for a particular insect. We then observe our six pieces of data. The order of the arguments here is value, then mean, then variance. We then output the value of the gradient.
+
+In it's current state this program is barely faster than the original if at all. However, there are a few optimizations that we can make and we will list them in the order that they are performed.
 \begin{enumerate}
 \item
 	The first thing to notice is that the normal distributions of the coeff and const samples are conjugate priors to the normal distributions of the observations. We will explain what we mean by this later on. What this optimization does when we apply it is to remove the reference to the sampled variable from the observe, the observe will then be in terms of the parameters to the sample instead. If we apply this ten times we can remove all references to the coeff and const variables from the observes and have them only in terms of the gradient variable.
@@ -151,6 +161,46 @@ However, there are a few optimizations that we can perform and we will list them
 
 	After this optimization we are making one sample and six observes.
 
+	The program at this point is shown below. To make the program prettier here we have made all arithmetic calculations in-line and reduced them as much as possible. This is something the system could do but currently does not, in practice it would not affect program performance much so there is little encouragement to do this. What follows is the program after reducing the arithmetic by hand.
+
+	\begin{center}
+		\begin{varwidth}{\linewidth}
+			\small
+			\begin{verbatim}
+				#include <stdlib.h>
+				#include <stdio.h>
+
+				#include "probabilistic.h"
+
+				int main(int argc, char **argv) {
+				    double gradient = uniform_rng(0.0, 1.0);
+
+				    observe(normal_lnp(20.0,
+				                       gradient * 88.6,
+				                       392.798));
+				    observe(normal_lnp(16.0,
+				                       gradient * 0.009572350164697 + 16.1603674152755,
+				                       0.172665339437));
+				    observe(normal_lnp(19.8,
+				                       gradient * 0.0215414920690030 + 20.9779100181940,
+				                       0.171472119913));
+				    observe(normal_lnp(18.4,
+				                       gradient * 0.00714550738045528 + 18.5274790332219,
+				                       0.132812797595));
+				    observe(normal_lnp(17.1,
+				                       gradient * 0.0032241962331263 + 17.6916967883102,
+				                       0.123114249847));
+				    observe(normal_lnp(15.5,
+				                       gradient * -0.0005048414824 + 16.4109671553285,
+				                       0.118203847628));
+				    
+				    predict("%s,%f\n", "gradient", gradient);
+				    return 0;
+				}
+			\end{verbatim}
+		\end{varwidth}
+	\end{center}
+
 \item
 	The final optimization is to merge together any consecutive observes into one, this is why we collected them together. Here we can merge all six into one. This optimization works because the probability of all of a collection of events happening is the product of their individual probabilities. Observes work using the log of the probability however so we can calculate the log of the product as the sum of the logs.
 
@@ -158,9 +208,7 @@ However, there are a few optimizations that we can perform and we will list them
 
 \end{enumerate}
 
-So after all that we have reduced three samples and six observes into just one sample and one observe. This will improve both performance and sample quality greatly.
-
-To make the program prettier here we have made all arithmetic calculations in-line and reduced them as much as possible. This is something the system could do but currently does not, in practice it would not affect program performance much so there is little encouragement to do this. What follows is the final program after reducing the arithmetic by hand.
+So after all that we have reduced three samples and six observes into just one sample and one observe. This will greatly improve both performance and sample quality. What follows is the final program, again after reducing the arithmetic by hand.
 
 \begin{center}
 	\begin{varwidth}{\linewidth}
@@ -199,6 +247,16 @@ To make the program prettier here we have made all arithmetic calculations in-li
 		\end{verbatim}
 	\end{varwidth}
 \end{center}
+
+We ran all three of the above Probabilistic-C programs and timed and recorded the results. The non-optimized program took 120.1 seconds and produced quite poor samples. The program mid-optimizations ran in 113.0 seconds and produced good samples. The fully optimized program ran in 48.9 seconds and produced similar or slightly better samples that the program mid-optimizations.
+
+So we get a speedup of about 60 percent but this is not the biggest improvement, the real benefit is to the sample quality. The following graphs show the three posterior distributions.
+
+\centerline{\includegraphics[width=16cm]{images/crickets.png}}
+
+As you can see the first set of optimizations improve the sample quality greatly but do little to the running time. The second set of optimizations do little to the sample quality but do improve the running time significantly.
+
+We hope that this example has demonstrated and explained what it is that our compiler achieves, and why there is a need for such a compiler.
 
 
 
