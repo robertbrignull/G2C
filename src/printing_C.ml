@@ -32,19 +32,19 @@ and print_data_decl ((id, _), _) =
 (* Print a definition of a bundle struct *)
 (* print_bundle_struct :: bundle_struct -> string *)
 and print_bundle_struct ((id, _), args) =
-  "typedef struct " ^ id ^ " {\n" ^
+  "struct " ^ id ^ " {\n" ^
   (indent il) ^ "void (*func)(void *data" ^
   (String.concat ", " ("" :: (List.map print_id args))) ^
   ");\n" ^
   (indent il) ^ "void *data;\n" ^
-  "} " ^ id ^ ";\n"
+  "};\n"
 
 (* Print a definition of a data struct *)
 (* print_data_struct :: data_struct -> string *)
 and print_data_struct ((id, _), bundle) =
-  "typedef struct " ^ id ^ " {\n" ^
+  "struct " ^ id ^ " {\n" ^
   (String.concat "" (List.map (fun b -> (indent il) ^ (print_id b) ^ ";\n") bundle)) ^
-  "} " ^ id ^ ";\n"
+  "};\n"
 
 (* Print an op that takes one argument, hence it is prefixed.
    Basically only '-' and '!' use this. *)

@@ -12,7 +12,7 @@ typedef enum {
 
 typedef struct list_node list_node;
 
-typedef struct list_node {
+struct list_node {
 	int first_type;
 	union {
 		double first_num;
@@ -21,7 +21,7 @@ typedef struct list_node {
 		abstract_bundle first_bundle;
 	};
 	list_node *rest;
-} list_node;
+};
 
 
 
