@@ -1,5 +1,6 @@
 prog_*
 !prog_*.c
+!prog.g
 data_*
 data_for_plot
 times
