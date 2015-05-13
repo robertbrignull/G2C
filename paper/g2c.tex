@@ -46,17 +46,37 @@
 
 \section{Introduction}
 
+
+
+%     ##        ## 
+%    ###       ### 
+%     ##        ## 
+%     ##        ## 
+%     ##        ## 
+%     ##   ##   ## 
+%    ####  ##  ####
+
 \subsection{Why probabilistic programming}
 
-Recently research has been made about a new type of programming language, they are called probabilistic programming languages. There are probabilistic programming languages that extend various existing languages, examples include C \cite{ProbabilisticC}, Java \cite{BLOG}, Python \cite{PyMC}, Lisp \cite{Anglican} \cite{Venture} \cite{Church}, SQL \cite{PSQL}, .NET \cite{Infer.NET} and MATLAB \cite{dimple}. These base languages differ greatly in terms of their paradigms and their execution speed. What we attempt in this project is bring techniques from compilers and programming languages to make a compiler from a high level probabilistic probabilistic language to a lower level one. We do this both for the performance increase of using a lower level language and also so we can perform some probabilistic optimizations along the way.
+Recently research has been made about a new type of programming language. They are called probabilistic programming languages. There are probabilistic programming languages that extend various existing languages, examples include C \cite{ProbabilisticC}, Java \cite{BLOG}, Python \cite{PyMC}, Lisp \cite{Anglican, Venture, Church}, SQL \cite{PSQL}, .NET \cite{Infer.NET}, and MATLAB \cite{dimple}. These base languages differ greatly in terms of their paradigms and their execution speed. What we attempt in this project is bring techniques from compilers and programming languages to make a compiler from a high level probabilistic probabilistic language to a lower level one. We do this both for the performance increase of using a lower level language and also so we can perform some probabilistic optimizations along the way.
 
-The field of probabilistic programming is a very interesting one with far reaching applications. One of its main uses is to open up the field of machine learning to non-experts. It is currently the case that to do any non-trivial machine learning one must design and build both the model and the inference algorithm oneself, this requires a large amount of statistical and general computer science knowledge. Probabilistic probabilistic languages aim to remove those needs by taking care of all the inference in a very general yet still efficient way. The user should be able to write the model they desire in what is almost a normal programming language using all of its powerful and expression, then the inference will be done automatically and efficiently by the language without any need for deep statistical knowledge.
+The field of probabilistic programming is a very interesting one with far reaching applications. One of its main uses is to open up the field of machine learning to non-experts. It is currently the case that to do any non-trivial machine learning one must design and build both the model and the inference algorithm oneself. This requires a large amount of statistical and general computer science knowledge. Probabilistic probabilistic languages aim to remove those needs by taking care of all the inference in a very general yet still efficient way. The user should be able to write the model they desire in what is almost a normal programming language using all of its powerful and expression, then the inference will be done automatically and efficiently by the language without any need for deep statistical knowledge.
 
 Another benefit of probabilistic programming is that it allows generic and yet efficient inference on very complex models. It also could open up whole new approaches to machine learning by giving researchers the ability to explore new models rapidly and with relatively little code. This is not to say that probabilistic programming languages are trying to compete with current machine learning frameworks. They will likely never be as efficient at running current machine learning models as the current highly specialized algorithms. The point of probabilistic programming languages is to enable the construction of entirely new models without the need to write a new specialized inference algorithm each time.
 
-One of the main problems that is holding back probabilistic programming is the ability to perform efficient inference, this is the problem our compiler aims to tackle. We note that the choice of language makes a significant difference to the inference problem. Users want to write in a high level language but it is then harder to perform inference. In a lower level language it is easier to perform inference but harder for the users to write programs. The obvious solution is a compiler from a high level probabilistic programming language to a lower level one.
+Looking to the future the industrial applications of probabilistic programming are diverse. It could be used for anything that requires estimating a distribution given prior beliefs and conditioned on some observed data. Example areas include: artificial intelligence, predicting stock prices, recommending products to customers, diagnosing problems in computers or cars, cyber-security, image detection, etc.
+
+One of the main problems that is holding back probabilistic programming is the ability to perform efficient inference. This is the problem our compiler aims to tackle. We note that the choice of language makes a significant difference to the inference problem. Users want to write in a high level language but it is then harder to perform inference. In a lower level language it is easier to perform inference but harder for the users to write programs. The obvious solution is a compiler from a high level probabilistic programming language to a lower level one.
 
 
+
+%     ##        ###### 
+%    ###       ##    ##
+%     ##            ###
+%     ##          ###  
+%     ##        ###    
+%     ##   ##  ##      
+%    ####  ##  ########
 
 \subsection{What we do}
 
@@ -64,13 +84,21 @@ We apply standard compiler techniques to transform a high level lisp-like langua
 
 Our source language is based off of the probabilistic programming language Anglican, which is itself built upon a subset of the language Lisp. Anglican is a high level functional language and is interpreted. I will rarely refer to our source language by name but I have chosen to name it G since the aforementioned paper by G. Morrisett et al. used a language named F. Our target language will be Probabilistic-C which is of course based on the language C. This is a much lower level imperative language and is compiled, it is also a very unconstrained PPL and this should allow us to do some interesting optimizations.
 
-The bulk of the compiler is very standard, we transform into continuation passing style, perform closure conversion, hoist functions to the top level, and then output C code. One fortunate thing is that both Anglican and Prob-C handle observations in a similar way which makes the compilation considerably easier. We perform some non-probabilistic optimizations such as identifier reassignment and constant expression calculation. We then perform some probabilistic optimizations such as merging multiple samples from one distribution family into one sample, merging together multiple observes from the same family, merging any consecutive observes, and potentially completely removing observes when they forms a conjugate prior.
+The bulk of the compiler is very standard. We transform into continuation passing style, perform closure conversion, hoist functions to the top level, and then output C code. One fortunate thing is that both Anglican and Prob-C handle observations in a similar way which makes the compilation considerably easier. We perform some non-probabilistic optimizations such as identifier reassignment and constant expression calculation. We then perform some probabilistic optimizations such as merging multiple samples from one distribution family into one sample, merging together multiple observes from the same family, merging any consecutive observes, and potentially completely removing observes when they forms a conjugate prior.
 
 
+
+%     ##        ##### 
+%    ###       ##   ##
+%     ##            ##
+%     ##        ##### 
+%     ##            ##
+%     ##   ##  ##   ##
+%    ####  ##   ##### 
 
 \subsection{A brief example}
 
-To give an idea of what the system achieves we will examine one model in detail and see what optimizations can be done to it. The situation is this: some crickets and grasshoppers will chirp more during hot whether, scientists think that this relationship is linear but with some variation between individual animals. The scientists find some crickets and take readings of chirp frequency at different temperatures, they record the following data. (Note: this is actually a subset of some real data collected by George W. Pierce in 1948 \cite{Crickets})
+To give an idea of what the system achieves we will examine one model in detail and see what optimizations can be done to it. The situation is this: some crickets and grasshoppers will chirp more during hot whether. The scientists think that this relationship is linear but with some variation between individual animals. The scientists find some crickets and take readings of chirp frequency at different temperatures. They record the following data. (Note: this is actually a subset of some real data collected by George W. Pierce in 1948 \cite{Crickets})
 
 \begin{center}
 	\def\arraystretch{1.3}
@@ -202,7 +230,7 @@ In it's current state this program is barely faster than the original if at all.
 	\end{center}
 
 \item
-	The final optimization is to merge together any consecutive observes into one, this is why we collected them together. Here we can merge all six into one. This optimization works because the probability of all of a collection of events happening is the product of their individual probabilities. Observes work using the log of the probability however so we can calculate the log of the product as the sum of the logs.
+	The final optimization is to merge together any consecutive observes into one. This is why we collected them together. Here we can merge all six into one. This optimization works because the probability of all of a collection of events happening is the product of their individual probabilities. Observes work using the log of the probability however so we can calculate the log of the product as the sum of the logs.
 
 	After this optimization we are making one sample and one observe.
 
@@ -250,7 +278,7 @@ So after all that we have reduced three samples and six observes into just one s
 
 We ran all three of the above Probabilistic-C programs and timed and recorded the results. The non-optimized program took 120.1 seconds and produced quite poor samples. The program mid-optimizations ran in 113.0 seconds and produced good samples. The fully optimized program ran in 48.9 seconds and produced similar or slightly better samples that the program mid-optimizations.
 
-So we get a speedup of about 60 percent but this is not the biggest improvement, the real benefit is to the sample quality. The following graphs show the three posterior distributions.
+So we get a speedup of about 60 percent but this is not the biggest improvement. The real benefit is to the sample quality. The following graphs show the three posterior distributions.
 
 \centerline{\includegraphics[width=16cm]{images/crickets.png}}
 
@@ -280,17 +308,25 @@ We hope that this example has demonstrated and explained what it is that our com
 %    ##        ##   ## 
 %    ########  ##  ####
 
-\subsection{Probabilistic programming}
+\subsection{Bayesian probability}
 
-Superficially a probabilistic programming language may appear to be just like a normal one, in fact one could say that if you've ever written a program that calls a random number generator then you've written a probabilistic program. PPLs do indeed make it easy to sample from various probability distributions by having them built in to the language, but they do much more than that as well. A PPL allows you to condition the entire execution trace on some observed data, and I will explain what I mean by that in the next few paragraphs.
+Bayesian probability is a branch of probability and logic that deals with making predictions about future events based off of our prior assumptions and the outcomes of current events.
 
-For the sake of this explanation a good way of thinking about all programs would be to consider the distribution of outputs they produce. For completely deterministic programs they may only produce one possible output, once you start involving random number generators they produce a distribution over many values. What we're interested in is the output or posterior distribution of the program. There are a few ways to calculate this posterior distribution, either by running it many times to generate an approximation which gets closer to the true posterior the more you run it, or by using static analysis on the program to track the distributions through it and calculate the posterior precisely.
+We assume that the reader has knowledge of basic probability ideas. This includes conditional probability, the idea that if \(A\) and \(B\) are events then
+\[\Pr(A | B) = \frac{\Pr(A \land B)}{\Pr(B)}\]
+is the probability of \(A\) occurring given that \(B\) has already occurred.
 
-Where things get more complicated is the when we introduce the true power of PPLs which is the ability to observe, this allows you to condition the entire program execution on some observed data and change the poterior distribution to match. Essentially what you're doing is saying that we observed this statement to be true and any run of the program which does not match that statement can be discarded, we only want program executions that match our observations. When getting output via sampling this can either be done in a hard (rejection sampling) or soft (particles) way. In rejection sampling the observe statements act like an assume statement would, you run the program and if an observe fails then you restart the program from the beginning and try again. With particle sampling you run the program many times simultaneously and have them synchronize at observe statements where you calculate not just whether an observe is satisfied but rather what is the probability of it being satisfied, you then kill off less likely particles and clone new ones from those left. Of course actual sampling techniques are far more sofisticated, but this hopefully gives you an idea of how they work.
-
-Usually a probabilistic programming language is based on an existing language rather than being a completely new one, examples include: Venture (Lisp), Anglican (Lisp), IBAL (OCaml), Infer.NET (.NET), PSQL (SQL), FACTORIE (Scala), Alchemy (C++), Church (Lisp), Stan (none). More are being designed constantly as people discover new ways of using them.
-
-The applications of probabilistic programming are diverse, anything that requires estimating a distribution given prior beliefs and conditioned on some observed data. They can be used in artificial intelligence, predicting stock prices, recomending products to customers, diagnosing problems in computers/cars/whatever, cyber security, image detection, etc.
+The central theorem of Bayesian probability is Bayes theorem, which is as follows: for two events \(A\) and \(B\),
+\[\Pr(A | B) = \frac{\Pr(B | A) \Pr(A)}{\Pr(B)}\]
+This comes straight from the definition of conditional probability. However, whilst we will usually know \(\Pr(A)\) and \(\Pr(B | A)\) we usually will not know \(\Pr(B)\). Here we can apply a theorem called the Law of Total Probability, which is as follows: If \(A\) is an event and \(\mathcal B = \{B_i\}\) forms a finite or countable partition of the sample space, then
+\[\Pr(A) = \sum_{B_i \in \mathcal B} \Pr(A | B_i) \Pr(B_i)\]
+This works for continuous events as well: If \(A\) is an event and \(X\) is a continuous random variable, then
+\[\Pr(A) = \int_{-\infty}^\infty \Pr(A | X = x) \Pr(X = x) dx\]
+This leads to an extended version of Bayes theorem which is as follows: If \(B\) is an event and \(\mathcal A = \{A_i\}\) forms a partition of the sample space, then
+\[\Pr(A_i | B) = \frac{\Pr(B | A_i) \Pr(A_i)}{\sum_{A_j \in \mathcal A} \Pr(B | A_j) \Pr(A_j)}\]
+And the continuous version: If \(B\) is an event and \(X\) a continuous random variable, then
+\[\Pr(X = x | B) = \frac{\Pr(B | X = x) \Pr(X = x)}{\int_{-\infty}^\infty \Pr(B | X = x') \Pr(X = x') dx'}\]
+These theorems are central to the work we will do throughout this project.
 
 
 
@@ -302,13 +338,59 @@ The applications of probabilistic programming are diverse, anything that require
 %    ##        ##  ##      
 %    ########  ##  ########
 
-\subsection{Anglican and Prob-C}
+\subsection{Probabilistic programming}
 
-Anglican and Prob-C are the two languages we'll be concentrating on, Anglican because it is the basis for the source language of my compiler, and Prob-C because it is the target language of my compiler.
+Superficially a probabilistic programming language may appear to be just like a normal one. In fact one could say that if you've ever written a program that calls a random number generator then you've written a probabilistic program. Probabilistic programming languages do indeed make it easy to sample from various probability distributions by having them built in to the language, but they do much more than that as well. A probabilistic programming language allows you to condition the entire execution on some observed data. We will explain what we mean by that in the next few paragraphs.
 
-Anglican is based on the Venture modeling language which is itself built upon Lisp. It is effectively one language embedded within another, specifically it is built from a sequence of Assume, Observe, and Predict directives, each of which contain expressions which can from a safe, functional subset of Lisp. Being Lisp like, Anglican is quite high level and this makes it nice and easy to create complex models, however it is interpreted and therefore for those same complex models it runs quite slowly.
+For the sake of this explanation a good way of thinking about all programs would be to consider the distribution of outputs they produce. For completely deterministic programs they may only produce one possible output. Once you start using random number generators they produce a distribution over many values. What we're interested in is this distribution of outputs of the program which we call the posterior distribution.
 
-Prob-C on the other hand is based on full C rather than a subset, in fact the only difference is the addition of a library of sampling functions, two extra functions to observe and predict, and a macro which redefines the main function. So Prob-C has all the power of C and most of the speed. Unlike almost all other probabilistic programming languages, Prob-C is unsafe in the sense that it is possible to create programs which make no sense statistically, for this reason as well as C's unfriendliness it is not recommended to code in Prob-C directly.
+There are a few ways to calculate this posterior distribution. One method is to run it many times to generate an approximation which gets closer to the true posterior the more you run it. This is the method used by both Anglican and Probabilistic-C \cite{Anglican, ProbabilisticC}. Another way is to use static analysis on the program to track the distributions through it and calculate the posterior precisely. An example of this exact method can be seen in a implementation of Church called Cosh \cite{Cosh}. The exact method is of course more accurate but also far more computationally expensive. As a result it can usually only be used on very simple programs. During this paper we will only consider the inexact method of inference.
+
+Where things get more complicated is the when we introduce the ability to observe. This is the true power of probabilistic programming languages. This allows you to condition the entire program execution on some observed data and change the posterior distribution to match.
+
+Suppose we first sample a variable \(Y\) from a distribution. So we know \(\Pr(Y = y)\). Then suppose we observe a piece of data \(X\). So we know \(\Pr(X = x | Y = y)\). After the observe statement we expect the variable \(Y\) to instead follow the distribution \(\Pr(Y = y\ |\ X = x)\). It may not be possible to calculate this distribution analytically, but this is the purpose of the inference algorithm of the probabilistic programming language.
+
+To illustrate the process, consider the following simple Anglican program.
+
+\begin{center}
+	\begin{varwidth}{\linewidth}
+		\small
+		\begin{verbatim}
+			[assume p (uniform-continuous 0 1)]
+			[observe (flip p) true]
+			[predict p]
+		\end{verbatim}
+	\end{varwidth}
+\end{center}
+What this means in terms of probabilities is: \(\Pr(p) = 1\), \(\Pr(x | p) = p\). Then we expect the posterior distribution of \(p\) to be
+\[\Pr(p | x) = \frac{\Pr(x | p) \Pr(p)}{\int_0^1 \Pr(x | p') \Pr(p') dp'} = 2p\]
+and this is exactly the output we see if we run the program. Although this conditional probability was easy to work out analytically, this is not always the case. Probabilistic programming gives us the power to approximate any probability of this form when we can't calculate it directly.
+
+Now that we have a basic idea of the semantics of an observe statement, we will define two related but different types of observation and ways of doing inference on each.
+
+What we will call a hard observation asserts the result of some non-probabilistic boolean expression. This is the way that Church handles observations. One way to do inference using this kind of observation is to run the program many times and restart from the beginning whenever you fail an observation. This way only traces which satisfy all the observations will make it to the end and be recorded. This is known as rejection sampling and is a rather unsophisticated and limited way of doing inference. There are other ways of doing inference using these observations but they are more complicated and it is not necessary to understand them here.
+
+What we will call a soft observation instead samples from a probability distribution and asserts that it received a particular value. This is the way that both Anglican and Probabilistic-C handle observations. Now that we might be sampling continuous values from probability distributions we can't do rejection sampling anymore, instead we use particles. The basic idea is to run the same program many times in parallel. Each individual instance of the program is called a particle. The particles are made to synchronize with each other at observe statements. A consequence of this is that all possible runs of the program must hit the same number of observe statements. When a particle comes to an observe statement it calculates the probability of that observation being satisfied. Once all particles have reached the observe statement the less likely particles may be killed off and new ones are cloned from those that remain to keep the number of particles constant. The end result is that the distribution of values of variables throughout the collection of particles converges to the correct posterior distribution.
+
+This concludes our overview of probabilistic programming. Next we will describe the two languages Anglican and Probabilistic-C in more detail.
+
+
+
+%     ######        ##### 
+%    ##    ##      ##   ##
+%         ###           ##
+%       ###         ##### 
+%     ###               ##
+%    ##        ##  ##   ##
+%    ########  ##   ##### 
+
+\subsection{Anglican and Probabilistic-C}
+
+Anglican and Prob-C are the two established probabilistic programming languages we'll be concentrating on. The source language of our compiler is based on Anglican and the target language of our compiler is Probabilistic-C.
+
+Anglican is a high level probabilistic programming language based upon a subset of the language Lisp. The exact syntax is that it is a sequence of assume, observe, and predict directives. Each directive may then contain expressions which come from a safe, functional subset of Lisp. An assume directive defines a new identifier and is identical to a let expression. An observe directive performs a soft observation as we defined in the previous section. A predict directive prints out a value to the terminal. The Lisp subset used for the inner expressions includes all the basic flow control elements, lots of mathematical operators, and a large selection of probabilistic distributions to sample from. As we've said, Anglican is high level and this makes it nice to program in. However, for complex models it can be slow.
+
+Probabilistic-C is a lower level probabilistic programming language based upon C. One could argue that Probabilistic-C is more of a library than a language. In fact the only difference is the addition of a library of sampling functions, two extra functions to observe and predict, and a macro which redefines the main function. This means that Probabilistic-C has all of the power of C and almost all of the speed. An observe statement in Probabilistic-C also performs a soft observation. These are the same semantics as in Anglican and this makes the compilation easier. If our source language was based on Church for example, then the compilation would be considerably harder as the semantics of observations would be different. Probabilistic-C is different from most probabilistic programming languages in that you are very unconstrained in your observations. In most languages you would be required to supply a distribution and a value to an observe statement. However, in Probabilistic-C you simply supply a floating point value representing the log of the p.d.f. of the distribution at the desired point. This lack of restriction makes Probabilistic-C unsafe in the sense that you can write programs that make no sense statistically. However, we will use this extra power to do optimizations and it gives us a lot of options that we would not have with another target language. For this reason and C's general unfriendliness it is not recommended to code in Probabilistic-C directly.
 
 Combine the facts about these two languages and you can see there is an obvious motive for creating a compiler between them.
 
