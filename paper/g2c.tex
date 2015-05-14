@@ -1442,6 +1442,59 @@ The result on speed was that the optimized program was approximately 27\% faster
 
 
 
+%        ##       ####### ##    ## ######## ##    ## ######   #######      ##          ##  #####  ######   ##   ##
+%       ##    ##  ##      ##    ##    ##    ##    ## ##   ##  ##           ##          ## ##   ## ##   ##  ##  ## 
+%      ##     ##  ##      ##    ##    ##    ##    ## ##   ##  ##            ##   ##   ##  ##   ## ##   ##  ## ##  
+%     #####       #####   ##    ##    ##    ##    ## ######   ######        ##  ####  ##  ##   ## ######   ####   
+%    ##   ##  ##  ##      ##    ##    ##    ##    ## ##  ##   ##             ####  ####   ##   ## ##  ##   ## ##  
+%    ##   ##  ##  ##      ##    ##    ##    ##    ## ##   ##  ##             ####  ####   ##   ## ##   ##  ##  ## 
+%     #####       ##       ######     ##     ######  ##    ## #######         ##    ##     #####  ##    ## ##   ##
+
+\section{Future work}
+
+We have had various idea for ways that the compiler could be improved upon. Most of these ideas are small and are just things that we did not have time to implement initially. Some ideas however would require more work and large changes throughout the compiler.
+
+\begin{itemize}
+\item
+	We only implemented a small number of optimizations from each category. For example we only implemented the optimization to reduce multiple observes from the same family to one observe for the normal distribution. This optimization could be made for many other distribution families and it would be interesting to implement it for more of them. The optimization dealing with conjugate prior distributions could also be done for more distributions than we originally had time for. In all cases I expect the relationship has already been discovered by mathematicians and we only need to peruse the subject matter to find all the relationships of interest. This was not done due to time constraints.
+
+\item
+	Reducing arithmetic in the outputted C code would have no to little effect on the speed of the program but would be interesting to do and make the outputted C code smaller and prettier. This is something already done by compilers. Due to Anglican using only floating point numbers and no integers the transformations will be slightly easier than if it did. We did not implement this due to time constraints and the fact that it is of little use.
+
+\item
+	Currently any if statement in the source program results in a continuation in the final C program. Each continuation increases complexity and is slow to execute. In many cases however it would be possible to get away without a continuation. This would involve using standard compiler techniques and is not hugely interesting. It was not implemented originally because of the difficulty of the transformations.
+
+\item
+	The source language G currently has extra type information. It would be nice to be able to remove this and use unaltered Anglican as our source language. This would consist of two parts as type information is used in two places.
+
+	The extra information in function types could be removed by doing standard, well understood analysis to infer the type or infer that no type could possibly work. For functions that are then called with multiple different but possible types we may have to create one function in the outputted C code for each type used. This is the way that C++ templating works.
+
+	When extracting items from lists we currently use extra type information to know what we're expecting and then halt execution if we receive something different. The benefit of doing it this way is that we can use native C types once we've extracted the value. The down side is of course that extra type information is needed. The way to fix this would be to not use native types but extract into a data structure that holds one variable from a selection of types. Doing this would allow us to more closely model the semantics of Lisp. It is not clear what the performance penalty would be.
+
+	The reason that both of these extra features were not added is because they are difficult to implement and not necessary to demonstrate the optimizations. If this system were to be extended to a usable one however then we would have to look at these as we would want to use an unmodified existing untyped language such as Anglican as the source language.
+
+\item
+	There is a feature of Anglican and of many other probabilistic and traditional programming languages called memoization. This feature caches the results of a function. Normally this is only used for performance reasons. In a probabilistic programming language memoization is used to cache the output of probabilistic functions and this allows one to write a whole new class of model. An example of a new model that could be written is probabilistically generating an automaton that accepts a set of words. Anglican has a primitive \texttt{mem} which turns a normal function into a cached one. Probabilistic-C also provides an implementation of caching so threading them together shouldn't be too difficult. The reason this was not done originally is because of time constraints and the difficulty of making sure that the two implementations of caching are identical in their semantics.
+
+\item
+	There is an issue that for very simple programs Probabilistic-C can be slower than the original Anglican. Generally if the program does not involve user-defined functions then Anglican will execute significantly faster. However, when more complicated features are involved such as user-defined functions and lists the generated Probabilistic-C comes out as faster. There are a few hypothesis that it would be interesting to test out. It could be to do with the compilation introducing unnecessary continuations which slow down execution. It could be because of Probabilistic-C's high use of multi-threading and my test computer is not suited to fast execution. Whatever the reason it would be nice to make it faster if possible.
+
+\end{itemize}
+
+
+
+%    ########       #####   #####  ##    ##  #####  ##     ##    ##  #####  ####  #####  ##    ##
+%         ##   ##  ##   ## ##   ## ###   ## ##   ## ##     ##    ## ##       ##  ##   ## ###   ##
+%        ##    ##  ##      ##   ## ####  ## ##      ##     ##    ## ##       ##  ##   ## ####  ##
+%       ##         ##      ##   ## ## ## ## ##      ##     ##    ##  #####   ##  ##   ## ## ## ##
+%      ##      ##  ##      ##   ## ##  #### ##      ##     ##    ##      ##  ##  ##   ## ##  ####
+%     ##       ##  ##   ## ##   ## ##   ### ##   ## ##     ##    ##      ##  ##  ##   ## ##   ###
+%    ##             #####   #####  ##    ##  #####  ######  ######   #####  ####  #####  ##    ##
+
+\section{Conclusion}
+
+
+
 \bibliography{g2c}{}
 \bibliographystyle{plainurl}
 
