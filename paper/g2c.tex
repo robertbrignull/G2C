@@ -119,23 +119,23 @@ They then try to calculate the gradient of the relationship using the following 
 	\begin{varwidth}{\linewidth}
 		\small
 		\begin{verbatim}
-			[assume gradient (uniform-continuous 0 1)]
-
-			[assume coeff (normal gradient 0.05)]
-			[assume const (normal 0 0.2)]
-
-			[observe (normal (+ (* 88.6 coeff) const) 0.1) 20.0]
-			[observe (normal (+ (* 71.6 coeff) const) 0.1) 16.0]
-			[observe (normal (+ (* 93.3 coeff) const) 0.1) 19.8]
-			[observe (normal (+ (* 84.3 coeff) const) 0.1) 18.4]
-			[observe (normal (+ (* 80.6 coeff) const) 0.1) 17.1]
-			[observe (normal (+ (* 75.2 coeff) const) 0.1) 15.5]
-
-			[predict gradient]
+			 1    [assume gradient (uniform-continuous 0 1)]
+			 2    
+			 3    [assume coeff (normal gradient 0.05)]
+			 4    [assume const (normal 0 0.2)]
+			 5    
+			 6    [observe (normal (+ (* 88.6 coeff) const) 0.1) 20.0]
+			 7    [observe (normal (+ (* 71.6 coeff) const) 0.1) 16.0]
+			 8    [observe (normal (+ (* 93.3 coeff) const) 0.1) 19.8]
+			 9    [observe (normal (+ (* 84.3 coeff) const) 0.1) 18.4]
+			10    [observe (normal (+ (* 80.6 coeff) const) 0.1) 17.1]
+			11    [observe (normal (+ (* 75.2 coeff) const) 0.1) 15.5]
+			12    
+			13    [predict gradient]
 		\end{verbatim}
 	\end{varwidth}
 \end{center}
-The first thing this program does is to sample a gradient uniformly from between 0 and 1. This will be our underlying gradient for all insects. It then samples a coefficient and constant for a particular insect by supplying a mean and variance. Next it makes an observation for each piece of data collected by the scientists. For example the first observe statement effectively states that \(\texttt{coeff} \times 88.6 + \texttt{const} = 20.0\). All arithmetic in Lisp is done in a prefix style. Unfortunately in Anglican and similarly in G we cannot observe an equality like this directly, but using a normal distribution with a small variance has the same effect. The last thing done is to output the gradient of this run of the program. It is this value that we are interested in rather than the coefficient of the particular insect.
+The first thing this program does is to sample a gradient uniformly from between 0 and 1 (line 1). This will be our underlying gradient for all insects. It then samples a coefficient and constant for a particular insect by supplying a mean and variance (lines 3-4). Next it makes an observation for each piece of data collected by the scientists (lines 6-11). For example the first observe statement effectively states that \(\texttt{coeff} \times 88.6 + \texttt{const} = 20.0\). All arithmetic in Lisp is done in a prefix style. Unfortunately in Anglican and similarly in G we cannot observe an equality like this directly, but using a normal distribution with a small variance has the same effect. The last thing done is to output the gradient of this run of the program (line 13). It is this value that we are interested in rather than the coefficient of the particular insect.
 
 It is not necessary now to understand exactly how the observe statements behave as all will be explained later. As an informal explanation, try to think of a program in terms of the data it outputs, which we will refer to as the posterior distribution. An observe statement modifies the values of variables and hence modifies the posterior distribution to more closely match the observed data. In fact an individual program trace is never altered. Instead of this multiple programs are run in parallel and each is called a particle. Particles that don't match the observed data are killed off and others are cloned so the posterior distribution of the ensemble of programs converges to the observed data.
 
