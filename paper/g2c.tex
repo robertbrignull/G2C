@@ -1493,6 +1493,12 @@ We have had various idea for ways that the compiler could be improved upon. Most
 
 \section{Conclusion}
 
+What we have achieved in this project is to create an optimizing compiler from a high level Lisp based probabilistic programming language to a lower level C based probabilistic programming language. The compilation itself is interesting enough although we did have to add extra type information to the source language to make the compilation easier. However, the real aim of the compiler was to perform various probabilistic optimizations during compilation. Optimizations we apply include merging multiple samples from one distribution family into one sample, merging together multiple observes from the same family, merging any consecutive observes, and potentially completely removing observes when they forms a conjugate prior.
+
+Overall we think that the project has been a success. The compiler compiles source code successfully and the although the performance improvement varies by program it can be up to 50 percent. There is then in general at least one probabilistic optimization that can be applied to any program and this produces both huge speed increases and improvements to the quality of samples generated. By leveraging the optimizations it becomes possible to write entire classes of model that before were infeasible. It would be more impressive if unaltered Anglican were used as the source language but we explain in the previous section that although this is possible there just was not time to implement it.
+
+We hope that this project can be continued to produce a system that could feasibly be used in production. Along with other research we are confident that the efficiency of probabilistic programming systems will continue to improve. We only hope that this project is a step in that direction and benefits other researchers.
+
 
 
 \bibliography{g2c}{}
