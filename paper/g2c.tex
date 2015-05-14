@@ -1248,7 +1248,7 @@ Again if \texttt{m\_1} and \texttt{b\_1} are constant then the observe can be re
 
 \subsubsection{Removal of constant observe statements}
 
-Here the idea is that when all of the arguments to an observe statement are constant, that observe can have no influence on the posterior distribution and so we can remove the observe. The reason for this is that when it comes to allocating children to the particles, the distribution used to pick them is a uniform one. This does not mean that every particle gets precisely one child, but averaging over many iterations the posterior distribution is unchanged. Removing the observe will increase performance and possibly increase the mixing as well but only to a slight extent.
+Here the idea is that if all of the arguments to an observe statement are constant then that observe can have no influence on the posterior distribution. In this case we we can remove the observe and not change the posterior distribution. The reason for this is that the distribution used to allocate children to the particles is uniform. This does not mean that every particle gets precisely one child, but averaging over many iterations the posterior distribution is unchanged. Removing the observe will increase performance and will also increase the quality of the samples produced. The reason for increasing sample quality is to do with unique particles. At an observe some particles are killed and others are cloned. This results in a decrease in the total number of unique particles. Therefore by not doing the observe we keep the number of unique particles as high as possible.
 
 
 
