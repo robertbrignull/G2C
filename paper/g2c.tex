@@ -82,7 +82,7 @@ One of the main problems that is holding back probabilistic programming is the a
 
 We apply standard compiler techniques to transform a high level Lisp-like language to a lower level C-like language. We also apply some known and some novel probabilistic optimizations during the compilation process. We follow the general idea of a paper entitled ``From System F to Typed Assembly Language'' after adjusting it to our own source and target languages and to handle the primitives for probability \cite{SystemF}. This describes in detail the process of compilation from their own high level Lisp-like language into an assembly language with type information.
 
-Our source language is based off of the probabilistic programming language Anglican, which is itself built upon a subset of the language Lisp. Anglican is a high level functional language and is interpreted. We will rarely refer to our source language by name but we have chosen to name it G since the aforementioned paper by G. Morrisett et al. used a language named F. Our target language will be Probabilistic-C which is based on the language C. This is a much lower level imperative language and is compiled, it is also a very unconstrained probabilistic programming language and this should allow us to do some interesting optimizations.
+Our source language is based off of the probabilistic programming language Anglican, which is itself built upon a subset of the language Lisp. Anglican is a high level functional language and is interpreted. We will rarely refer to our source language by name but we have chosen to name it G since the aforementioned paper by Morrisett et al. used a language named F. Our target language will be Probabilistic-C which is based on the language C. This is a much lower level imperative language and is compiled, it is also a very unconstrained probabilistic programming language and this should allow us to do some interesting optimizations.
 
 The bulk of the compiler is very standard. We transform into continuation passing style, perform closure conversion, hoist functions to the top level, and then output C code. One fortunate thing is that both Anglican and Probabilistic-C handle observations in a similar way which makes the compilation considerably easier as we will explain later. We perform some non-probabilistic optimizations such as identifier reassignment and constant expression calculation. We then perform some probabilistic optimizations such as merging multiple samples from one distribution family into one sample, merging together multiple observes from the same family, merging any consecutive observes, and potentially completely removing observes when they form a conjugate prior.
 
@@ -137,7 +137,7 @@ They then try to calculate the gradient of the relationship using the following 
 \end{center}
 The first thing this program does is to sample a gradient uniformly from between 0 and 1 (line 1). This will be our underlying gradient for all insects. It then samples a coefficient and constant for a particular insect by supplying a mean and variance (lines 3-4). Next it makes an observation for each piece of data collected by the scientists (lines 6-11). For example the first observe statement effectively states that \(\texttt{coeff} \times 88.6 + \texttt{const} = 20.0\). All arithmetic in Lisp is done in a prefix style. Unfortunately in Anglican and similarly in G we cannot observe an equality like this directly, but using a normal distribution with a small variance has the same effect. The last thing done is to output the gradient of this run of the program (line 13). It is this value that we are interested in rather than the coefficient of the particular insect.
 
-It is not necessary now to understand exactly how the observe statements behave as all will be explained later. As an informal explanation, try to think of a program in terms of the data it outputs, which we will refer to as the posterior distribution. An observe statement modifies the values of variables and hence modifies the posterior distribution to more closely match the observed data. In fact an individual program trace is never altered. Instead of this multiple programs are run in parallel and each is called a particle. Particles that don't match the observed data are killed off and others are cloned so the posterior distribution of the ensemble of programs converges to the observed data.
+It is not necessary now to understand exactly how the observe statements behave as all will be explained later. As an informal explanation, try to think of a program in terms of the data it outputs, which we will refer to as the posterior distribution. An observe statement modifies the values of variables and hence modifies the posterior distribution to more closely match the observed data. In fact an individual program trace is never altered. Instead of this multiple programs are run in parallel and each is called a particle. Particles that do not match the observed data are killed off and others are cloned so the posterior distribution of the ensemble of programs converges to the observed data.
 
 The compilation of our program will follow the standard steps of transforming into continuation passing style, closure conversion, hosting of functions to the top level. Below is the output if we did not then apply any probabilistic optimizations.
 
@@ -145,32 +145,34 @@ The compilation of our program will follow the standard steps of transforming in
 	\begin{varwidth}{\linewidth}
 		\small
 		\begin{verbatim}
-			#include <stdlib.h>
-			#include <stdio.h>
-
-			#include "probabilistic.h"
-
-			int main(int argc, char **argv) {
-			    double gradient = uniform_rng(0.0, 1.0);
-
-			    double coeff = normal_rng(gradient, 0.05);
-			    double const_ = normal_rng(0.0, 0.2);
-
-			    observe(normal_lnp(20.0, coeff * 88.6 + const_, 0.1));
-			    observe(normal_lnp(16.0, coeff * 71.6 + const_, 0.1));
-			    observe(normal_lnp(19.8, coeff * 93.3 + const_, 0.1));
-			    observe(normal_lnp(18.4, coeff * 84.3 + const_, 0.1));
-			    observe(normal_lnp(17.1, coeff * 80.6 + const_, 0.1));
-			    observe(normal_lnp(15.5, coeff * 75.2 + const_, 0.1));
-
-			    predict("%s,%f\n", "gradient", gradient);
-
-			    return 0;
-			}
+			 1    #include <stdlib.h>
+			 2    #include <stdio.h>
+			 3
+			 4    #include "probabilistic.h"
+			 5
+			 6    int main(int argc, char **argv) {
+			 7        double gradient = uniform_rng(0.0, 1.0);
+			 8
+			 9        double coeff = normal_rng(gradient, 0.05);
+			10        double const_ = normal_rng(0.0, 0.2);
+			11
+			12        observe(normal_lnp(20.0, coeff * 88.6 + const_, 0.1));
+			13        observe(normal_lnp(16.0, coeff * 71.6 + const_, 0.1));
+			14        observe(normal_lnp(19.8, coeff * 93.3 + const_, 0.1));
+			15        observe(normal_lnp(18.4, coeff * 84.3 + const_, 0.1));
+			16        observe(normal_lnp(17.1, coeff * 80.6 + const_, 0.1));
+			17        observe(normal_lnp(15.5, coeff * 75.2 + const_, 0.1));
+			18
+			19        predict("%s,%f\n", "gradient", gradient);
+			20
+			21        return 0;
+			22    }
 		\end{verbatim}
 	\end{varwidth}
 \end{center}
-Immediately you can see that the syntax has changed dramatically but the fundamental program structure is unaltered. We still sample the underlying gradient and the coefficient and constant for a particular insect. We then observe our six pieces of data. The order of the arguments here is value, then mean, then variance. We then output the value of the gradient.
+Immediately you can see that the syntax has changed dramatically but the fundamental program structure is unaltered.
+
+We still sample the underlying gradient (line 7) and the coefficient and constant for a particular insect (lines 9-10). We then observe our six pieces of data (lines 12-17). The order of the arguments here is value, then mean, then variance. We then output the value of the gradient (line 19).
 
 In its current state this program is barely faster than the original if at all. However, there are a few optimizations that we can make and we will list them in the order that they are performed.
 \begin{enumerate}
@@ -312,7 +314,7 @@ We hope that this example has demonstrated and explained what it is that our com
 
 Bayesian probability is a branch of probability and logic that deals with making predictions about future events based off of our prior assumptions and the outcomes of current events.
 
-We assume that the reader has knowledge of basic probability ideas. This includes conditional probability, the idea that if \(A\) and \(B\) are events then
+We assume that the reader is familiar with the basic concepts of probability theory. This includes conditional probability, the idea that if \(A\) and \(B\) are events then
 \[\Pr(A | B) = \frac{\Pr(A \land B)}{\Pr(B)}\]
 is the probability of \(A\) occurring given that \(B\) has already occurred.
 
@@ -340,11 +342,11 @@ These theorems are central to the work we will do throughout this project.
 
 \subsection{Probabilistic programming}
 
-Superficially a probabilistic programming language may appear to be just like a normal one. In fact one could say that if you've ever written a program that calls a random number generator then you've written a probabilistic program. Probabilistic programming languages do indeed make it easy to sample from various probability distributions by having them built in to the language, but they do much more than that as well. A probabilistic programming language allows you to condition the entire execution on some observed data. We will explain what we mean by that in the next few paragraphs.
+Superficially a probabilistic programming language may appear to be just like a normal one. In fact one could say that if you have ever written a program that calls a random number generator then you have written a probabilistic program. Probabilistic programming languages do indeed make it easy to sample from various probability distributions by having them built in to the language, but they do much more than that as well. A probabilistic programming language allows you to condition the entire execution on some observed data. We will explain what we mean by that in the next few paragraphs.
 
-For the sake of this explanation a good way of thinking about all programs would be to consider the distribution of outputs they produce. For completely deterministic programs they may only produce one possible output. Once you start using random number generators they produce a distribution over many values. What we're interested in is this distribution of outputs of the program which we call the posterior distribution.
+For the sake of this explanation a good way of thinking about all programs would be to consider the distribution of outputs they produce. For completely deterministic programs they may only produce one possible output. Once you start using random number generators they produce a distribution over many values. What we are interested in is this distribution of outputs of the program once adjusted based on observed data. We call this the posterior distribution.
 
-There are a few ways to calculate this posterior distribution. One method is to run it many times to generate an approximation which gets closer to the true posterior the more you run it. This is the method used by both Anglican and Probabilistic-C \cite{Anglican, ProbabilisticC}. Another way is to use static analysis on the program to track the distributions through it and calculate the posterior precisely. An example of this exact method can be seen in a implementation of Church called Cosh \cite{Cosh}. The exact method is of course more accurate but also far more computationally expensive. As a result it can usually only be used on very simple programs. During this paper we will only consider the inexact method of inference.
+There are a few ways to calculate this posterior distribution. One method is to run it many times to generate an approximation which gets closer to the true posterior the more you run it. This is the method used by both Anglican and Probabilistic-C \cite{Anglican, ProbabilisticC}. Another way is to use static analysis on the program to track the distributions through it and calculate the posterior precisely. An example of this exact method can be seen in an implementation of Church called Cosh \cite{Cosh}. The exact method is of course more accurate but also far more computationally expensive. As a result it can usually only be used on very simple programs. In this report we will only consider the approximate method of inference.
 
 Where things get more complicated is when we introduce the ability to observe. This is the true power of probabilistic programming languages. This allows you to condition the entire program execution on some observed data and change the posterior distribution to match.
 
@@ -362,15 +364,17 @@ To illustrate the process, consider the following simple Anglican program.
 		\end{verbatim}
 	\end{varwidth}
 \end{center}
-What this means in terms of probabilities is: \(\Pr(p) = 1\), \(\Pr(x | p) = p\). Then we expect the posterior distribution of \(p\) to be
-\[\Pr(p | x) = \frac{\Pr(x | p) \Pr(p)}{\int_0^1 \Pr(x | p') \Pr(p') dp'} = 2p\]
-and this is exactly the output we see if we run the program. Although we have done it here it is not in general possible to work out the conditional probability analytically. Probabilistic programming gives us the power to approximate any probability of this form whether or not we can't calculate it directly.
+What this means in terms of probabilities is: \(\Pr(P = p) = 1\), \(\Pr(X = x | P = p) = p\). Then we expect the posterior distribution of \(p\) to be
+\[\Pr(P = p | X = x) = \frac{\Pr(X = x | P = p) \Pr(P = p)}{\int_0^1 \Pr(X = x | P = p') \Pr(P = p') dp'} = 2p\]
+and this is exactly the output we see if we run the program. Although we have done it here it is not in general possible to work out the conditional probability analytically. Probabilistic programming gives us the power to approximate any probability of this form whether or not we can calculate it directly.
 
 Now that we have a basic idea of the semantics of an observe statement, we will define two related but different types of observation and ways of doing inference on each.
 
-What we will call a hard observation asserts the result of some non-probabilistic boolean expression. This is the way that Church handles observations. One way to do inference using this kind of observation is to simply run the program many times and restart from the beginning whenever you fail an observation. This way only traces which satisfy all the observations will make it to the end and be recorded. This is known as rejection sampling and is a rather unsophisticated and limited way of doing inference. There are other ways of doing inference using these observations but they are more complicated and it is not necessary to understand them here.
+What we will call a hard observation asserts the result of some non-probabilistic boolean expression. This is the way that Church handles observations. One way to do inference using this kind of observation is to simply run the program many times and restart from the beginning whenever you fail an observation. This way only traces which satisfy all the observations will make it to the end and be recorded. This is known as rejection sampling and is a rather naive and inefficient way of doing inference. There are other ways of doing inference using these observations but they are more complicated and it is not necessary to understand them here.
 
-What we will call a soft observation instead samples from a probability distribution and asserts that it received a particular value. This is the way that both Anglican and Probabilistic-C handle observations. Now that we might be sampling continuous values from probability distributions we can't do rejection sampling anymore, instead we use particles. The basic idea is to run the same program many times in parallel where each individual instance of the program is called a particle. The particles are made to synchronize with each other at observe statements. A consequence of this is a prerequisite that all possible runs of the program must hit the same number of observe statements. When a particle comes to an observe statement it calculates the probability of that observation being satisfied. Once all particles have reached the observe statement the less likely particles may be killed off and new ones are cloned from those that remain to keep the number of particles constant. The end result is that the distribution of values of variables throughout the collection of particles converges to the correct posterior distribution.
+What we will call a soft observation instead samples from a probability distribution and asserts that it received a particular value. This is the way that both Anglican and Probabilistic-C handle observations. Now that we might be sampling continuous values from probability distributions we can not do rejection sampling anymore. Instead we use a new type of inference algorithms targeted at continuous distributions. One popular class of algorithms uses so called particles \cite{MonteCarlo}. The basic idea is to run the same program many times in parallel where each individual instance of the program is called a particle. The particles are made to synchronize with each other at observe statements. A consequence of this is a prerequisite that all possible runs of the program must hit the same number of observe statements. When a particle comes to an observe statement it calculates the probability of that observation being satisfied. Once all particles have reached the observe statement the less likely particles may be killed off and new ones are cloned from those that remain to keep the number of particles constant. The end result is that the distribution of values of variables throughout the collection of particles converges to the correct posterior distribution.
+
+We should explain what we mean by the term mixing. When using the approximate method of inference the algorithm does not produce samples from the correct distribution immediately but only after a certain amount of initial samples. We say that samples are mixed if this period of initial bad samples is passed. Our goal is to optimize a given program so that this period of bad samples for the program is shortened.
 
 This concludes our overview of probabilistic programming. Next we will describe the two languages Anglican and Probabilistic-C in more detail.
 
@@ -386,13 +390,13 @@ This concludes our overview of probabilistic programming. Next we will describe 
 
 \subsection{Anglican and Probabilistic-C}
 
-Anglican and Probabilistic-C are the two established probabilistic programming languages that we'll be concentrating on. The source language of our compiler is based on Anglican and the target language of our compiler is Probabilistic-C.
+Anglican and Probabilistic-C are the two established probabilistic programming languages that we will be concentrating on. The source language of our compiler is based on Anglican and the target language of our compiler is Probabilistic-C.
 
-Anglican is a high level probabilistic programming language based upon a subset of the language Lisp. The exact syntax is that it is a sequence of assume, observe, and predict directives. Each directive may then contain expressions which come from a safe, functional subset of Lisp. An assume directive defines a new identifier and can be thought of as a let expression. An observe directive performs a soft observation as we defined in the previous section. A predict directive prints out a value to the terminal. The Lisp subset used for the inner expressions includes all the basic flow control elements, lots of mathematical operators, and a large selection of probabilistic distributions to sample from. As we've said, Anglican is high level and this makes it nice to program in. However, for complex models it can be slow.
+Anglican is a high level probabilistic programming language based upon a subset of the language Lisp. The exact syntax is that it is a sequence of assume, observe, and predict directives. Each directive may then contain expressions which come from a safe, functional subset of Lisp. An assume directive defines a new identifier and can be thought of as a let expression. An observe directive performs a soft observation as we described in the previous section. A predict directive prints out a value to the terminal. The Lisp subset used for the inner expressions includes all the basic flow control elements, many mathematical operators, and a large selection of probabilistic distributions to sample from. As we have said, Anglican is high level and this makes it nice to program in. However, for complex models it can be slow.
 
-Probabilistic-C is a lower level probabilistic programming language based upon C. In fact the only difference is the addition of a library of sampling functions, two extra functions to observe and predict, and a macro which redefines the main function. This means that Probabilistic-C has all of the power of C and almost all of the speed. An observe statement in Probabilistic-C also performs a soft observation. These are the same semantics as in Anglican and this makes the compilation easier. If our source language was based on Church for example, then the compilation would be considerably harder as the semantics of observations would be different. Probabilistic-C is different from most probabilistic programming languages in that you are very unconstrained in your observations. In most languages you would be required to supply a distribution and a value to an observe statement. However, in Probabilistic-C you simply supply a floating point value representing the log of the probabilistic density function of the distribution at the desired point. This lack of restriction makes Probabilistic-C unsafe in the sense that you can write programs that make no sense statistically. However, we will use this extra power to do optimizations and it gives us a lot of options that we would not have with another target language. For this reason and C's general unfriendliness it is not recommended to code in Probabilistic-C directly. It does a perfect compilation target though.
+Probabilistic-C is a lower level probabilistic programming language based upon C. In fact the only difference from C is the addition of a library of sampling functions, two extra functions to observe and predict, and a macro which redefines the main function. This means that Probabilistic-C has all of the power of C and almost all of the speed. An observe statement in Probabilistic-C also performs a soft observation. These are the same semantics as in Anglican and this makes the compilation easier. If our source language was based on Church for example, then the compilation would be considerably harder as the semantics of observations would be different. Probabilistic-C is different from most probabilistic programming languages in that you are very unconstrained in your observations. In most languages you would be required to supply a distribution and a value to an observe statement. However, in Probabilistic-C you simply supply a floating point value representing the log of the probabilistic density function of the distribution at the desired point. This lack of restriction makes Probabilistic-C unsafe in the sense that you can write programs that make no sense statistically. However, we will use this extra power to do optimizations and it gives us a lot of options that we would not have with another target language. For this reason and C's general unfriendliness it is not recommended to code in Probabilistic-C directly. It does a perfect compilation target though.
 
-Combine the facts about these two languages and you can see there is an obvious motive for creating a compiler between them.
+From the facts about these two languages, we hope, a reader can see the need for creating a compiler from Anglican to Probabilistic-C.
 
 
 
@@ -420,7 +424,7 @@ Combine the facts about these two languages and you can see there is an obvious 
 
 For this project we needed a high level probabilistic programming language to be the source language of our compiler. We had two choices: to use an existing one or to write our own. In fact we went somewhere in between by modifying Anglican to include some extra type information to make compilation easier. Compiling from an untyped language to a typed one is difficult. One way would be to forget the idea of using native types and introduce a layer of abstraction around all variables but this could incur a large performance penalty. We therefore made the choice to introduce some extra type information into our source language so that we always know the type of a variable or function argument or a function return type.
 
-What follows are a couple of examples of our language. We will refer to our source language as G since the paper we are following by G. Morrisett et al. used a language named F \cite{SystemF}. This first example shows that G is identical to Anglican for programs not involving user-defined functions or lists.
+What follows are a couple of examples of our language. We will refer to our source language as G since the paper we are following by Morrisett et al. used a language named F \cite{SystemF}. This first example shows that G is identical to Anglican for programs not involving user-defined functions or lists.
 \begin{center}
 	\begin{varwidth}{\linewidth}
 		\small
@@ -432,8 +436,8 @@ What follows are a couple of examples of our language. We will refer to our sour
 			[assume sprinkler (if iscloudy (flip 0.1) (flip 0.5))]
 			
 			[assume pwetgrass (if (and sprinkler israining) 0.99
-												(if (or  sprinkler israining) 0.9
-																											0))]
+			                  (if (or  sprinkler israining) 0.9
+			                                                0))]
 			
 			[observe (flip pwetgrass) true]
 			
@@ -454,15 +458,15 @@ However for more complicated programs we need to add type information to the fun
 
 			; Sensor reliability conditional distribution
 			[assume sound-state-dist (lambda (o : Num) -> List
-				(cond ((= o 0) (list .6 .3 .1))
-							((= o 1) (list .3 .4 .3))
-							(else    (list .1 .4 .5))))]
+			  (cond ((= o 0) (list .6 .3 .1))
+			        ((= o 1) (list .3 .4 .3))
+			        (else    (list .1 .4 .5))))]
 
 			; Utility function 
 			[assume utility (lambda (drill : Bool) -> Num 
-				(if drill
-						(nth Num (list -70 50 200) oil-quant)
-						0))]
+			  (if drill
+			      (nth Num (list -70 50 200) oil-quant)
+			      0))]
 
 			; Make a sound observation
 			[observe (discrete (sound-state-dist oil-quant)) 2]
@@ -476,13 +480,13 @@ However for more complicated programs we need to add type information to the fun
 			; What is the utility if we don't?
 			[predict (utility false)]
 
-			; With what probability should I drill?
+			; With what probability should we drill?
 			[assume should-i-drill (if (> (utility true) (utility false)) 1 0)]
 			[predict should-i-drill]
 		\end{verbatim}
 	\end{varwidth}
 \end{center}
-What follows is an exact description of the syntax of G.
+The full syntax of our source language G is defined by the following grammar:
 \begin{center}
 	\begin{varwidth}{\linewidth}
 		\small
@@ -494,7 +498,7 @@ What follows is an exact description of the syntax of G.
 			<exprs> ::= <expr> | <expr> <exprs>
 			<expr> ::= <number> | <boolean> | <empty-list> | <id> |
 								 <let-expr> |
-								 <lambda-expr> | <mem-expr> |
+								 <lambda-expr> |
 								 <if-expr> | <cond-expr> |
 								 <prim-expr> | <typed-prim-expr> |
 								 <app-expr>
@@ -502,7 +506,6 @@ What follows is an exact description of the syntax of G.
 			<lambda-expr> ::= "(" "lambda" <lambda-type> <expr> ")"
 			<lambda-type> ::= "(" <lambda-args> ")" "->" <type>
 			<lambda-args> ::= <id> ":" <type> | <id> ":" <type> <lambda-args>
-			<mem-expr> ::= "(" "mem" <expr> ")"
 			<if-expr> ::= "(" "if" <expr> <expr> <expr> ")"
 			<cond-expr> ::= "( "cond" <cond-args> ")"
 			<cond-args> ::= "(" "else" <expr> ")" |
@@ -554,10 +557,10 @@ The first stage of compilation is to type the source language. We assign a type 
 	\begin{verbatim}
 		(Num, Num, Num, Num) -> Bool
 	\end{verbatim}
-	For functions such as \texttt{first} we also use the user supplied type. Often the user supplied type is used as the return type. It is worth noting that although in G the first argument of \texttt{first} appears to be a type that is not a true argument. A better way of thinking about it that it specifies which of a set of functions you're referring to.
+	For functions such as \texttt{first} we also use the user supplied type. Often the user supplied type is used as the return type. It is worth noting that although in G the first argument of \texttt{first} appears to be a type that is not a true argument. A better way of thinking about it that it specifies which of a set of functions is being referring to.
 
 \item
-	That the given return type of a lambda matches the type that its body evaluates to. The reason for making the user specify a return type at all is for recursive functions so we don't have to do any type guesswork at all.
+	That the given return type of a lambda matches the type that its body evaluates to. The reason for making the user specify a return type at all is for recursive functions so we do not have to do any type guesswork at all.
 
 \item
 	That the two branches of an if expression have the same type.
@@ -598,7 +601,7 @@ At this point in the compilation we change all identifiers to be unique. After t
 
 The next step of compilation is to transform into continuation passing style (CPS). The primary difference here is that functions and arithmetic operators and such like do not return values but instead take as an extra argument an explicit continuation. A continuation is a function of one argument which caries on the computation. The reason for doing this is that it makes explicit a lot of things that were originally implicit such as intermediate values and order of evaluation. This immediately brings the style of execution away from a functional language with nested expressions and more towards an imperative one where statements are executed in order. In other words it brings the style of execution a lot closer to that of C. The exception to the transformation is built-in primitives which we assume can be done atomically by the target language. Primitives can therefore be calculated directly and stored into variables.
 
-We wont say too much about the actual transformation as it's fairly standard. The two points we will mention are:
+We wont say too much about the actual transformation as it is fairly standard. The two points we will mention are:
 \begin{itemize}
 \item
 	Generate the continuation for an if expression before and then use the same one in each branch instead of generating code within each branch. This has the effect of increasing the number of continuations but reduces the overall amount of code generated and reduces the nesting level.
@@ -681,9 +684,9 @@ There are a few times that we need to add in some extra C code to provide an imp
 
 \section{Optimizations}
 
-At this point we already have a standard compiler from a high level to a lower level language. This would be a good enough project in itself. However, there is potential for massive increases in both performance and the quality of samples though the combination of a few simple optimizations.
+At this point we already have a standard compiler from a high level to a lower level language. This would be a good enough project in itself. However, there is potential for significantly increasing both performance and sample quality though the combination of a few simple optimizations.
 
-All the optimizations described here are performed immediately after CPS transformation. In this stage the syntax is at a good balance of simplicity and expressiveness. For example all expressions have been split up so we only calculate one primitive or application at a time. Also, lambdas are still in-line and so we don't have to worry about variable scope as much. It is however still often useful to know the full history of a variable. By which we mean exactly how it was calculated rather than just the last step. We therefore calculate this history before doing any optimizations and rebuild the information after each optimization is complete.
+All the optimizations described here are performed immediately after CPS transformation. In this stage the syntax is at a good balance of simplicity and expressiveness. For example all expressions have been split up so we only calculate one primitive or application at a time. Also, lambdas are still in-line and so we do not have to worry about variable scope as much. It is however still often useful to know the full history of a variable. By which we mean exactly how it was calculated rather than just the last step. We therefore calculate this history before doing any optimizations and rebuild the information after each optimization is complete.
 
 
 
@@ -725,7 +728,7 @@ For example we could do the following optimization
 		\texttt{...}
 	\end{array}
 }
-This can be extended to the case when only some of the arguments are constant. In this case we can't remove the whole primitive application but we can reduce the number of arguments and hence the complexity of it.
+This can be extended to the case when only some of the arguments are constant. In this case we can not remove the whole primitive application but we can reduce the number of arguments and hence the complexity of it.
 
 For example we could do the following optimization
 \optimization{
@@ -795,7 +798,7 @@ Again this optimization would likely be performed by the C compiler anyway so th
 
 A very simple optimization is to remove any let expression where the variable being assigned to is never used later on in the program.
 
-This optimization doesn't do much on its own as the user is unlikely to have written a program that doesn't use one of its variables. However, almost all of the other optimizations we do here will leave orphaned variables that this process will clean up.
+This optimization does not do much on its own as the user is unlikely to have written a program that does not use one of its variables. However, almost all of the other optimizations we do here will leave orphaned variables that this process will clean up.
 
 This is an optimization that a C compiler potentially would not perform. This is because C is a language with side effects so just because a variable is never used does not mean that the process of calculating it did not change program state. In our language however variables are immutable and there is no state so it is safe to remove the unused variable.
 
@@ -858,7 +861,7 @@ For example we could do the following optimization
 }
 This will then of course be removed on the next pass as it is an id assigned to another id.
 
-This optimization could be moderately important for performance. It's true that a decent C compiler will inline a small function such as the above and hence remove the extra application. The problem is that after the other transformations that we perform it will not be as simple so removing it at this stage will greatly simplify later stages of compilation.
+This optimization could be moderately important for performance. It is true that a decent C compiler will inline a small function such as the above and hence remove the extra application. The problem is that after the other transformations that we perform it will not be as simple so removing it at this stage will greatly simplify later stages of compilation.
 
 
 
@@ -872,7 +875,7 @@ This optimization could be moderately important for performance. It's true that 
 
 \subsection{Samples}
 
-One of the things we'd like to do is to reduce the number of samples as some of them can be quite costly. We can also improve the quality of the ones we do. By this we mean we'd like to have a high level of mixing. We would therefore need to make fewer runs of the program before the output has converged enough towards to the correct output.
+One of the things we would like to do is to reduce the number of samples as some of them can be quite costly. We can also improve the quality of the ones we do. By this we mean we would like to have a high level of mixing. We would therefore need to make fewer runs of the program before the output has converged enough towards the correct output.
 
 
 
@@ -1113,7 +1116,7 @@ And importantly for us
 		 & \log(\prod_{i=1}^n \frac{1}{\sqrt{2 \pi \sigma^2}} e^{-\frac{(x_i - \mu)^2}{2 \sigma^2}}) & \notag\\
 	=\ & - \frac{n}{2} \log(2 \pi \sigma^2) - \frac{n - 1}{2 \sigma^2} s^2 - \frac{n}{2 \sigma^2} (\mu - \bar{x})^2 \notag
 \end{flalign*}
-We can then replace the sequence of observes or normal distributions by one observe of a function which calculates the above. This is the first optimization that is only possible within Probabilistic-C. This is because you are not limited to observing a standard builtin distribution but can pass any numerical value you want to an observe statement.
+We can then replace the sequence of observes or normal distributions by one observe of a function which calculates the above. This is the first optimization that is only possible within Probabilistic-C. This is because you are not limited to observing a standard built in distribution but can pass any numerical value you want to an observe statement.
 
 
 
@@ -1127,7 +1130,7 @@ We can then replace the sequence of observes or normal distributions by one obse
 
 \subsubsection{Merging any consecutive observes}
 
-This optimization relies on the way that observing works in Probabilistic-C. It is specific to Probabilistic-C and might not be possible in any other probabilistic programming language. This makes it rather interesting to us. The way that Probabilistic-C observes work is that you call the observe function with the log of the probability of the event happening. For all the standard distributions this relates to the log of the probability density function at that point but the crucial point is that we're not limited to named distributions. We can pass any floating point value to the observe function.
+This optimization relies on the way that observing works in Probabilistic-C. It is specific to Probabilistic-C and might not be possible in any other probabilistic programming language. This makes it rather interesting to us. The way that Probabilistic-C observes work is that you call the observe function with the log of the probability of the event happening. For all the standard distributions this relates to the log of the probability density function at that point but the crucial point is that we are not limited to named distributions. We can pass any floating point value to the observe function.
 
 We therefore perform the following optimization
 \optimization{
@@ -1168,7 +1171,7 @@ The best way of improving both performance and mixing is to remove observe state
 
 \subsubsection{Commuting samples and observe statements}
 
-In certain cases we can compute the effect that an observe will have on a sample directly. We can then make those changes to the sample and potentially remove the observe. The term for what we're doing here is conjugate prior and there is a lot of statistical literature on the subject.
+In certain cases we can compute the effect that an observe will have on a sample directly. We can then make those changes to the sample and potentially remove the observe. The term for what we are doing here is conjugate prior and there is a lot of statistical literature on the subject.
 
 As an example we could perform the two following optimizations
 \optimization{
@@ -1188,9 +1191,9 @@ As an example we could perform the two following optimizations
 }{
 	\texttt{[assume m (normal 4.5 0.5)]}
 }
-These are for the simple cases where the variable \texttt{a}, \texttt{b}, \texttt{m} are constants. If they are not then we might not be able to remove the observe completely as I explain later. This optimization has potential for huge increases in both performance and sample quality and could make it possible to write program which we infeasible before.
+These are for the simple cases where the variable \texttt{a}, \texttt{b}, \texttt{m} are constants. If they are not then we might not be able to remove the observe completely as we explain later. This optimization has potential for huge increases in both performance and sample quality and could make it possible to write program which we infeasible before.
 
-I will now give a proof of correctness for the first example in order to show what happens when parameters are unknown. Suppose we have the scenario as in the first example. This corresponds to having random variables \(p \sim Beta(\alpha, \beta)\) and \(x \sim Bernoulli(p)\), so \(\text{P}(p) = \frac{p^{\alpha - 1} (1 - p)^{\beta - 1}}{\text{B}(\alpha, \beta)}\) and \(\text{P}(x\ |\ p) = p\).
+We will now give a proof of correctness for the first example in order to show what happens when parameters are unknown. Suppose we have the scenario as in the first example. This corresponds to having random variables \(p \sim Beta(\alpha, \beta)\) and \(x \sim Bernoulli(p)\), so \(\text{P}(p) = \frac{p^{\alpha - 1} (1 - p)^{\beta - 1}}{\text{B}(\alpha, \beta)}\) and \(\text{P}(x\ |\ p) = p\).
 
 By Bayes theorem
 \begin{flalign*}
@@ -1215,7 +1218,7 @@ If \(\alpha\) and \(\beta\) are constant then this observe can then be removed e
 
 Note that the observe is no longer one of Anglican's distributions and so the optimization cannot be performed within Anglican. However, within Probabilistic-C or our intermediate language we can observe any distribution we like or even just numeric values.
 
-I will also detail here the formula used for the conjugate prior of the normal distribution. With this optimization it is possible to go beyond merely the example given but instead to have the mean of the observed normal distribution be some linear function of a normally sampled variable. Suppose we have the following scenario
+We will also detail here the formula used for the conjugate prior of the normal distribution. With this optimization it is possible to go beyond merely the example given but instead to have the mean of the observed normal distribution be some linear function of a normally sampled variable. Suppose we have the following scenario
 \[
 	\begin{array}{l}
 		\texttt{[assume m\_2 (normal m\_1 b\_1)]} \\
@@ -1262,9 +1265,9 @@ Here the idea is that if all of the arguments to an observe statement are consta
 %    ##    ##  ##     ##    ##           ##    ##           ##   ##  ##    ##    ##    ##    ##
 %     ######          ##    #######  #####     ##           ######   ##    ##    ##    ##    ##
 
-\section{Experimental data}
+\section{Experiments}
 
-Here I will show to you with experimental data just how much benefit the different optimizations can give. For each one I will usually show both how it affects performance and mixing, that is how quickly we can make samples and how quickly those samples converge to the correct posterior distribution.
+We carried out experiments to see how much benefit the different optimizations can give. In this section, we will report the results of these experiments. For each one we will usually show both how it affects performance and mixing, that is how quickly we can make samples and how quickly those samples converge to the correct posterior distribution.
 
 
 
@@ -1278,7 +1281,7 @@ Here I will show to you with experimental data just how much benefit the differe
 
 \subsection{Pushing samples backwards}
 
-To test this optimization I used a program of the following form.
+To test this optimization we used a program of the following form.
 
 \[
 	\begin{array}{l}
@@ -1290,7 +1293,7 @@ To test this optimization I used a program of the following form.
 \]
 Where the value of \texttt{v} can be varied. Programs of the above form were compiled with either no optimizations enabled or all optimizations enabled. The resulting programs were then run for 1000 iterations with 100 particles.
 
-I will show the resulting histograms and a visualization of how quickly it converges to the final posterior distribution. I should point out that the running time of the optimized and non-optimized programs is identical.
+We will show the resulting histograms and a visualization of how quickly it converges to the final posterior distribution. We should point out that the running time of the optimized and non-optimized programs is identical.
 
 First consider the case of \texttt{v = 3}, as shown in the following graphs.
 
@@ -1316,7 +1319,7 @@ This case demonstrates when the non-optimized program is completely useless howe
 
 \subsection{Merging observes of the same distribution}
 
-To test this optimization I used a program of the following form.
+To test this optimization we used a program of the following form.
 
 \[
 	\begin{array}{l}
@@ -1336,11 +1339,11 @@ The following two graphs show running time against number of observes and mean v
 
 What you can see from these is firstly that the optimized and non-optimized programs give the same answer. Also, the optimized program is far faster. Considering the computational complexity it appears that the non-optimized program is close to linear in the number of observes, but the optimized program running time remains constant.
 
-I will now investigate the \(n = 30\) case in more detail. These aspects can be seen in the following two graphs. The first graph shows the final posterior distribution. The second graph shows how the mean varies over time. The value at \(t\) is the mean of the first \(t\) iterations.
+We will now investigate the \(n = 30\) case in more detail. These aspects can be seen in the following two graphs. The first graph shows the final posterior distribution. The second graph shows how the mean varies over time. The value at \(t\) is the mean of the first \(t\) iterations.
 
 \centerline{\includegraphics[width=16cm]{images/merging_observes_2.png}}
 
-What you see from the first graph is again that the optimized and non-optimized programs give the same answer. Looking at the second graph it appears that the optimized program reaches it's final answer after around 600 iterations whilst the non-optimized program has still not converged satisfactorily after 1000 iterations. At first glance the optimized program has better mixing, however I don't feel this is conclusive and would instead say that they perform roughly equally.
+What you see from the first graph is again that the optimized and non-optimized programs give the same answer. Looking at the second graph it appears that the optimized program reaches its final answer after around 600 iterations whilst the non-optimized program has still not converged satisfactorily after 1000 iterations. At first glance the optimized program has better mixing, however we do not feel this is conclusive and would instead say that they perform roughly equally.
 
 
 
@@ -1354,7 +1357,7 @@ What you see from the first graph is again that the optimized and non-optimized 
 
 \subsection{Merging any consecutive observes}
 
-To test this optimization I used a program of the following form.
+To test this optimization we used a program of the following form.
 
 \[
 	\begin{array}{l}
@@ -1374,7 +1377,7 @@ The following two graphs show running time against number of observes and mean v
 
 What you can see from these is firstly that the optimized and non-optimized programs give the same answer to within an acceptable margin, but again that the optimized program is far faster. Considering the computational complexity it again appears that the non-optimized program is close to linear in the number of observes, however the optimized program running time remains constant.
 
-I will now investigate the \(n = 30\) case in more detail. These aspects can be seen in the following two graphs. The first graph shows the final posterior distribution. The second graph shows how the mean varies over time, so the value at t is the mean of the first t iterations.
+We will now investigate the \(n = 30\) case in more detail. These aspects can be seen in the following two graphs. The first graph shows the final posterior distribution. The second graph shows how the mean varies over time, so the value at t is the mean of the first t iterations.
 
 \centerline{\includegraphics[width=16cm]{images/merging_consecutive_observes_2.png}}
 
@@ -1392,7 +1395,7 @@ What you see from the first graph is again that minus a bit or noise the optimiz
 
 \subsection{Removing observes}
 
-To test this optimization I used a program of the following form.
+To test this optimization we used a program of the following form.
 
 \[
 	\begin{array}{l}
@@ -1411,7 +1414,7 @@ The following two graphs show running time against number of observes and mean v
 
 What you can see here is firstly that the optimized program is far faster than the non-optimized one, but the optimized program gives a sensible and correct answer whereas the non-optimized programs are much less consistent. Considering computational complexity it again appears that the non-optimized program is close to linear in the number of observes, however the optimized program running time remains constant.
 
-I will now show the extend to which the non-optimized programs fail to give usable output. Looking at the posterior distribution of each one and showing how it deteriorates as the number of observes increases. Consider the following set of graphs.
+We will now show the extend to which the non-optimized programs fail to give usable output. Looking at the posterior distribution of each one and showing how it deteriorates as the number of observes increases. Consider the following set of graphs.
 
 \centerline{\includegraphics[width=16cm]{images/removing_observes_2.png}}
 
@@ -1429,7 +1432,7 @@ What you can see here is that the optimized program gives a perfect normal distr
 
 \subsection{Removing constant observes}
 
-To test this optimization I used the following program.
+To test this optimization we used the following program.
 
 \[
 	\begin{array}{l}
@@ -1471,12 +1474,12 @@ We have had various idea for ways that the compiler could be improved upon. Most
 
 	The extra information in function types could be removed by doing standard, well understood analysis to infer the type or infer that no type could possibly work. For functions that are then called with multiple different but possible types we may have to create one function in the outputted C code for each type used. This is the way that C++ templating works.
 
-	When extracting items from lists we currently use extra type information to know what we're expecting and then halt execution if we receive something different. The benefit of doing it this way is that we can use native C types once we've extracted the value. The down side is of course that extra type information is needed. The way to fix this would be to not use native types but extract into a data structure that holds one variable from a selection of types. Doing this would allow us to more closely model the semantics of Lisp. It is not clear what the performance penalty would be.
+	When extracting items from lists we currently use extra type information to know what we are expecting and then halt execution if we receive something different. The benefit of doing it this way is that we can use native C types once we have extracted the value. The down side is of course that extra type information is needed. The way to fix this would be to not use native types but extract into a data structure that holds one variable from a selection of types. Doing this would allow us to more closely model the semantics of Lisp. It is not clear what the performance penalty would be.
 
 	The reason that both of these extra features were not added is because they are difficult to implement and not necessary to demonstrate the optimizations. If this system were to be extended to a usable one however then we would have to look at these as we would want to use an unmodified existing untyped language such as Anglican as the source language.
 
 \item
-	There is a feature of Anglican and of many other probabilistic and traditional programming languages called memoization. This feature caches the results of a function. Normally this is only used for performance reasons. In a probabilistic programming language memoization is used to cache the output of probabilistic functions and this allows one to write a whole new class of model. An example of a new model that could be written is probabilistically generating an automaton that accepts a set of words. Anglican has a primitive \texttt{mem} which turns a normal function into a cached one. Probabilistic-C also provides an implementation of caching so threading them together shouldn't be too difficult. The reason this was not done originally is because of time constraints and the difficulty of making sure that the two implementations of caching are identical in their semantics.
+	There is a feature of Anglican and of many other probabilistic and traditional programming languages called memoization. This feature caches the results of a function. Normally this is only used for performance reasons. In a probabilistic programming language memoization is used to cache the output of probabilistic functions and this allows one to write a whole new class of model. An example of a new model that could be written is probabilistically generating an automaton that accepts a set of words. Anglican has a primitive \texttt{mem} which turns a normal function into a cached one. Probabilistic-C also provides an implementation of caching so threading them together should not be too difficult. The reason this was not done originally is because of time constraints and the difficulty of making sure that the two implementations of caching are identical in their semantics.
 
 \item
 	There is an issue that for very simple programs Probabilistic-C can be slower than the original Anglican. Generally if the program does not involve user-defined functions then Anglican will execute significantly faster. However, when more complicated features are involved such as user-defined functions and lists the generated Probabilistic-C comes out as faster. There are a few hypothesis that it would be interesting to test out. It could be to do with the compilation introducing unnecessary continuations which slow down execution. It could be because of Probabilistic-C's high use of multi-threading and my test computer is not suited to fast execution. Whatever the reason it would be nice to make it faster if possible.
@@ -1497,7 +1500,7 @@ We have had various idea for ways that the compiler could be improved upon. Most
 
 What we have achieved in this project is to create an optimizing compiler from a high level Lisp based probabilistic programming language to a lower level C based probabilistic programming language. The compilation itself is interesting enough although we did have to add extra type information to the source language to make the compilation easier. However, the real aim of the compiler was to perform various probabilistic optimizations during compilation. Optimizations we apply include merging multiple samples from one distribution family into one sample, merging together multiple observes from the same family, merging any consecutive observes, and potentially completely removing observes when they form a conjugate prior.
 
-Overall we think that the project has been a success. The compiler compiles source code successfully and the although the performance improvement varies by program it can be up to 50 percent. There is then in general at least one probabilistic optimization that can be applied to any program and this produces both huge speed increases and improvements to the quality of samples generated. By leveraging the optimizations it becomes possible to write entire classes of model that before were infeasible. It would be more impressive if unaltered Anglican were used as the source language but we explain in the previous section that although this is possible there just was not time to implement it.
+Overall we think that the project has been a success. The compiler compiles source code successfully and although the performance improvement varies by program it can be up to 50 percent. In most probabilistic programs that we encountered in this project, there is typically at least one probabilistic optimization that can be applied and this produces both huge speed increases and improvements to the quality of samples generated. By leveraging the optimizations it becomes possible to write entire classes of model that before were infeasible. It would be more impressive if unaltered Anglican were used as the source language but we explain in the previous section that although this is possible there just was not time to implement it.
 
 We hope that this project can be continued to produce a system that could feasibly be used in production. Along with other research we are confident that the efficiency of probabilistic programming systems will continue to improve. We only hope that this project is a step in that direction and benefits other researchers.
 
