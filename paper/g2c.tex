@@ -82,7 +82,7 @@ One of the main problems that is holding back probabilistic programming is the a
 
 We apply standard compiler techniques to transform a high level Lisp-like language to a lower level C-like language. We also apply some known and some novel probabilistic optimizations during the compilation process. We follow the general idea of a paper entitled ``From System F to Typed Assembly Language'' after adjusting it to our own source and target languages and to handle the primitives for probability \cite{SystemF}. This describes in detail the process of compilation from their own high level Lisp-like language into an assembly language with type information.
 
-Our source language is based off of the probabilistic programming language Anglican, which is itself built upon a subset of the language Lisp. Anglican is a high level functional language and is interpreted. We will rarely refer to our source language by name but we have chosen to name it G since the aforementioned paper by Morrisett et al. used a language named F. Our target language will be Probabilistic-C which is based on the language C. This is a much lower level imperative language and is compiled, it is also a very unconstrained probabilistic programming language and this should allow us to do some interesting optimizations.
+Our source language is based off of the probabilistic programming language Anglican, which is itself built upon a subset of the language Lisp. Anglican is a high level functional language and is interpreted. We will rarely refer to our source language by name but we have chosen to name it G since the aforementioned paper by Morrisett et al. used a language named F. Our target language will be Probabilistic-C which is based on the language C. This is a much lower level imperative language and is compiled. It is also a very unconstrained probabilistic programming language and this should allow us to do some interesting optimizations.
 
 The bulk of the compiler is very standard. We transform into continuation passing style, perform closure conversion, hoist functions to the top level, and then output C code. One fortunate thing is that both Anglican and Probabilistic-C handle observations in a similar way which makes the compilation considerably easier as we will explain later. We perform some non-probabilistic optimizations such as identifier reassignment and constant expression calculation. We then perform some probabilistic optimizations such as merging multiple samples from one distribution family into one sample, merging together multiple observes from the same family, merging any consecutive observes, and potentially completely removing observes when they form a conjugate prior.
 
@@ -95,6 +95,8 @@ The bulk of the compiler is very standard. We transform into continuation passin
 %     ##            ##
 %     ##   ##  ##   ##
 %    ####  ##   ##### 
+
+\pagebreak
 
 \subsection{A brief example}
 
@@ -177,7 +179,7 @@ We still sample the underlying gradient (line 7) and the coefficient and constan
 In its current state this program is barely faster than the original if at all. However, there are a few optimizations that we can make and we will list them in the order that they are performed.
 \begin{enumerate}
 \item
-	The first thing to notice is that the normal distributions of the coeff and const samples are conjugate priors to the normal distributions of the observations. We will explain what we mean by this later on. What this optimization does when we apply it is to remove the reference to the sampled variable from the observe. The observe will then be in terms of the parameters to the sample instead. If we apply this ten times we can remove all references to the coeff and const variables from the observes and have them only in terms of the gradient variable.
+	The first thing to notice is that the normal distributions of the coeff and const samples are conjugate priors to the normal distributions of the observations. We will explain what we mean by this later on. What this optimization does when we apply it is to remove the reference to the sampled variable from the observe. The observe will then be in terms of the parameters to the sample instead. If we apply this twelve times we can remove all references to the coeff and const variables from the observes and have them only in terms of the gradient variable.
 
 	After this optimization we are making three samples and six observes.
 
@@ -238,7 +240,7 @@ In its current state this program is barely faster than the original if at all. 
 
 \end{enumerate}
 
-So after all that we have reduced three samples and six observes into just one sample and one observe. This will greatly improve both performance and sample quality. What follows is the final program, again after reducing the arithmetic by hand.
+After all that we have reduced three samples and six observes into just one sample and one observe. This will greatly improve both performance and sample quality. What follows is the final program, again after reducing the arithmetic by hand.
 
 \begin{center}
 	\begin{varwidth}{\linewidth}
@@ -350,7 +352,7 @@ There are a few ways to calculate this posterior distribution. One method is to 
 
 Where things get more complicated is when we introduce the ability to observe. This is the true power of probabilistic programming languages. This allows you to condition the entire program execution on some observed data and change the posterior distribution to match.
 
-Suppose we first sample a variable \(Y\) from a distribution. So we know \(\Pr(Y = y)\). Then suppose we observe a piece of data \(X\). So we know \(\Pr(X = x | Y = y)\). After the observe statement we expect the variable \(Y\) to instead follow the distribution \(\Pr(Y = y\ |\ X = x)\). It may not be possible to calculate this distribution analytically, but this is the purpose of the inference algorithm of the probabilistic programming language.
+Suppose we first sample a variable \(Y\) from a distribution. So we know \(\Pr(Y = y)\). Then suppose we observe a piece of data \(X\). So we also know \(\Pr(X = x | Y = y)\). After the observe statement we expect the variable \(Y\) to instead follow the distribution \(\Pr(Y = y\ |\ X = x)\). It may not be possible to calculate this distribution analytically, but this is the purpose of the inference algorithm of the probabilistic programming language.
 
 To illustrate the process, consider the following simple Anglican program.
 
@@ -364,11 +366,11 @@ To illustrate the process, consider the following simple Anglican program.
 		\end{verbatim}
 	\end{varwidth}
 \end{center}
-What this means in terms of probabilities is: \(\Pr(P = p) = 1\), \(\Pr(X = x | P = p) = p\). Then we expect the posterior distribution of \(p\) to be
-\[\Pr(P = p | X = x) = \frac{\Pr(X = x | P = p) \Pr(P = p)}{\int_0^1 \Pr(X = x | P = p') \Pr(P = p') dp'} = 2p\]
+What this means in terms of probabilities is that \(\Pr(P = p) = 1\) and that \(\Pr(X = \mathsf{true} | P = p) = p\). Then we expect the posterior distribution of \(p\) to be
+\[\Pr(P = p | X = \mathsf{true}) = \frac{\Pr(X =\mathsf{true} | P = p) \Pr(P = p)}{\int_0^1 \Pr(X = \mathsf{true} | P = p') \Pr(P = p') dp'} = 2p\]
 and this is exactly the output we see if we run the program. Although we have done it here it is not in general possible to work out the conditional probability analytically. Probabilistic programming gives us the power to approximate any probability of this form whether or not we can calculate it directly.
 
-Now that we have a basic idea of the semantics of an observe statement, we will define two related but different types of observation and ways of doing inference on each.
+Now that we have a basic idea of the semantics of an observe statement. We will define two related but different types of observation and ways of doing inference on each.
 
 What we will call a hard observation asserts the result of some non-probabilistic boolean expression. This is the way that Church handles observations. One way to do inference using this kind of observation is to simply run the program many times and restart from the beginning whenever you fail an observation. This way only traces which satisfy all the observations will make it to the end and be recorded. This is known as rejection sampling and is a rather naive and inefficient way of doing inference. There are other ways of doing inference using these observations but they are more complicated and it is not necessary to understand them here.
 
@@ -394,7 +396,7 @@ Anglican and Probabilistic-C are the two established probabilistic programming l
 
 Anglican is a high level probabilistic programming language based upon a subset of the language Lisp. The exact syntax is that it is a sequence of assume, observe, and predict directives. Each directive may then contain expressions which come from a safe, functional subset of Lisp. An assume directive defines a new identifier and can be thought of as a let expression. An observe directive performs a soft observation as we described in the previous section. A predict directive prints out a value to the terminal. The Lisp subset used for the inner expressions includes all the basic flow control elements, many mathematical operators, and a large selection of probabilistic distributions to sample from. As we have said, Anglican is high level and this makes it nice to program in. However, for complex models it can be slow.
 
-Probabilistic-C is a lower level probabilistic programming language based upon C. In fact the only difference from C is the addition of a library of sampling functions, two extra functions to observe and predict, and a macro which redefines the main function. This means that Probabilistic-C has all of the power of C and almost all of the speed. An observe statement in Probabilistic-C also performs a soft observation. These are the same semantics as in Anglican and this makes the compilation easier. If our source language was based on Church for example, then the compilation would be considerably harder as the semantics of observations would be different. Probabilistic-C is different from most probabilistic programming languages in that you are very unconstrained in your observations. In most languages you would be required to supply a distribution and a value to an observe statement. However, in Probabilistic-C you simply supply a floating point value representing the log of the probabilistic density function of the distribution at the desired point. This lack of restriction makes Probabilistic-C unsafe in the sense that you can write programs that make no sense statistically. However, we will use this extra power to do optimizations and it gives us a lot of options that we would not have with another target language. For this reason and C's general unfriendliness it is not recommended to code in Probabilistic-C directly. It does a perfect compilation target though.
+Probabilistic-C is a lower level probabilistic programming language based upon C. In fact the only difference from C is the addition of a library of sampling functions, two extra functions to observe and predict, and a macro which redefines the main function. This means that Probabilistic-C has all of the power of C and almost all of the speed. An observe statement in Probabilistic-C also performs a soft observation. These are the same semantics as in Anglican and this makes the compilation easier. If our source language was based on Church for example, then the compilation would be considerably harder as the semantics of observations would be different. Probabilistic-C is different from most probabilistic programming languages in that you are very unconstrained in your observations. In most languages you would be required to supply a distribution and a value to an observe statement. However, in Probabilistic-C you simply supply a floating point value representing the log of the probabilistic density function of the distribution at the desired point. This lack of restriction makes Probabilistic-C unsafe in the sense that you can write programs that make no sense statistically. However, we will use this extra power to do optimizations and it gives us a lot of options that we would not have with another target language. For this reason and C's general unfriendliness it is not recommended to code in Probabilistic-C directly. It makes a perfect compilation target though.
 
 From the facts about these two languages, we hope, a reader can see the need for creating a compiler from Anglican to Probabilistic-C.
 
@@ -445,7 +447,9 @@ What follows are a couple of examples of our language. We will refer to our sour
 		\end{verbatim}
 	\end{varwidth}
 \end{center}
-However for more complicated programs we need to add type information to the function arguments, function return type, and anywhere that something is extracted from a list. This second example demonstrates all of these.
+
+\pagebreak 
+However, for more complicated programs we need to add type information to the function arguments, function return type, and anywhere that something is extracted from a list. This second example demonstrates all of these.
 \begin{center}
 	\begin{varwidth}{\linewidth}
 		\small
@@ -486,6 +490,8 @@ However for more complicated programs we need to add type information to the fun
 		\end{verbatim}
 	\end{varwidth}
 \end{center}
+
+\pagebreak 
 The full syntax of our source language G is defined by the following grammar:
 \begin{center}
 	\begin{varwidth}{\linewidth}
@@ -623,7 +629,7 @@ We wont say too much about the actual transformation as it is fairly standard. T
 
 \subsection{Closure conversion and hoisting}
 
-The goal of this step of compilation is to lift all functions to the top level of the program. This is because in C all functions must be defined in this way. The problem we must overcome is that functions may have free variables. What we mean by this is variables which are used in the function but not defined within it or one of the arguments. The way we will fix this is to effectively add more arguments to all functions so that they no longer contain any free variables. In practice however we keep the original arguments and add one new one. The way we do this is that whenever a function is created we store the values of all its free variables into some kind of bundle or closure. Then when the function is executed we unpack the bundle to get back the values of any free variable that are needed.
+The goal of this step of compilation is to lift all functions to the top level of the program. This is because in C all functions must be defined in this way. The problem we must overcome is that functions may have free variables. What we mean by this is variables which are used in the function but not defined within it or one of the arguments. The way we will fix this is to effectively add more arguments to all functions so that they no longer contain any free variables. In practice however we keep the original arguments and add one new one. The way we do this is that whenever a function is created we store the values of all its free variables into some kind of bundle or closure. Then when the function is executed we unpack the bundle to get back the values of any free variables that are needed.
 
 The first thing we do is to go though the entire program and through every function to find the free variables. We work out which variables are used in the function but not defined within it or one of the arguments. Once that is done we then make the following changes:
 \begin{itemize}
@@ -942,6 +948,8 @@ There are many cases where we can apply this optimization and we have listed som
 
 	\end{tabular}}
 \end{center}
+
+\pagebreak
 We will also prove the correctness of the first example.
 
 \begin{mdframed}
@@ -1110,7 +1118,6 @@ To work out what distribution it will have we consider the joint probability den
 	=\ & (2 \pi \sigma^2)^{-\frac{n}{2}} e^{-\frac{1}{2 \sigma^2} \sum_{i=1}^n (x_i - \bar{x})^2} e^{-\frac{n}{2 \sigma^2} (\mu - \bar{x})^2} \notag\\
 	=\ & (2 \pi \sigma^2)^{-\frac{n}{2}} e^{-\frac{n - 1}{2 \sigma^2} s^2} e^{-\frac{n}{2 \sigma^2} (\mu - \bar{x})^2} \notag
 \end{flalign*}
-
 And importantly for us
 \begin{flalign*}
 		 & \log(\prod_{i=1}^n \frac{1}{\sqrt{2 \pi \sigma^2}} e^{-\frac{(x_i - \mu)^2}{2 \sigma^2}}) & \notag\\
@@ -1142,7 +1149,6 @@ We therefore perform the following optimization
 }{
 	\texttt{observe(}\sum_{i=1}^n\texttt{dist\_i(args\_i));}
 }
-
 This reduces the number of observe statements and gives us a large performance increase with no down side.
 
 
